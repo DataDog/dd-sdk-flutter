@@ -29,6 +29,11 @@ variables:
   KUBERNETES_MEMORY_LIMIT: "48Gi"
   KUBERNETES_CPU_REQUEST: 4
 
+# Cancel a pipeline's interruptible jobs when a newer commit is pushed to the same ref.
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+
 stages:
   - ci-image
   - build
@@ -42,7 +47,7 @@ stages:
 
 # Prebuild - install necessary tools
 
-.pre:
+.pre-setup:
   script:
     - ulimit -S -n 2048
     - export PATH=$PATH:$HOME/.pub-cache/bin
@@ -55,9 +60,29 @@ stages:
     - dart pub global activate junitreport
     - melos bootstrap
     - mkdir -p $CI_PROJECT_DIR/.build/test-results/
+
+.pre-clean:
+  script:
     - melos full_clean
+
+.pre-prepare:
+  script:
     - melos prepare
     - pushd tools/ci && dart pub get && popd
+
+.pre:
+  script:
+    - !reference [.pre-setup, script]
+    - !reference [.pre-clean, script]
+    - !reference [.pre-prepare, script]
+
+# Tart VMs start from a clean checkout, so only the lockfiles need deleting before
+# resolving dependencies, instead of a full `melos full_clean`.
+.pre-tart:
+  script:
+    - !reference [.pre-setup, script]
+    - melos delete_pubspec_lock
+    - !reference [.pre-prepare, script]
 
 .pre-web:
   script:
@@ -108,7 +133,16 @@ stages:
     - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
     - echo $CHROME_EXECUTABLE
 
+.infra-retry:
+  retry:
+    max: 1
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+
 .tart-runner:
+  extends: .infra-retry
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/ci-platform-machine-images/tart-vm:dd-sdk-flutter-sequoia-latest
   tags:
     - macos:tart
@@ -147,11 +181,12 @@ ci-image-windows:
 build-flutter:
   extends: .tart-runner
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - pushd tools/releaser && dart pub get && dart test && popd
     - melos dartfmt_check
     - melos run analyze:dart
@@ -167,6 +202,7 @@ build-flutter:
 
 build-android:
   stage: build
+  interruptible: true
   except: [schedules]
   image: $CI_IMAGE_DOCKER
   tags: ["arch:amd64"]
@@ -197,11 +233,12 @@ build-android:
 build-ios-spm:
   extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -213,8 +250,9 @@ build-ios-spm:
 # dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
 # macOS can only build via Swift Package Manager until that's fixed upstream.
 build-macos-spm:
-  extends: .xcode-test-artifacts
+  extends: [.infra-retry, .xcode-test-artifacts]
   stage: build
+  interruptible: true
   except: [ schedules ]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
@@ -233,11 +271,12 @@ build-macos-spm:
 build-ios:
   extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
@@ -249,6 +288,7 @@ build-ios:
 
 build-web:
   stage: build
+  interruptible: true
   except: [schedules]
   image: $CI_IMAGE_DOCKER
   tags:
@@ -269,6 +309,7 @@ build-web:
 
 build-linux:
   stage: build
+  interruptible: true
   except: [ schedules ]
   image: $CI_IMAGE_DOCKER
   tags: [ "arch:amd64" ]
@@ -290,6 +331,7 @@ build-linux:
 # via `docker run` on the bare host.
 build-windows:
   stage: build
+  interruptible: true
   except: [ schedules ]
   tags: [ "windows-v2:2022" ]
   variables:
@@ -314,9 +356,13 @@ build-windows:
 # Integration Tests
 
 android-integration-test:
+  extends: .infra-retry
   stage: integration-test
+  interruptible: true
   except: [schedules]
-  needs: [build-android]
+  needs:
+    - job: build-flutter
+      artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
@@ -339,12 +385,15 @@ android-integration-test:
 ios-integration-test:
   extends: .tart-runner
   stage: integration-test
+  interruptible: true
   except: [schedules]
-  needs: [build-ios]
+  needs:
+    - job: build-flutter
+      artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
@@ -359,9 +408,13 @@ ios-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 macos-integration-test:
+  extends: .infra-retry
   stage: integration-test
+  interruptible: true
   except: [ schedules ]
-  needs: [ build-macos-spm ]
+  needs:
+    - job: build-flutter
+      artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   tags:
@@ -382,8 +435,14 @@ macos-integration-test:
 
 web-integration-test:
   stage: integration-test
+  interruptible: true
   except: [schedules]
-  needs: [build-web]
+  needs:
+    - job: build-flutter
+      artifacts: false
+  parallel:
+    matrix:
+      - WEB_COMPILER: [js, wasm]
   image: $CI_IMAGE_DOCKER
   tags:
     - "arch:amd64"
@@ -395,8 +454,11 @@ web-integration-test:
 
 linux-integration-test:
   stage: integration-test
+  interruptible: true
   except: [ schedules ]
-  needs: [ build-linux ]
+  needs:
+    - job: build-flutter
+      artifacts: false
   image: $CI_IMAGE_DOCKER
   tags:
     [ "arch:amd64" ]
@@ -645,7 +707,7 @@ nightly-min-version-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - fvm install $FLUTTER_MIN_VERSION
     - fvm use $FLUTTER_MIN_VERSION
@@ -665,7 +727,7 @@ nightly-beta-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - !reference [.install-gradle-mirror, script]
     - fvm destroy
@@ -721,7 +783,7 @@ nightly-ios:
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
@@ -757,11 +819,12 @@ nightly-android:
 openfeature-min-version-test:
   extends: .tart-runner
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - fvm install $FLUTTER_MIN_VERSION
     - fvm use $FLUTTER_MIN_VERSION
     - cd packages/datadog_flags
