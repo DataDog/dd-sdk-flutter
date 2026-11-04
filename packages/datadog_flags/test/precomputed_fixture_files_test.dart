@@ -3,22 +3,30 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
-@TestOn('vm')
-library;
-
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
+import 'fixtures/precomputed_text.dart';
+
 bool applies(Map<String, dynamic> value) {
   bool contains(String field) => (value[field] as List? ?? []).any(
     (entry) => entry['platform'] == 'flutter',
   );
-  return !contains('_skip') &&
+  final included = (value['_include'] as List? ?? [])
+      .map((entry) => entry['platform'])
+      .toSet();
+  // The shared corpus uses ios/flutter-only applicability for native Int64 cases,
+  // including generated companions whose reason text differs from the source.
+  final nativeIntegerOnly =
+      included.length == 2 &&
+      included.contains('ios') &&
+      included.contains('flutter');
+  return !(identical(1, 1.0) && nativeIntegerOnly) &&
+      !contains('_skip') &&
       (!value.containsKey('_include') || contains('_include'));
 }
 
@@ -61,31 +69,16 @@ void checkEvents(List<dynamic> events, List<dynamic> matchers, bool exact) {
 }
 
 void main() {
-  final root = Directory('test/fixtures/precomputed');
-  if (!root.existsSync()) {
-    throw StateError('Missing canonical fixture snapshot');
+  numericGetterRegressions();
+  legacyCacheBounds();
+  if (precomputedText.isEmpty) {
+    throw StateError('Empty canonical fixture snapshot');
   }
-  final files =
-      Directory('${root.path}/cases')
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((file) => file.path.endsWith('.json'))
-          .toList()
-        ..sort((a, b) => a.path.compareTo(b.path));
-  if (files.isEmpty) throw StateError('Empty canonical fixture snapshot');
-  if (!files.any(
-    (file) =>
-        applies(jsonDecode(file.readAsStringSync()) as Map<String, dynamic>),
-  )) {
-    throw StateError('All canonical fixtures excluded');
-  }
-  final source = jsonDecode(
-    File('${root.path}/SOURCE.json').readAsStringSync(),
-  );
-  group('canonical precompute ${source['commit']}', () {
-    for (final file in files) {
-      final fixture =
-          jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+  group('canonical precompute $precomputedRevision', () {
+    for (final entry in precomputedText.entries) {
+      final fixture = jsonDecode(entry.value.fixture) as Map<String, dynamic>;
+      final exactFixture =
+          jsonDecode(quoteNumbers(entry.value.fixture)) as Map<String, dynamic>;
       for (final restored
           in fixture.containsKey('expectedResponseError') || !applies(fixture)
               ? [false]
@@ -93,14 +86,8 @@ void main() {
         test(
           '${fixture['name']} restored=$restored',
           () async {
-            final responseText = File(
-              '${root.path}/responses/${file.path.substring(root.path.length + 1)}',
-            ).readAsStringSync();
-            final directory = await Directory.systemTemp.createTemp(
-              'canonical-flags-',
-            );
-            addTearDown(() => directory.delete(recursive: true));
-            final store = _FileStore(File('${directory.path}/flags.json'));
+            final responseText = entry.value.response;
+            final store = _JsonStore();
             var sdk = DatadogFlags();
             var offline = false;
             final requests = <http.Request>[];
@@ -121,6 +108,7 @@ void main() {
                       ? responseText
                       : '{}',
                   200,
+                  headers: {'content-type': 'application/json; charset=utf-8'},
                 );
               }),
             );
@@ -146,7 +134,13 @@ void main() {
               client = sdk.sharedClient();
               await client.initialize(context);
             }
-            for (final raw in fixture['evaluations'] as List) {
+            final evaluationsList = fixture['evaluations'] as List;
+            for (
+              var evaluationIndex = 0;
+              evaluationIndex < evaluationsList.length;
+              evaluationIndex++
+            ) {
+              final raw = evaluationsList[evaluationIndex];
               final evaluation = Map<String, dynamic>.from(raw as Map);
               if (!applies(evaluation)) continue;
               final key = evaluation['flag'] as String;
@@ -190,6 +184,16 @@ void main() {
                     details.error == null) {
                   continue;
                 }
+                if (entry.key == 'value') {
+                  checkValue(
+                    details.value,
+                    evaluation['variationType'] as String,
+                    (exactFixture['evaluations']
+                        as List)[evaluationIndex]['expectedResult']['value'],
+                    entry.value,
+                  );
+                  continue;
+                }
                 expect(
                   actual[entry.key],
                   equals(entry.value),
@@ -210,7 +214,15 @@ void main() {
                 .toList();
             final evaluations = requests
                 .where((r) => r.url.path == '/api/v2/flagevaluation')
-                .expand((r) => jsonDecode(r.body)['flagEvaluations'] as List)
+                .expand(
+                  (r) => const bool.fromEnvironment('dart.library.js_interop')
+                      ? r.body
+                            .trim()
+                            .split('\n')
+                            .where((line) => line.isNotEmpty)
+                            .map(jsonDecode)
+                      : jsonDecode(r.body)['flagEvaluations'] as List,
+                )
                 .toList();
             final expected = fixture['expectations'] as Map;
             checkEvents(
@@ -226,27 +238,171 @@ void main() {
           },
           skip: applies(fixture)
               ? false
-              : 'Excluded by canonical platform filter',
+              : 'Excluded by canonical platform/accessor applicability (JS lacks native Int64)',
         );
       }
     }
   });
 }
 
-class _FileStore implements DatadogFlagsStore {
-  final File file;
-  _FileStore(this.file);
+class _JsonStore implements DatadogFlagsStore {
+  String? content;
   @override
-  Future<FlagsData?> read(String clientName) async => await file.exists()
-      ? FlagsData.fromJson(
-          jsonDecode(await file.readAsString()) as Map<String, Object?>,
-        )
-      : null;
+  Future<FlagsData?> read(String clientName) async => content == null
+      ? null
+      : FlagsData.fromJson(jsonDecode(content!) as Map<String, Object?>);
   @override
-  Future<void> write(String clientName, FlagsData data) =>
-      file.writeAsString(jsonEncode(data.toJson()));
+  Future<void> write(String clientName, FlagsData data) async {
+    content = jsonEncode(data.toJson());
+  }
+
   @override
   Future<void> delete(String clientName) async {
-    if (await file.exists()) await file.delete();
+    content = null;
+  }
+}
+
+String quoteNumbers(String text) => text.replaceAllMapped(
+  RegExp(r'"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?'),
+  (match) => match[0]!.startsWith('"') ? match[0]! : jsonEncode(match[0]),
+);
+
+void checkValue(Object? actual, String getter, Object? exact, Object? decoded) {
+  switch (getter) {
+    case 'integer':
+      expect(actual, isA<int>());
+      expect(BigInt.from(actual! as num), BigInt.parse(exact! as String));
+    case 'float':
+      expect(actual, isA<double>());
+      expect(actual, double.parse(exact! as String));
+    case 'boolean':
+      expect(actual, isA<bool>());
+      expect(actual, decoded);
+    case 'string':
+      expect(actual, isA<String>());
+      expect(actual, decoded);
+    default:
+      expect(actual, decoded);
+  }
+}
+
+void numericGetterRegressions() {
+  final vectors = <(String, String?, double?)>[
+    ('9223372036854775808.0', null, 9223372036854775808.0),
+    ('-9223372036854775809', null, null),
+    ('-9223372036854776832', null, null),
+    ('9007199254740993.5', null, 9007199254740994.0),
+    ('9007199254740993.0', identical(1, 1.0) ? null : '9007199254740993', null),
+    ('4503599627370497.5', null, 4503599627370498.0),
+    ('5.0000000000000001', null, 5.0),
+    ('5.0', '5', 5.0),
+    ('1e400', null, null),
+    ('1e300', null, null),
+    ('1e-400', null, null),
+    ('-0.0', '0', 0.0),
+    ('1e3', '1000', 1000.0),
+  ];
+  for (final label in ['integer', 'number', 'float']) {
+    for (final (literal, integer, floating) in vectors) {
+      for (final restored in [false, true]) {
+        test('public numeric $label $literal restored=$restored', () async {
+          final store = _JsonStore();
+          var offline = false;
+          final config = DatadogFlagsConfiguration(
+            store: store,
+            datadogConfig: const DatadogFlagsConfig(
+              clientToken: 'fixture',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+            httpClient: MockClient(
+              (request) async => http.Response(
+                request.url.path == '/precompute-assignments' && !offline
+                    ? '{"data":{"attributes":{"flags":{"旗":{'
+                          '"allocationKey":"a","variationKey":"v","variationType":"$label",'
+                          '"variationValue":$literal,"reason":"STATIC","doLog":false}}}}}'
+                    : '{}',
+                offline ? 500 : 200,
+                headers: {'content-type': 'application/json; charset=utf-8'},
+              ),
+            ),
+          );
+          var sdk = DatadogFlags();
+          await sdk.enable(configuration: config);
+          addTearDown(() => sdk.disable());
+          var client = sdk.sharedClient();
+          final context = FlagsEvaluationContext(targetingKey: 'fixture');
+          await client.initialize(context);
+          if (restored) {
+            await sdk.disable();
+            expect(
+              store.content,
+              isNotNull,
+              reason: 'JSON persistence must succeed even for overflow tokens',
+            );
+            offline = true;
+            sdk = DatadogFlags();
+            await sdk.enable(configuration: config);
+            client = sdk.sharedClient();
+            await client.initialize(context);
+          }
+          final intResult = client.getIntegerDetails(
+            key: '旗',
+            defaultValue: -99,
+          );
+          expect(intResult.value, isA<int>());
+          expect(BigInt.from(intResult.value), BigInt.parse(integer ?? '-99'));
+          expect(
+            intResult.error?.code,
+            integer == null ? 'TYPE_MISMATCH' : null,
+          );
+          final floatResult = client.getDoubleDetails(
+            key: '旗',
+            defaultValue: -99.5,
+          );
+          expect(floatResult.value, isA<double>());
+          expect(floatResult.value, floating ?? -99.5);
+          expect(
+            floatResult.error?.code,
+            floating == null ? 'TYPE_MISMATCH' : null,
+          );
+        });
+      }
+    }
+  }
+}
+
+void legacyCacheBounds() {
+  for (final (literal, expected) in <(String, int?)>[
+    ('9223372036854775808.0', null),
+    ('-9223372036854775808.0', -9223372036854775808),
+    ('5.5', null),
+    ('5.0', 5),
+  ]) {
+    test('legacy JSON cache Integer bound $literal', () async {
+      final store = _JsonStore()
+        ..content =
+            '{"flags":{"flag":{"allocationKey":"a","variationKey":"v",'
+            '"variationType":"float","variationValue":$literal,"reason":"STATIC","doLog":false}},'
+            '"context":{"targetingKey":"fixture","attributes":{}},"date":"2026-11-04T00:00:00Z"}';
+      final sdk = DatadogFlags();
+      await sdk.enable(
+        configuration: DatadogFlagsConfiguration(
+          store: store,
+          datadogConfig: const DatadogFlagsConfig(
+            clientToken: 'fixture',
+            env: 'test',
+            site: DatadogFlagsSite.us1,
+          ),
+          httpClient: MockClient((_) async => http.Response('{}', 500)),
+        ),
+      );
+      addTearDown(() => sdk.disable());
+      final client = sdk.sharedClient();
+      await client.initialize(FlagsEvaluationContext(targetingKey: 'fixture'));
+      final details = client.getIntegerDetails(key: 'flag', defaultValue: -99);
+      expect(BigInt.from(details.value), BigInt.from(expected ?? -99));
+      expect(details.error?.code, expected == null ? 'TYPE_MISMATCH' : null);
+    });
   }
 }

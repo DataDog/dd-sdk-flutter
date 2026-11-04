@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'ci/*precomputed*'
+      - 'packages/datadog_flags/test/fixtures/precomputed_text.dart'
       - 'packages/datadog_flags/test/fixtures/precomputed/**'
       - '.github/workflows/precomputed-fixtures.yml'
   schedule:
@@ -21,6 +22,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
+      - name: Verify embedded fixture text
+        run: dart ci/embed-precomputed-fixtures.dart --check
       - name: Verify the local snapshot
         run: python3 ci/sync-precomputed-fixtures.py --verify
       - name: Compare with the recorded upstream commit
@@ -41,9 +45,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
       - name: Import upstream fixtures
         id: sync
         run: python3 ci/sync-precomputed-fixtures.py --ref main
+      - name: Embed updated fixture text
+        if: steps.sync.outputs.changed == 'true'
+        run: dart ci/embed-precomputed-fixtures.dart
       - name: Prepare a draft update
         id: prepare
         if: steps.sync.outputs.changed == 'true'
@@ -57,7 +65,7 @@ jobs:
             exit 0
           fi
           branch="automation/precomputed-fixtures-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          git add -- 'packages/datadog_flags/test/fixtures/precomputed'
+          git add -- 'packages/datadog_flags/test/fixtures/precomputed' 'packages/datadog_flags/test/fixtures/precomputed_text.dart'
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo 'ready=true' >> "$GITHUB_OUTPUT"
           python3 - <<'BODY'

@@ -5,7 +5,10 @@
 
 import 'dart:convert';
 
+import 'package:meta/meta.dart';
+
 /// Original JSON number used to validate getters before floating-point rounding.
+@immutable
 final class NumericValue {
   final String literal;
   final int? integer;
@@ -46,7 +49,11 @@ final class NumericValue {
     final parsedInteger = wholeText == null || digits.length + scale > 19
         ? null
         : int.tryParse(wholeText);
-    final integer = parsedInteger != null && BigInt.from(parsedInteger) == exact
+    final integer =
+        parsedInteger != null &&
+            exact! >= BigInt.parse('-9223372036854775808') &&
+            exact <= BigInt.parse('9223372036854775807') &&
+            BigInt.from(parsedInteger) == exact
         ? parsedInteger
         : null;
     final parsedDouble = double.tryParse(literal);

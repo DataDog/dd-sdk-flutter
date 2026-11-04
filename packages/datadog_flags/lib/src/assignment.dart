@@ -37,11 +37,14 @@ enum FlagVariationType {
     return switch (this) {
       FlagVariationType.boolean when value is bool => value,
       FlagVariationType.string when value is String => value,
-      FlagVariationType.integer when value is num || value is NumericValue =>
+      FlagVariationType.integer
+          when (value is num && value.isFinite) || value is NumericValue =>
         value,
-      FlagVariationType.float when value is num || value is NumericValue =>
+      FlagVariationType.float
+          when (value is num && value.isFinite) || value is NumericValue =>
         value,
-      FlagVariationType.number when value is num || value is NumericValue =>
+      FlagVariationType.number
+          when (value is num && value.isFinite) || value is NumericValue =>
         value,
       FlagVariationType.object => sanitizeJsonValue(value)!,
       _ => throw FormatException('Invalid variation value for $wireName'),

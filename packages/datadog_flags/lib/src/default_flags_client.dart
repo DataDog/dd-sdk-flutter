@@ -261,10 +261,14 @@ class DefaultDatadogFlagsClient
   }
 
   Object _losslessInteger(num value) {
-    if (value is int) return value;
+    if (!value.isFinite) return _typeMismatch;
+    if (value is int &&
+        value >= -9223372036854775808 &&
+        value < 9223372036854775808.0) {
+      return value;
+    }
     // The upper bound is exclusive: Double rounds Int64.max to 2^63.
-    if (!value.isFinite ||
-        value < -9223372036854775808 ||
+    if (value < -9223372036854775808 ||
         value >= 9223372036854775808.0 ||
         value.truncateToDouble() != value) {
       return _typeMismatch;

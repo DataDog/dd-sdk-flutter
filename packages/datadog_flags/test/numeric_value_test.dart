@@ -45,9 +45,7 @@ void main() {
           if (literal == '9007199254740993') {
             expect(
               value.numericValue!.integer?.toString(),
-              const bool.fromEnvironment('dart.library.js_interop')
-                  ? isNull
-                  : '9007199254740993',
+              identical(1, 1.0) ? isNull : '9007199254740993',
             );
           } else {
             expect(value.numericValue!.integer, integer);
