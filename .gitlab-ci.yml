@@ -162,6 +162,8 @@ build-flutter:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 build-android:
   stage: build
@@ -262,6 +264,8 @@ build-web:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 build-linux:
   stage: build
@@ -278,6 +282,8 @@ build-linux:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 # Windows shell-executor runners don't support the `image:` keyword, so unlike the
 # Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
@@ -302,6 +308,8 @@ build-windows:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 # Integration Tests
 
