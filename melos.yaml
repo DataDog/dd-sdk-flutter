@@ -25,6 +25,20 @@ scripts:
     packageFilters:
       dirExists: example/ios
 
+  # Deletes the SwiftPM checkout Flutter keeps in build/ios and the Package.resolved files,
+  # so branch dependencies such as dd-sdk-ios `develop` resolve to the latest commit.
+  reset:ios_packages:
+    exec:
+      concurrency: 1
+    run: >-
+      rm -rf build/ios/SourcePackages
+      ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+      ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+    description: |
+      Reset resolved SwiftPM packages in every iOS app.
+    packageFilters:
+      dirExists: ios/Runner.xcodeproj
+
   build:macos:
     exec:
       concurrency: 1

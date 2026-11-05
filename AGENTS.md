@@ -79,6 +79,8 @@
 - Write repo scripts in Dart. Simple scripts can be bash where appropriate.
 - Run all tests in a package with `dart test` for pure Dart packages or `flutter test`
   for Flutter packages. Do not add publish targets to `melos.yaml`.
+- If an iOS build fails on missing `dd-sdk-ios` symbols, it is possible the SwiftPM pin is stale; see
+  [CONTRIBUTING.md](CONTRIBUTING.md#refreshing-the-dd-sdk-ios-pin).
 - Do not add `dependency_overrides` unless the build fails without them.
 - Lower-bound-only constraints can be used for dev dependencies (for example `lints: '>=5.0.0'`)
   that perform analysis and linting checks, as nightlies perform minimum version checks. Do
