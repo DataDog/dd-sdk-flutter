@@ -162,6 +162,8 @@ build-flutter:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 build-android:
   stage: build
@@ -182,8 +184,18 @@ build-android:
     paths:
       - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
+# Junit reports and xcresult bundles from the Xcode unit tests.
+.xcode-test-artifacts:
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/xcresult
+
 build-ios-spm:
-  extends: .tart-runner
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   except: [schedules]
   variables:
@@ -201,6 +213,7 @@ build-ios-spm:
 # dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
 # macOS can only build via Swift Package Manager until that's fixed upstream.
 build-macos-spm:
+  extends: .xcode-test-artifacts
   stage: build
   except: [ schedules ]
   variables:
@@ -218,7 +231,7 @@ build-macos-spm:
     - melos run unit_test:macos
 
 build-ios:
-  extends: .tart-runner
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   except: [schedules]
   variables:
@@ -251,6 +264,8 @@ build-web:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 build-linux:
   stage: build
@@ -267,6 +282,8 @@ build-linux:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 # Windows shell-executor runners don't support the `image:` keyword, so unlike the
 # Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
@@ -291,6 +308,8 @@ build-windows:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 # Integration Tests
 

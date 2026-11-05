@@ -143,7 +143,7 @@ scripts:
   unit_test:flutter:
     run: 
       mkdir -p .build/test-results &&
-      melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
     packageFilters:
       dirExists: 'test'
       ignore:
@@ -177,8 +177,8 @@ scripts:
   unit_test:web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" 
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml -- flutter test --machine --platform chrome" &&
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml -- flutter test --machine --platform chrome --wasm"
     packageFilters:
       scope:
         - 'datadog_flutter_plugin'
@@ -188,8 +188,8 @@ scripts:
   unit_test:openfeature-web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml -- dart test --reporter json --platform chrome" &&
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml -- dart test --reporter json --platform chrome --compiler dart2wasm"
     packageFilters:
       scope:
         - 'datadog_flags'
@@ -198,9 +198,7 @@ scripts:
   unit_test:ios:
     exec:
       concurrency: 1
-    run:
-      set -euxo pipefail &&
-      xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest" | xcbeautify
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/xcode_unit_tests.dart --platform ios --destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest"
     packageFilters:
       dirExists: 'example/ios'
       # TODO: These packages should probably have platform unit tests
@@ -213,9 +211,7 @@ scripts:
   unit_test:macos:
     exec:
       concurrency: 1
-    run:
-      set -euxo pipefail &&
-      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS" | xcbeautify
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/xcode_unit_tests.dart --platform macos --destination "platform=macOS"
     packageFilters:
       dirExists: 'example/macos'
 
