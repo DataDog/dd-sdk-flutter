@@ -16,6 +16,7 @@ import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
 import 'datadog_plugin.dart';
+import 'error_type_resolver.dart';
 import 'helpers.dart';
 import 'logs/ddlogs.dart';
 import 'rum/ddrum.dart';
@@ -66,6 +67,9 @@ class DatadogSdk {
 
   final Map<Type, DatadogPlugin> _plugins = {};
 
+  late final ErrorTypeResolverRegistry _errorTypeResolvers =
+      ErrorTypeResolverRegistry(internalLogger);
+
   /// An unmodifiable list of first party hosts for tracing.
   List<FirstPartyHost> get firstPartyHosts =>
       List.unmodifiable(_firstPartyHosts);
@@ -98,6 +102,42 @@ class DatadogSdk {
       unawaited(_platform.setSdkVerbosity(value));
     }
   }
+
+  /// Registers [resolver] to name the type of errors sent to Datadog, which
+  /// keeps `error.type` stable in apps built with `--obfuscate`.
+  ///
+  /// Resolvers registered here run in the order they were registered, before
+  /// the resolvers of integration packages and the SDK's default resolvers,
+  /// and the first non-null result is used. Registering the same resolver more
+  /// than once has no effect. Resolvers can be registered before the SDK is
+  /// initialized.
+  ///
+  /// See [ErrorTypeResolver].
+  void addErrorTypeResolver(ErrorTypeResolver resolver) {
+    _errorTypeResolvers.add(resolver);
+  }
+
+  /// Registers [resolver] for an integration package. Integration resolvers
+  /// run after the resolvers registered with [addErrorTypeResolver]. For
+  /// internal use only.
+  void addIntegrationErrorTypeResolver(ErrorTypeResolver resolver) {
+    _errorTypeResolvers.addIntegration(resolver);
+  }
+
+  /// Returns the type name to report for [error].
+  ///
+  /// Runs all registered [ErrorTypeResolver]s, falling back to
+  /// `error.runtimeType.toString()` if no resolver returns a type for [error].
+  ///
+  /// Use this to properly support error type resolution in apps built
+  /// with `--obfuscate`.
+  String resolveErrorType(Object error) => _errorTypeResolvers.resolve(error);
+
+  /// Same as [resolveErrorType], but returns `null` instead of falling back to
+  /// `error.runtimeType.toString()`. For internal use only.
+  @internal
+  String? tryResolveErrorType(Object error) =>
+      _errorTypeResolvers.tryResolve(error);
 
   /// Get an instance of a DatadogPlugin that was registered with
   /// [DatadogConfiguration.addPlugin]
