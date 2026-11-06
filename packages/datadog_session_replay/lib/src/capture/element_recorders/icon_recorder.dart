@@ -2,14 +2,12 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
-import 'dart:collection';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../datadog_session_replay.dart';
-import '../../datadog_session_replay_platform_interface.dart';
 import '../../extensions.dart';
 import '../../processor/font_family_transform.dart';
 import '../../sr_data_models.dart';
@@ -17,7 +15,7 @@ import '../capture_node.dart';
 import '../recorder.dart';
 import '../view_tree_snapshot.dart';
 import 'common_nodes.dart';
-import 'image_recorder.dart';
+import 'raster_resources.dart';
 
 /// Drawn in place of an icon that is masked or couldn't be captured.
 ///
@@ -26,8 +24,6 @@ import 'image_recorder.dart';
 /// per browser, or be replaced by a fallback font's glyph.
 @visibleForTesting
 const int unknownIconCodePoint = 0xf0666;
-
-const int _defaultMaxCachedRasters = 1024;
 
 /// Captures [Icon] widgets.
 ///
@@ -40,13 +36,23 @@ class IconRecorder implements ElementRecorder {
   /// The number of rasterized icons whose resource keys are remembered.
   final int maxCachedRasters;
 
-  final LinkedHashMap<IconRasterKey, int> _resourceKeys = LinkedHashMap();
-  final Map<IconRasterKey, Future<int?>> _inFlight = {};
+  /// The largest bitmap, in pixels, an icon is rasterized into. What happens
+  /// to larger icons depends on [imageDownscaling].
+  final int maxImagePixelBudget;
+
+  /// Whether icons larger than [maxImagePixelBudget] are drawn at a lower
+  /// resolution ([ImageDownscaling.enabled]) or recorded as a "Large Icon"
+  /// placeholder ([ImageDownscaling.disabled]), as images are.
+  final ImageDownscaling imageDownscaling;
+
+  final RasterResourceCache<IconRasterKey> _rasterCache;
 
   IconRecorder(
     this.keyGenerator, {
-    this.maxCachedRasters = _defaultMaxCachedRasters,
-  });
+    this.maxCachedRasters = defaultMaxCachedRasters,
+    this.maxImagePixelBudget = defaultMaxImagePixelBudget,
+    this.imageDownscaling = ImageDownscaling.disabled,
+  }) : _rasterCache = RasterResourceCache(maxEntries: maxCachedRasters);
 
   @override
   bool accepts(Widget widget) => widget is Icon;
@@ -106,11 +112,23 @@ class IconRecorder implements ElementRecorder {
     // Icon lays out a square box, but subclasses such as Font Awesome's
     // FaIcon size the box to the glyph, so use the laid-out size.
     final box = element.size ?? Size.square(fontSize);
-    final logicalWidth = box.width * attributes.scaleX;
-    final logicalHeight = box.height * attributes.scaleY;
-    final devicePixelRatio = _devicePixelRatio(element);
-    final pixelWidth = rasterPixelSize(logicalWidth, devicePixelRatio);
-    final pixelHeight = rasterPixelSize(logicalHeight, devicePixelRatio);
+    final logicalWidth = box.width * rasterScale(attributes.scaleX);
+    final logicalHeight = box.height * rasterScale(attributes.scaleY);
+    final devicePixelRatio = devicePixelRatioOf(element);
+    final bitmapSize = rasterBitmapSize(
+      Size(logicalWidth, logicalHeight),
+      devicePixelRatio,
+      maxPixels: maxImagePixelBudget,
+      downscaling: imageDownscaling,
+    );
+    if (bitmapSize == null) {
+      return placeholderElement(
+        attributes,
+        wireframeId: elementId,
+        caption: 'Large Icon',
+      );
+    }
+    final (width: pixelWidth, height: pixelHeight) = bitmapSize;
 
     final rasterKey = IconRasterKey.fromStyle(
       glyph: String.fromCharCode(iconData.codePoint),
@@ -122,10 +140,14 @@ class IconRecorder implements ElementRecorder {
       devicePixelRatio: devicePixelRatio,
     );
 
-    final cachedKey = _cachedResourceKey(rasterKey);
+    final cachedKey = _rasterCache.lookup(rasterKey);
 
     if (cachedKey != null) {
-      return _resourceNode(elementId, attributes, cachedKey);
+      return resourceElement(
+        attributes,
+        wireframeId: elementId,
+        resourceKey: cachedKey,
+      );
     }
 
     final span = TextSpan(
@@ -136,7 +158,7 @@ class IconRecorder implements ElementRecorder {
     return AdditionalProcessingElement(
       subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
       process: () async {
-        final resourceKey = await _rasterizeOnce(
+        final resourceKey = await _rasterCache.rasterizeOnce(
           rasterKey,
           () => _rasterize(
             span,
@@ -156,7 +178,11 @@ class IconRecorder implements ElementRecorder {
             color,
           );
         }
-        return _resourceNode(elementId, attributes, resourceKey);
+        return resourceElement(
+          attributes,
+          wireframeId: elementId,
+          resourceKey: resourceKey,
+        );
       },
     );
   }
@@ -223,15 +249,6 @@ class IconRecorder implements ElementRecorder {
     return (style: style, color: color);
   }
 
-  /// The physical size, in pixels, of one side of the bitmap for an icon side
-  /// displayed at [logicalSize].
-  @visibleForTesting
-  static int rasterPixelSize(double logicalSize, double devicePixelRatio) {
-    final pixels = (logicalSize * devicePixelRatio).ceil();
-    // A zero-sized bitmap can't be created.
-    return pixels < 1 ? 1 : pixels;
-  }
-
   static bool _canRenderAsText(
     IconData iconData,
     TextStyle style,
@@ -244,40 +261,6 @@ class IconRecorder implements ElementRecorder {
         style.foreground == null &&
         (style.shadows?.isEmpty ?? true) &&
         !flipped;
-  }
-
-  int? _cachedResourceKey(IconRasterKey key) {
-    final value = _resourceKeys.remove(key);
-    if (value != null) {
-      // Re-insert to mark as most recently used.
-      _resourceKeys[key] = value;
-    }
-    return value;
-  }
-
-  Future<int?> _rasterizeOnce(
-    IconRasterKey key,
-    Future<int?> Function() rasterize,
-  ) {
-    final cached = _cachedResourceKey(key);
-    if (cached != null) return Future.value(cached);
-
-    return _inFlight.putIfAbsent(
-      key,
-      () => rasterize()
-          .then((resourceKey) {
-            if (resourceKey != null) {
-              _resourceKeys[key] = resourceKey;
-              while (_resourceKeys.length > maxCachedRasters) {
-                _resourceKeys.remove(_resourceKeys.keys.first);
-              }
-            }
-            return resourceKey;
-          })
-          .whenComplete(() {
-            _inFlight.remove(key);
-          }),
-    );
   }
 
   Future<int?> _rasterize(
@@ -317,42 +300,13 @@ class IconRecorder implements ElementRecorder {
     ui.Image? image;
     try {
       image = await picture.toImage(pixelWidth, pixelHeight);
-      final byteData = await image.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      );
-      if (byteData == null) return null;
-
-      final resourceKey = keyGenerator.nextResourceKey();
-      await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
-        resourceKey,
-        pixelWidth,
-        pixelHeight,
-        byteData,
-      );
-      return resourceKey;
+      return await saveRasterForProcessing(image, keyGenerator.nextResourceKey);
     } catch (_) {
       return null;
     } finally {
       picture.dispose();
       image?.dispose();
     }
-  }
-
-  static SpecificElement _resourceNode(
-    int elementId,
-    CapturedViewAttributes attributes,
-    int resourceKey,
-  ) {
-    return SpecificElement(
-      subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-      nodes: [
-        ResourceImageNode(
-          attributes,
-          wireframeId: elementId,
-          resourceKey: resourceKey,
-        ),
-      ],
-    );
   }
 
   /// A text node drawing [codePoint] from [materialIconsFontFamily], which the
@@ -380,18 +334,6 @@ class IconRecorder implements ElementRecorder {
       ],
     );
   }
-
-  static double _devicePixelRatio(Element element) {
-    final view = View.maybeOf(element);
-    if (view != null) {
-      return view.devicePixelRatio;
-    }
-    final views = WidgetsBinding.instance.platformDispatcher.views;
-    if (views.isNotEmpty) {
-      return views.first.devicePixelRatio;
-    }
-    return 1.0;
-  }
 }
 
 /// Everything that affects the pixels of a rasterized icon. A change to any
@@ -413,7 +355,8 @@ class IconRasterKey {
   final BlendMode? blendMode;
   final bool flipped;
 
-  /// The on-screen size, in logical pixels, including any transform scale.
+  /// The size, in logical pixels, the icon is rasterized at: its layout size
+  /// times the transform scale as rounded by [rasterScale].
   final double logicalWidth;
   final double logicalHeight;
   final double devicePixelRatio;

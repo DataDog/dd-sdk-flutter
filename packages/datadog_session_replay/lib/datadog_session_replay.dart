@@ -4,7 +4,7 @@
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 
-import 'src/capture/element_recorders/image_recorder.dart'
+import 'src/capture/element_recorders/raster_resources.dart'
     show defaultMaxImagePixelBudget;
 import 'src/datadog_session_replay_plugin.dart';
 
@@ -110,6 +110,35 @@ class FontFamilyTransformConfig {
   });
 }
 
+/// Controls how text widgets ([RichText], and widgets that build one, such as
+/// [Text]) are recorded.
+enum TextCaptureMode {
+  /// Text is sent as text, and the replay player draws it with fonts available
+  /// in the viewer's browser. Uploads are small, but fonts, weights, letter
+  /// spacing and line breaks can differ from the device. See
+  /// [DatadogSessionReplayConfiguration.fontFamilyTransform] to improve font
+  /// matching.
+  standard,
+
+  /// Every paragraph is drawn into a bitmap exactly as Flutter renders it on
+  /// the device, regardless of its font, and sent through the image resource
+  /// pipeline. The replay matches the device, including custom fonts, weights,
+  /// mixed styles, ellipses and line breaks.
+  ///
+  /// This costs more than [standard]: each new or changed paragraph is
+  /// rasterized during capture and uploaded as an image, so screens with
+  /// frequently changing text (timers, counters, fast scrolling lists) upload
+  /// more data. Bitmaps are limited to
+  /// [DatadogSessionReplayConfiguration.maxImagePixelBudget] pixels, so very
+  /// large paragraphs are rasterized at a lower resolution.
+  ///
+  /// Text masked by [TextAndInputPrivacyLevel.maskAll] is sent as masked
+  /// text and is never rasterized. Editable text fields are always sent as
+  /// text. Widgets placed inline with [WidgetSpan] are recorded as their own
+  /// nodes.
+  highFidelity,
+}
+
 enum ImageDownscaling {
   /// No Dart-side resizing of decoded images before upload.
   ///
@@ -195,6 +224,11 @@ class DatadogSessionReplayConfiguration {
   /// Defaults to approximately 800×800 decoded pixels.
   int maxImagePixelBudget;
 
+  /// How text widgets are recorded. See [TextCaptureMode].
+  ///
+  /// Defaults to [TextCaptureMode.standard].
+  TextCaptureMode textCaptureMode;
+
   /// Whether this Flutter module is embedded inside a native host app
   /// (Flutter add-to-app). When `true`, records are handed to the native
   /// Session Replay instead of being uploaded from here, stamped with the slot
@@ -219,6 +253,8 @@ class DatadogSessionReplayConfiguration {
     this.fontFamilyTransform = const FontFamilyTransformConfig(),
     this.imageDownscaling = ImageDownscaling.disabled,
     this.maxImagePixelBudget = defaultMaxImagePixelBudget,
+    // TODO: Once Flutter session replay becomes billable, change the default to highFidelity mode.
+    this.textCaptureMode = TextCaptureMode.standard,
     this.isEmbedded = false,
   });
 }
