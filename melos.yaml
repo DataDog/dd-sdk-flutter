@@ -21,9 +21,23 @@ scripts:
   build:ios:
     exec:
       concurrency: 1
-    run: cd example && flutter clean && flutter build ios --release --no-codesign
+    run: cd example && flutter build ios --release --no-codesign
     packageFilters:
       dirExists: example/ios
+
+  # Deletes the SwiftPM checkout Flutter keeps in build/ios and the Package.resolved files,
+  # so branch dependencies such as dd-sdk-ios `develop` resolve to the latest commit.
+  reset:ios_packages:
+    exec:
+      concurrency: 1
+    run: >-
+      rm -rf build/ios/SourcePackages
+      ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+      ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+    description: |
+      Reset resolved SwiftPM packages in every iOS app.
+    packageFilters:
+      dirExists: ios/Runner.xcodeproj
 
   build:macos:
     exec:
@@ -41,6 +55,13 @@ scripts:
     run:
       flutter clean &&
       (rm pubspec.lock || del pubspec.lock)
+
+  # Fresh Tart VMs have nothing for `flutter clean` to remove, so only the lockfile
+  # needs to go.
+  delete_pubspec_lock:
+    exec:
+      concurrency: 1
+    run: rm -f pubspec.lock
 
   build:android:
     exec:
@@ -143,7 +164,7 @@ scripts:
   unit_test:flutter:
     run: 
       mkdir -p .build/test-results &&
-      melos exec -c 1 -- "set -e -o pipefail && flutter test --machine | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml\"" 
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
     packageFilters:
       dirExists: 'test'
       ignore:
@@ -177,8 +198,8 @@ scripts:
   unit_test:web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; flutter test --machine --platform chrome --wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'" 
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml -- flutter test --machine --platform chrome" &&
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml -- flutter test --machine --platform chrome --wasm"
     packageFilters:
       scope:
         - 'datadog_flutter_plugin'
@@ -188,8 +209,8 @@ scripts:
   unit_test:openfeature-web:
     run:
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml\"'" &&
-      melos exec -c 1 -- "bash -c 'set -euxo pipefail; dart test --reporter json --platform chrome --compiler dart2wasm | tojunit \"--output\" \"$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml\"'"
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml -- dart test --reporter json --platform chrome" &&
+      melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml -- dart test --reporter json --platform chrome --compiler dart2wasm"
     packageFilters:
       scope:
         - 'datadog_flags'
@@ -198,9 +219,7 @@ scripts:
   unit_test:ios:
     exec:
       concurrency: 1
-    run:
-      set -euxo pipefail &&
-      xcodebuild test -workspace example/ios/Runner.xcworkspace -scheme Runner -destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest" | xcbeautify
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/xcode_unit_tests.dart --platform ios --destination "platform=iOS Simulator,name=$IOS_SIMULATOR,OS=latest"
     packageFilters:
       dirExists: 'example/ios'
       # TODO: These packages should probably have platform unit tests
@@ -213,9 +232,7 @@ scripts:
   unit_test:macos:
     exec:
       concurrency: 1
-    run:
-      set -euxo pipefail &&
-      xcodebuild test -workspace example/macos/Runner.xcworkspace -scheme Runner -destination "platform=macOS" | xcbeautify
+    run: dart $MELOS_ROOT_PATH/tools/ci/bin/xcode_unit_tests.dart --platform macos --destination "platform=macOS"
     packageFilters:
       dirExists: 'example/macos'
 
@@ -239,10 +256,7 @@ scripts:
     run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd example
-
-      bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
-      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform ios --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists:  'example/integration_test'
       ignore: 
@@ -256,10 +270,7 @@ scripts:
     run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
-
-      bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d iPhone --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
-      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_ios_integration.xml"'
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform ios --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -269,14 +280,14 @@ scripts:
   # Packages with a dedicated integration test app run through this target.
   # The other targets discover integration tests in package examples.
   # Desktop platforms can't run the whole integration_test directory in one `flutter test`
-  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # invocation, so this uses tools/ci/bin/integration_tests.dart to run each
   # test file individually, same as integration_test:windows:main.
   integration_test:macos:main:
     exec:
       concurrency: 1
     run: |
       cd integration_test_app
-      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -289,10 +300,7 @@ scripts:
     run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd example
-
-      bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
-      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform android --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists:  'example/integration_test'
       ignore: 'datadog_flutter_plugin'
@@ -305,11 +313,7 @@ scripts:
     run: |
       mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd integration_test_app
-      
-      bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d emulator --dart-define DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN,DD_APPLICATION_ID=$DD_APPLICATION_ID \
-      | tee "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.jsonl" \
-      | tojunit "--output" "$MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_android_integration.xml"'
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform android --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -332,12 +336,12 @@ scripts:
     run: melos integration_test:windows:main && melos integration_test:windows:other
 
   # Desktop platforms can't run the whole integration_test directory in one `flutter test`
-  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # invocation, so this uses tools/ci/bin/integration_tests.dart to run each
   # test file individually, same idea as web's per-file `flutter drive` runner.
   integration_test:windows:other:
     exec:
       concurrency: 1
-    run: cd example && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    run: cd example && dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists:
         - 'example/integration_test'
@@ -350,7 +354,7 @@ scripts:
   integration_test:windows:main:
     exec:
       concurrency: 1
-    run: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
+    run: cd integration_test_app && dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -413,14 +417,14 @@ scripts:
     run: melos integration_test:linux:main && melos integration_test:linux:other
 
   # Desktop platforms can't run the whole integration_test directory in one `flutter test`
-  # invocation, so this uses tools/ci/bin/desktop_integration_tests.dart to run each
+  # invocation, so this uses tools/ci/bin/integration_tests.dart to run each
   # test file individually, same idea as web's per-file `flutter drive` runner.
   integration_test:linux:other:
     exec:
       concurrency: 1
     run: |
       cd example
-      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
       dirExists:
         - 'example/integration_test'
@@ -435,7 +439,7 @@ scripts:
       concurrency: 1
     run: |
       cd integration_test_app
-      dart $MELOS_ROOT_PATH/tools/ci/bin/desktop_integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --output $MELOS_ROOT_PATH/.build/test-results --verbose
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -447,8 +451,7 @@ scripts:
       concurrency: 1
     run: |
       cd integration_test_app
-      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
-      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm
+      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --compiler ${WEB_COMPILER:-all}
     packageFilters:
       dirExists: 'integration_test_app/integration_test'
 
@@ -457,28 +460,21 @@ scripts:
       concurrency: 1
     run: |
       cd example      
-      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart
-      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --wasm
+      dart $MELOS_ROOT_PATH/tools/ci/bin/web_integration_tests.dart --compiler ${WEB_COMPILER:-all}
     packageFilters:
       scope: 'datadog_tracking_http_client'
 
   e2e_tests:ios:
     exec: |
-      mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd e2e_test_app
-      
-      bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d "iPhone"'
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform ios --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
   e2e_tests:android:
     exec: |
-      mkdir -p $MELOS_ROOT_PATH/.build/test-results
       cd e2e_test_app
-      
-      bash -c 'set -euxo pipefail; \
-      flutter test integration_test --machine -d emulator'     
+      dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform android --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
       scope: 'datadog_flutter_plugin'
 

@@ -279,6 +279,24 @@ void main() {
       expect(sessionReplay.isCapturing, isTrue);
     });
 
+    test('each new session reports its decision, recording or not', () async {
+      final sessionReplay = await startSessionReplay(
+        rumSampleRate: 50,
+        replaySampleRate: 50,
+      );
+      // WebView records follow the sampling decision, not recording, so that
+      // a page's full snapshot taken while recording is stopped is kept.
+      sessionReplay.stopRecording();
+
+      deliverRumContext!(sessionContext(sampled));
+      deliverRumContext!(sessionContext(notSampled));
+
+      verifyInOrder([
+        () => mockPlatform.setSessionSampled(sampled, true),
+        () => mockPlatform.setSessionSampled(notSampled, false),
+      ]);
+    });
+
     test('a session that is not sampled never reports has_replay', () async {
       await startSessionReplay(rumSampleRate: 50, replaySampleRate: 50);
 

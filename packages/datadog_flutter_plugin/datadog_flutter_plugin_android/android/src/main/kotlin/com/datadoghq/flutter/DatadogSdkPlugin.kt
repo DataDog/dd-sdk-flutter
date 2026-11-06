@@ -339,17 +339,6 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    private fun simpleInvokeOn(methodName: String, target: Any) {
-        val klass = target.javaClass
-        val method = klass.declaredMethods.firstOrNull {
-            it.name == methodName || it.name == "$methodName\$dd_sdk_android_core_release"
-        }
-        method?.let {
-            it.isAccessible = true
-            it.invoke(target)
-        }
-    }
-
     private fun invokePrivateFlush(result: Result) {
         // This drains pending data and shuts down the SDK's executors, which
         // closes any open RUM action scopes so their events get written before
@@ -363,7 +352,7 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
 
     private fun invokePrivateShutdown(result: Result) {
         executor.submit {
-            simpleInvokeOn("flushAndShutdownExecutors", Datadog)
+            Datadog._internalProxy().flushAndShutdownExecutors()
             Datadog.stopInstance()
         }.get()
 

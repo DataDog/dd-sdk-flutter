@@ -99,6 +99,76 @@ class FlutterSessionReplayBridgeTests {
     }
 
     @Test
+    func enable_passesThePrivacyLevelsToTheFeature() throws {
+        // Given — a manager with no feature yet, so `enable` registers a real one
+        let manager = FlutterSessionReplayManager()
+        let bridge = FlutterSessionReplay(manager: manager)
+        let configuration = FlutterSessionReplayConfiguration()
+        configuration.textAndInputPrivacyLevel = "maskSensitiveInputs"
+        configuration.imagePrivacyLevel = "maskNonAssetsOnly"
+        configuration.touchPrivacyLevel = "show"
+
+        // When
+        try bridge.enableOrThrow(with: configuration, in: core)
+
+        // Then — the feature exposes them to WebView tracking as its `SessionReplayConfiguration`
+        let feature = try #require(core.get(feature: DefaultFlutterSessionReplayFeature.self))
+        #expect(feature.textAndInputPrivacyLevel == .maskSensitiveInputs)
+        #expect(feature.imagePrivacyLevel == .maskNonBundledOnly)
+        #expect(feature.touchPrivacyLevel == .show)
+    }
+
+    @Test
+    func configuration_mapsEveryDartPrivacyLevelName() {
+        // The names are the Dart enum values' `name`, which is what `enable` sends.
+        let configuration = FlutterSessionReplayConfiguration()
+
+        let textAndInputLevels: [(String, TextAndInputPrivacyLevel)] = [
+            ("maskSensitiveInputs", .maskSensitiveInputs),
+            ("maskAllInputs", .maskAllInputs),
+            ("maskAll", .maskAll),
+        ]
+        for (name, level) in textAndInputLevels {
+            configuration.textAndInputPrivacyLevel = name
+            #expect(configuration.textAndInputPrivacy == level, "\(name)")
+        }
+
+        let imageLevels: [(String, ImagePrivacyLevel)] = [
+            ("maskNonAssetsOnly", .maskNonBundledOnly),
+            ("maskAll", .maskAll),
+            ("maskNone", .maskNone),
+        ]
+        for (name, level) in imageLevels {
+            configuration.imagePrivacyLevel = name
+            #expect(configuration.imagePrivacy == level, "\(name)")
+        }
+
+        let touchLevels: [(String, TouchPrivacyLevel)] = [
+            ("show", .show),
+            ("hide", .hide),
+        ]
+        for (name, level) in touchLevels {
+            configuration.touchPrivacyLevel = name
+            #expect(configuration.touchPrivacy == level, "\(name)")
+        }
+    }
+
+    @Test
+    func configuration_withMissingOrUnknownPrivacyLevels_usesTheMostRestrictive() {
+        let configuration = FlutterSessionReplayConfiguration()
+        #expect(configuration.textAndInputPrivacy == .maskAll)
+        #expect(configuration.imagePrivacy == .maskAll)
+        #expect(configuration.touchPrivacy == .hide)
+
+        configuration.textAndInputPrivacyLevel = "unknown"
+        configuration.imagePrivacyLevel = "unknown"
+        configuration.touchPrivacyLevel = "unknown"
+        #expect(configuration.textAndInputPrivacy == .maskAll)
+        #expect(configuration.imagePrivacy == .maskAll)
+        #expect(configuration.touchPrivacy == .hide)
+    }
+
+    @Test
     func enable_primesTheEngineWithTheCurrentContext() throws {
         // Given — the native RUM view is already active, as in a hybrid app
         let expectedContext: RUMCoreContext = .mockRandom()
@@ -316,6 +386,33 @@ class FlutterSessionReplayBridgeTests {
 
         // Then — publishing would be a guess, and guessing wrong corrupts the native value
         #expect(feature.hasReplay == nil)
+    }
+
+    @Test
+    func setSessionSampled_whenStandalone_reportsToTheFeature() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(false)
+
+        // When
+        let expectedValue: Bool = .mockRandom()
+        bridge.setSessionSampled(for: "session-id", sampled: expectedValue)
+
+        // Then
+        #expect(feature.sampledSessions == ["session-id": expectedValue])
+    }
+
+    @Test
+    func setSessionSampled_whenEmbedded_staysQuiet() throws {
+        // Given
+        try enable()
+        bridge.setEmbedded(true)
+
+        // When
+        bridge.setSessionSampled(for: "session-id", sampled: true)
+
+        // Then — native Session Replay owns WebView records when embedded
+        #expect(feature.sampledSessions.isEmpty)
     }
 
     @Test

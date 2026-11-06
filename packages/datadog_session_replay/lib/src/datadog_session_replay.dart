@@ -104,6 +104,10 @@ class DatadogSessionReplay {
     if (context.sessionId != _currentSessionId) {
       _currentSessionId = context.sessionId;
       _sessionSampled = _isSessionSampled(context.sessionId);
+      DatadogSessionReplayPlatform.instance.setSessionSampled(
+        context.sessionId,
+        _sessionSampled,
+      );
       if (!_sessionSampled) {
         internalLogger.debug(
           'Flutter Session Replay was not selected by replaySampleRate for '
