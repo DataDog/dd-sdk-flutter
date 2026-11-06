@@ -10,6 +10,7 @@ import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/capture/capture_node.dart';
 import 'package:datadog_session_replay/src/capture/element_recorders/image_recorder.dart';
+import 'package:datadog_session_replay/src/capture/element_recorders/raster_resources.dart';
 import 'package:datadog_session_replay/src/capture/recorder.dart';
 import 'package:datadog_session_replay/src/capture/view_tree_snapshot.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';

@@ -10,7 +10,7 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/capture/capture_node.dart';
 import 'package:datadog_session_replay/src/capture/element_recorders/common_nodes.dart';
 import 'package:datadog_session_replay/src/capture/element_recorders/icon_recorder.dart';
-import 'package:datadog_session_replay/src/capture/element_recorders/image_recorder.dart';
+import 'package:datadog_session_replay/src/capture/element_recorders/raster_resources.dart';
 import 'package:datadog_session_replay/src/capture/element_recorders/text_recorder.dart';
 import 'package:datadog_session_replay/src/capture/recorder.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
@@ -476,6 +476,85 @@ void main() {
       expect(savedResourceKeys().length, 2);
     });
 
+    testWidgets('reuses raster while scaled below layout size', (tester) async {
+      final recorder = createRecorder();
+      for (final scale in [0.5, 0.8, 1.0]) {
+        await tester.pumpWidget(
+          wrap(
+            recorder,
+            Transform.scale(
+              scale: scale,
+              alignment: Alignment.topLeft,
+              child: const Icon(_customIcon, size: 20),
+            ),
+          ),
+        );
+        await capture(tester, recorder);
+      }
+
+      expect(savedResourceKeys().length, 1);
+    });
+
+    SessionReplayRecorder budgetRecorder(ImageDownscaling downscaling) {
+      return SessionReplayRecorder.withCustomRecorders(
+        [
+          IconRecorder(
+            keyGenerator,
+            maxImagePixelBudget: 10000,
+            imageDownscaling: downscaling,
+          ),
+        ],
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+        ),
+        touchPrivacyLevel: TouchPrivacyLevel.show,
+      )..updateContext(context);
+    }
+
+    testWidgets('records Large Icon placeholder over the pixel budget', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final recorder = budgetRecorder(ImageDownscaling.disabled);
+      await tester.pumpWidget(
+        wrap(recorder, const Icon(_customIcon, size: 200)),
+      );
+
+      final nodes = await capture(tester, recorder);
+
+      expect((nodes.single as PlaceholderNode).caption, 'Large Icon');
+      verifyNever(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      );
+    });
+
+    testWidgets('downscales to the pixel budget when downscaling', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final recorder = budgetRecorder(ImageDownscaling.enabled);
+      await tester.pumpWidget(
+        wrap(recorder, const Icon(_customIcon, size: 200)),
+      );
+
+      await capture(tester, recorder);
+
+      final captured = verify(
+        () => platform.saveImageForProcessing(
+          any(),
+          captureAny(),
+          captureAny(),
+          any(),
+        ),
+      ).captured;
+      // 200dp at 3x would be 600x600; the budget allows 100x100.
+      expect(captured[0], 100);
+      expect(captured[1], 100);
+    });
+
     testWidgets('rasterizes non-square icon boxes at their own size', (
       tester,
     ) async {
@@ -679,19 +758,6 @@ void main() {
   test('unknown icon glyph is the Material outlined square', () {
     expect(unknownIconCodePoint, Icons.square_outlined.codePoint);
     expect(Icons.square_outlined.fontFamily, materialIconsFontFamily);
-  });
-
-  group('rasterPixelSize', () {
-    test('applies device pixel ratio and rounds up', () {
-      expect(IconRecorder.rasterPixelSize(20, 1.0), 20);
-      expect(IconRecorder.rasterPixelSize(24, 3.0), 72);
-      expect(IconRecorder.rasterPixelSize(20.1, 2.0), 41);
-      expect(IconRecorder.rasterPixelSize(0.1, 1.0), 1);
-    });
-
-    test('does not cap size for large icons', () {
-      expect(IconRecorder.rasterPixelSize(500, 3.0), 1500);
-    });
   });
 
   group('IconRasterKey', () {
