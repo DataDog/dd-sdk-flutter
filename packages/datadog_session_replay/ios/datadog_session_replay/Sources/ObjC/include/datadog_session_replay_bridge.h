@@ -301,8 +301,8 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 #endif
 
 #if defined(__OBJC__)
-@class NSString;
 
+@class NSString;
 SWIFT_CLASS_NAMED("FlutterRUMCoreContext")
 @interface FlutterRUMCoreContext : NSObject
 @property (nonatomic, copy) NSString * _Nonnull sessionID;
@@ -314,27 +314,43 @@ SWIFT_CLASS_NAMED("FlutterRUMCoreContext")
 
 @class FlutterSessionReplayConfiguration;
 @class NSData;
-
+/// The Session Replay bridge for a single Flutter engine.
+/// One instance exists per engine. It owns only per-engine state — this engine’s Dart
+/// RUM-context callback and the routing of this engine’s records — and delegates
+/// everything shared (the feature, the core, the engine registry, host slot IDs) to
+/// <code>FlutterSessionReplayManager</code>.
 SWIFT_CLASS_NAMED("FlutterSessionReplay")
 @interface FlutterSessionReplay : NSObject
+/// Identifies this bridge to its own engine.
+/// The FFI <code>enable()</code> call cannot tell which engine invoked it, and this bridge never sees a
+/// messenger. Dart reads this token after construction and passes it to the plugin instance
+/// for its engine over the engine method channel, which is the one place the messenger <em>is</em>
+/// known — letting the manager pair the two. See <code>FlutterSessionReplayManager.bind(engineToken:to:)</code>.
 @property (nonatomic, readonly, copy) NSString * _Nonnull engineToken;
+/// Creates a bridge backed by the process-wide coordinator.
+- (nonnull instancetype)init;
 - (void)enableWith:(FlutterSessionReplayConfiguration * _Nonnull)configuration;
 - (void)setHasReplayWithHasReplay:(BOOL)hasReplay;
+/// Reports whether <code>replaySampleRate</code> selected the RUM session <code>sessionId</code>, for WebView records.
+- (void)setSessionSampledFor:(NSString * _Nonnull)sessionId sampled:(BOOL)sampled;
 - (void)setRecordCountFor:(NSString * _Nonnull)viewId count:(NSInteger)count;
+/// Declares which recording path this engine writes to. Called once by Dart, straight after
+/// <code>enable()</code>, from the <code>isEmbedded</code> it was configured with.
 - (void)setEmbedded:(BOOL)isEmbedded;
 - (void)writeSegmentWithSegment:(NSString * _Nonnull)segmentJson;
 - (void)postTelemetryDebugWithId:(NSString * _Nonnull)id message:(NSString * _Nonnull)message;
 - (void)postTelemetryErrorWithMessage:(NSString * _Nonnull)message kind:(NSString * _Nonnull)kind stackTrace:(NSString * _Nonnull)stackTrace;
 - (void)saveImageForProcessingWithResourceKey:(NSInteger)resourceKey width:(NSInteger)width height:(NSInteger)height data:(NSData * _Nonnull)data;
 - (NSString * _Nullable)resourceIdForKey:(NSInteger)key SWIFT_WARN_UNUSED_RESULT;
-- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
 @end
 
 @class NSURL;
-
 SWIFT_CLASS_NAMED("FlutterSessionReplayConfiguration")
 @interface FlutterSessionReplayConfiguration : NSObject
 @property (nonatomic, copy) NSURL * _Nullable customEndpoint;
+@property (nonatomic, copy) NSString * _Nullable textAndInputPrivacyLevel;
+@property (nonatomic, copy) NSString * _Nullable imagePrivacyLevel;
+@property (nonatomic, copy) NSString * _Nullable touchPrivacyLevel;
 - (nonnull instancetype)initWithCustomEndpoint:(NSURL * _Nullable)customEndpoint onContextChanged:(void (^ _Nullable)(FlutterRUMCoreContext * _Nullable))onContextChanged OBJC_DESIGNATED_INITIALIZER;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");

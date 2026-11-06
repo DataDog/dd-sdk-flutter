@@ -15,6 +15,7 @@ import 'screens/crash_screen.dart';
 import 'screens/flags_screen.dart';
 import 'screens/graph_ql_screen.dart';
 import 'screens/network_screen.dart';
+import 'screens/webview_screen.dart';
 
 class MyApp extends StatefulWidget {
   final GraphQLClient graphQLClient;
@@ -62,6 +63,12 @@ class _MyAppState extends State<MyApp> {
         path: '/graphql',
         builder: (context, state) {
           return const GraphQlScreen();
+        },
+      ),
+      GoRoute(
+        path: '/webview',
+        builder: (context, state) {
+          return const WebViewScreen();
         },
       ),
       GoRoute(

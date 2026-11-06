@@ -51,6 +51,7 @@ class DatadogSessionReplay {
   bool _recordingRequested = false;
   bool _sessionSampled = false;
   String? _currentSessionId;
+  String? _currentViewId;
 
   /// Whether Session Replay is recording.
   bool get isCapturing => _captureTimer != null;
@@ -103,6 +104,10 @@ class DatadogSessionReplay {
     if (context.sessionId != _currentSessionId) {
       _currentSessionId = context.sessionId;
       _sessionSampled = _isSessionSampled(context.sessionId);
+      DatadogSessionReplayPlatform.instance.setSessionSampled(
+        context.sessionId,
+        _sessionSampled,
+      );
       if (!_sessionSampled) {
         internalLogger.debug(
           'Flutter Session Replay was not selected by replaySampleRate for '
@@ -115,7 +120,9 @@ class DatadogSessionReplay {
     if (_sessionSampled) {
       _recorder.onContextChanged(context);
     }
+    _currentViewId = context.viewId;
     _evaluateRecording();
+    if (isCapturing) _publishHasReplay(true);
   }
 
   /// Samples [sessionId] deterministically, as the native SDKs do: the same
@@ -151,14 +158,24 @@ class DatadogSessionReplay {
     if (_recordingRequested && _sessionSampled) {
       if (_captureTimer != null) return;
       _startPeriodicCapture();
+      _publishHasReplay(true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Let capture know that a new element tree is available for capture.
         _newFrameBuilt = true;
       });
     } else {
+      if (_captureTimer == null) return;
       _captureTimer?.cancel();
       _captureTimer = null;
+      _publishHasReplay(false);
     }
+  }
+
+  void _publishHasReplay(bool hasReplay) {
+    DatadogSessionReplayPlatform.instance.setHasReplay(
+      _currentViewId ?? '',
+      hasReplay,
+    );
   }
 
   Future<void> _start() async {

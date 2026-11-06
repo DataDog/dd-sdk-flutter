@@ -285,3 +285,46 @@ func zlibDecode(_ data: Data, capacity: Int = 1_000_000) -> Data? {
         return Data(bytes: buffer, count: size)
     }
 }
+
+@Test
+func requestBuilder_BuildsSegments_FromFlutterAndWebViewRecords() throws {
+    // Given
+    let mockCore = PassthroughCoreMock()
+    let flutterContext = RUMCoreContext.mockRandom()
+    let multipartSpy = MultipartBuilderSpy()
+    let requestBuilder = RequestBuilder(customUploadURL: nil, telemetry: mockCore.telemetry, multipartBuilder: multipartSpy)
+
+    let encoder = JSONEncoder()
+    let webRecord = WebViewRecordReceiver.WebRecord(
+        applicationID: flutterContext.applicationID,
+        sessionID: flutterContext.sessionID,
+        viewID: "web-view",
+        records: [AnyEncodable(["type": 2, "timestamp": 100] as [String: Any])]
+    )
+    let events = [
+        Event(data: try encoder.encode(RecordWrapper(
+            recordJson: createEnrichedRecordJson(context: flutterContext, records: [mockRecord()])
+        )), metadata: nil),
+        Event(data: try encoder.encode(webRecord), metadata: nil),
+    ]
+
+    // When
+    var context: DatadogContext = .mockRandom()
+    context.set(additionalContext: flutterContext)
+    _ = try requestBuilder.request(
+        for: events,
+        with: context,
+        execution: DatadogInternal.ExecutionContext(previousResponseCode: nil, attempt: 0)
+    )
+
+    // Then
+    let metadataFile = try #require(multipartSpy.formFiles.last)
+    let metadata = try JSONDecoder().decode([Metadata].self, from: metadataFile.data)
+    try #require(metadata.count == 2)
+    let flutterSegment = try #require(metadata.first { $0.view.id == flutterContext.viewID })
+    let webSegment = try #require(metadata.first { $0.view.id == "web-view" })
+    #expect(flutterSegment.recordsCount == 1)
+    #expect(webSegment.recordsCount == 1)
+    #expect(webSegment.hasFullSnapshot == true)
+    #expect(webSegment.start == 100)
+}
