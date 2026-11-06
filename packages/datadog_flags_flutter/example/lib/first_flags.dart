@@ -1,0 +1,228 @@
+// First Flags uses the native compatibility API until its replacement is available.
+// ignore_for_file: deprecated_member_use
+
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0. This product includes software
+// developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2019-Present Datadog, Inc.
+
+import 'dart:async';
+
+import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
+import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'flags_example_configuration.dart';
+
+String get _clientToken => dotenv.get('DD_CLIENT_TOKEN', fallback: '');
+String get _applicationId => dotenv.get('DD_APPLICATION_ID', fallback: '');
+String get _env => dotenv.get('DD_ENV', fallback: 'dev');
+String get _site => dotenv.get('DD_SITE', fallback: 'us1');
+String get _targetingKey =>
+    dotenv.get('DD_TARGETING_KEY', fallback: 'example-user');
+String get _flagKey => dotenv.get('DD_FLAG_KEY', fallback: 'checkout.enabled');
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
+
+  final flagsConfiguration = flagsExampleConfiguration(
+    site: _datadogSiteFor(_site),
+    clientToken: _clientToken,
+    env: _env,
+    applicationId: _applicationId.isEmpty ? null : _applicationId,
+  );
+  final isConfigured = flagsConfiguration != null;
+  if (isConfigured) {
+    final configuration = DatadogConfiguration(
+      service: 'com.datadoghq.flags.example',
+      clientToken: _clientToken,
+      env: _env,
+      site: _datadogSiteFor(_site),
+      rumConfiguration: _applicationId.isEmpty
+          ? null
+          : DatadogRumConfiguration(applicationId: _applicationId),
+    )..addPlugin(const DatadogFlagsPluginConfiguration());
+
+    await DatadogSdk.instance.initialize(
+      configuration,
+      TrackingConsent.granted,
+    );
+  }
+
+  runApp(
+    FlagsExampleApp(
+      isConfigured: isConfigured,
+      configurationError: _clientToken.isNotEmpty && !isConfigured
+          ? 'Feature Flags is not supported for site $_site.'
+          : null,
+    ),
+  );
+}
+
+DatadogSite _datadogSiteFor(String site) {
+  return switch (site) {
+    'us3' => DatadogSite.us3,
+    'us5' => DatadogSite.us5,
+    'eu1' => DatadogSite.eu1,
+    'ap1' => DatadogSite.ap1,
+    'ap2' => DatadogSite.ap2,
+    'us1_fed' => DatadogSite.us1Fed,
+    _ => DatadogSite.us1,
+  };
+}
+
+class FlagsExampleApp extends StatefulWidget {
+  final bool isConfigured;
+  final String? configurationError;
+
+  const FlagsExampleApp({
+    super.key,
+    required this.isConfigured,
+    this.configurationError,
+  });
+
+  @override
+  State<FlagsExampleApp> createState() => _FlagsExampleAppState();
+}
+
+class _FlagsExampleAppState extends State<FlagsExampleApp> {
+  String _status = 'idle';
+  FlagDetails<bool>? _details;
+  FlagDetails<bool>? _firstDetails;
+  void Function()? _unregisterFirstFlags;
+
+  @override
+  void initState() {
+    super.initState();
+    final client = DatadogSdk.instance.flags?.sharedClient();
+    if (widget.isConfigured && client != null) {
+      _unregisterFirstFlags = client.onFirstFlags((event) {
+        debugPrint('First installed flags: ${event.flagsChanged}');
+        final details = client.getBooleanDetails(
+          key: _flagKey,
+          defaultValue: false,
+        );
+        if (mounted) setState(() => _firstDetails = details);
+      });
+    }
+    unawaited(_evaluate());
+  }
+
+  @override
+  void dispose() {
+    _unregisterFirstFlags?.call();
+    super.dispose();
+  }
+
+  Future<void> _evaluate() async {
+    if (!widget.isConfigured) {
+      setState(() {
+        _status =
+            widget.configurationError ??
+            'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
+      });
+      return;
+    }
+
+    final client = DatadogSdk.instance.flags?.sharedClient();
+    if (client == null) {
+      setState(() {
+        _status = 'Flags plugin is not configured.';
+      });
+      return;
+    }
+
+    setState(() {
+      _status = 'loading';
+    });
+
+    var status = 'ready';
+    try {
+      await client.initialize(
+        FlagsEvaluationContext(targetingKey: _targetingKey),
+      );
+    } on FlagsInitializationTimeoutException catch (error) {
+      status = 'using stored assignments or defaults: ${error.message}';
+    } catch (error) {
+      setState(() {
+        _details = null;
+        _status = 'using defaults: $error';
+      });
+      return;
+    }
+
+    final details = client.getBooleanDetails(
+      key: _flagKey,
+      defaultValue: false,
+    );
+    setState(() {
+      _details = details;
+      _status = status;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final details = _details;
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Datadog Flags')),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _InfoRow(label: 'Status', value: _status),
+            _InfoRow(label: 'Environment', value: _env),
+            _InfoRow(label: 'Site', value: _site),
+            _InfoRow(label: 'Targeting key', value: _targetingKey),
+            const Divider(height: 32),
+            _InfoRow(label: 'Flag key', value: _flagKey),
+            _InfoRow(
+              label: 'First flags value',
+              value: _firstDetails?.value.toString() ?? '(waiting)',
+            ),
+            _InfoRow(
+              label: 'Value',
+              value: details == null ? '(none)' : details.value.toString(),
+            ),
+            _InfoRow(label: 'Variant', value: details?.variant ?? '(none)'),
+            _InfoRow(label: 'Error', value: details?.error?.name ?? '(none)'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _evaluate,
+              child: const Text('Evaluate flag'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+}
