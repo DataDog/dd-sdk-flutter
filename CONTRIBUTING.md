@@ -216,3 +216,50 @@ line is needed for a patch release,  such as a `release/3.6.x` line.
 If a change is needed for a patch release, that change should **first be made on `develop`**,
 then cherry-picked into its release line branch. The patch release can then be made from
 this release line branch, and the changelog change cherry-picked back into `develop`.
+
+## Shared precomputed response tests
+
+The Flags module uses the JSON contract from [ffe-system-test-data](https://github.com/DataDog/ffe-system-test-data/tree/main/precomputed-assignments).
+This keeps response behavior consistent across mobile SDKs. The snapshot is test data only.
+It adds no runtime dependency and requires no Git submodule.
+
+The generated snapshot is at `packages/datadog_flags/test/fixtures/precomputed`. `SOURCE.json` records the source commit and file digests.
+The runner discovers all nested JSON cases.
+Adding a case requires an upstream fixture change and snapshot refresh. It requires no runner or filename-list change.
+Missing or empty fixtures fail the suite. Shared `_include` and `_skip` fields describe API applicability.
+Do not add local exclusions to hide failures.
+
+Numeric semantics follow the [shared contract](https://github.com/DataDog/ffe-system-test-data/blob/main/precomputed-assignments/README.md#mobile-conformance-and-numeric-types).
+
+Upstream CI requires a generated obfuscated companion for each applicable plain fixture. It rejects missing, stale, or orphaned companions. Edit the plain case upstream and regenerate; do not maintain two sets of expectations. Dedicated malformed-encoding cases and fixed digest vectors remain separate.
+
+Cases cover values, defaults, errors, reasons, variants, emission gates, duplicate evaluations, and numeric boundaries.
+Obfuscation cases cover fixed digests, salts, Unicode, whitespace, malformed metadata, and plaintext event identity.
+The portable suite uses the public client with a test HTTP transport. Each valid fixture also runs after JSON cache restoration. It checks transmitted exposure and evaluation payloads. VM, dart2js, and dart2wasm run the same embedded text; JS reports native Int64 applicability separately. Native bridge tests remain separate.
+
+Run from the repository root:
+
+```sh
+python3 ci/sync-precomputed-fixtures.py --verify
+cd packages/datadog_flags
+dart test test/precomputed_fixture_files_test.dart
+```
+
+Refresh the snapshot from a reviewed upstream commit:
+
+```sh
+python3 ci/sync-precomputed-fixtures.py --ref <full-upstream-sha>
+python3 ci/sync-precomputed-fixtures.py --check
+dart ci/embed-precomputed-fixtures.dart
+```
+
+The importer copies committed bytes, regenerates the index, and removes deleted cases.
+It preserves Unity asset GUIDs where applicable. Do not edit imported JSON or its checksums.
+Use `--source <local-checkout> --ref <commit>` to test an upstream fixture branch before publication.
+`--verify` checks local integrity without networking. `--check` also compares the recorded upstream commit.
+
+The weekly `Precomputed flag fixtures` workflow opens a draft update PR when fixture content changes.
+It uses a short-lived token restricted to the default branch and this workflow.
+It waits when an update PR is already open. Normal SDK CI must pass before merge.
+Merge the upstream fixture contract before merging its consumer PRs.
+The update workflow never merges or publishes an SDK release.
