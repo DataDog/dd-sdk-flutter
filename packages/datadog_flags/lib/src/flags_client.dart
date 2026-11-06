@@ -51,6 +51,14 @@ abstract interface class DatadogFlagsClient {
   ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
+  ///
+  /// When evaluation telemetry opt-out is enabled, only boolean
+  /// `dd_evaluation_telemetry_opt_out=true` suppresses new evaluation telemetry.
+  /// Opting out and opting the same subject back in apply immediately,
+  /// including during a pending or failed refresh. Each named client has
+  /// separate policy.
+  /// Switching subjects keeps opted-out assignments suppressed while the next
+  /// subject loads. The attribute remains available for targeting and exposures.
   Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
@@ -130,6 +138,14 @@ class FlagDetails<T> {
   /// Programmatic error describing why the default value was returned.
   final FlagEvaluationError? error;
 
+  /// Whether automatic evaluation reporting must be suppressed for this result.
+  ///
+  /// Captures the reporting decision for this evaluation, including errors.
+  /// Automatic telemetry integrations skip reporting when this is true.
+  /// Activated by [DatadogFlagsConfiguration.enableEvaluationTelemetryOptOutParameter].
+  /// This does not suppress experiment exposures.
+  final bool evaluationTelemetryOptedOut;
+
   /// Provider-specific metadata associated with a successful evaluation.
   final Map<String, Object> flagMetadata;
 
@@ -140,6 +156,7 @@ class FlagDetails<T> {
     this.variant,
     this.reason,
     this.error,
+    this.evaluationTelemetryOptedOut = false,
     this.flagMetadata = const {},
   });
 }

@@ -111,12 +111,19 @@ class DatadogFlagsPlugin extends DatadogPlugin {
         addRumFeatureFlagEvaluation: _rumIntegrationEnabled
             ? _addRumFeatureFlagEvaluation
             : null,
+        enableEvaluationTelemetryOptOutParameter:
+            _flagsConfiguration.enableEvaluationTelemetryOptOutParameter,
       ),
     );
   }
 
   /// Clears in-memory and stored assignments for all integrated clients.
-  Future<void> reset() => _flags.reset();
+  Future<void> reset() {
+    for (final client in _clients.values) {
+      client._resetTelemetryPolicy();
+    }
+    return _flags.reset();
+  }
 
   @override
   void shutdown() {
@@ -170,6 +177,8 @@ class DatadogFlagsPlugin extends DatadogPlugin {
       trackExposures: _flagsConfiguration.trackExposures,
       customEvaluationEndpoint: _flagsConfiguration.customEvaluationEndpoint,
       trackEvaluations: _flagsConfiguration.trackEvaluations,
+      enableEvaluationTelemetryOptOutParameter:
+          _flagsConfiguration.enableEvaluationTelemetryOptOutParameter,
       evaluationFlushInterval: _flagsConfiguration.evaluationFlushInterval,
       httpClient: _flagsConfiguration.httpClient,
       datadogConfig: flagsDatadogConfig,
@@ -191,6 +200,9 @@ class DatadogFlutterFlagsClient
     implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
+  final bool _enableEvaluationTelemetryOptOutParameter;
+  bool _evaluationTelemetryOptedOut = false;
+  int _contextRevision = 0;
   final StreamController<DatadogFlagsClientStatus> _statusChanges =
       StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
 
@@ -230,13 +242,23 @@ class DatadogFlutterFlagsClient
     required Future<DatadogFlagsClient> Function() resolveDelegate,
     required void Function(String key, Object value)?
     addRumFeatureFlagEvaluation,
+    bool enableEvaluationTelemetryOptOutParameter = false,
   }) : _resolveDelegate = resolveDelegate,
+       _enableEvaluationTelemetryOptOutParameter =
+           enableEvaluationTelemetryOptOutParameter,
        _addRumFeatureFlagEvaluation = addRumFeatureFlagEvaluation;
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
-    final delegate = await _delegateOrResolve();
-    if (!_isShutdown) await delegate.initialize(context);
+    final revision = ++_contextRevision;
+    final control =
+        context.attributes[FlagsEvaluationContext.evaluationTelemetryOptOutKey];
+    _evaluationTelemetryOptedOut =
+        _enableEvaluationTelemetryOptOutParameter && control is bool && control;
+    final delegate = _delegate ?? await _delegateOrResolve();
+    if (!_isShutdown && revision == _contextRevision) {
+      await delegate.initialize(context);
+    }
   }
 
   @override
@@ -311,7 +333,9 @@ class DatadogFlutterFlagsClient
 
   @override
   Future<void> reset() async {
-    final delegate = await _delegateOrResolve();
+    ++_contextRevision;
+    _evaluationTelemetryOptedOut = false;
+    final delegate = _delegate ?? await _delegateOrResolve();
     if (!_isShutdown) await delegate.reset();
   }
 
@@ -320,11 +344,18 @@ class DatadogFlutterFlagsClient
 
   Future<void> _shutdown() async {
     _isShutdown = true;
+    ++_contextRevision;
+    _evaluationTelemetryOptedOut = false;
     final delegate = _delegate;
     _delegate = null;
     await _statusSubscription?.cancel();
     _statusSubscription = null;
     await delegate?.shutdown();
+  }
+
+  void _resetTelemetryPolicy() {
+    ++_contextRevision;
+    _evaluationTelemetryOptedOut = false;
   }
 
   Future<DatadogFlagsClient> _delegateOrResolve() {
@@ -353,7 +384,10 @@ class DatadogFlutterFlagsClient
 
   FlagDetails<T> _trackRumEvaluation<T>(FlagDetails<T> details) {
     final variant = details.variant;
-    if (details.error == null && variant != null) {
+    if (!_evaluationTelemetryOptedOut &&
+        !details.evaluationTelemetryOptedOut &&
+        details.error == null &&
+        variant != null) {
       _addRumFeatureFlagEvaluation?.call(details.key, variant);
     }
     return details;
@@ -367,6 +401,7 @@ class DatadogFlutterFlagsClient
       key: key,
       value: defaultValue,
       error: FlagEvaluationError.providerNotReady,
+      evaluationTelemetryOptedOut: _evaluationTelemetryOptedOut,
     );
   }
 }

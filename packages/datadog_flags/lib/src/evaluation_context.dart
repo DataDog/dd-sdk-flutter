@@ -17,6 +17,9 @@ part 'evaluation_context.g.dart';
   'Use OpenFeature EvaluationContext for evaluations. Removal is planned for the next major version.',
 )
 final class FlagsEvaluationContext {
+  /// Attribute suppressing evaluation telemetry when the configuration enables it.
+  static const evaluationTelemetryOptOutKey = 'dd_evaluation_telemetry_opt_out';
+
   /// Empty context used when an application has no targeting data yet.
   static const empty = FlagsEvaluationContext();
 

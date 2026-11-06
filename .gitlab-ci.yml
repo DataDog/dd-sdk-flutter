@@ -831,6 +831,10 @@ openfeature-min-version-test:
     - fvm exec dart pub get
     - fvm exec dart analyze .
     - fvm exec dart test
+    - cd ../datadog_flags_flutter
+    - fvm exec flutter pub get
+    - fvm exec flutter analyze .
+    - fvm exec flutter test
     - cd ../../tools/openfeature_conformance
     - fvm exec dart pub get
     - fvm exec dart analyze .

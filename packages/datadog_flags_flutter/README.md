@@ -94,3 +94,23 @@ network response replaces those assignments, details report the response reason.
 See the [contributing guide](../../CONTRIBUTING.md) and
 [OpenFeature validation instructions](../datadog_flags/OPENFEATURE_VALIDATION.md).
 Licensed under [Apache 2.0](LICENSE).
+
+## Evaluation Telemetry Opt-Out
+
+Enable `enableEvaluationTelemetryOptOutParameter` in `DatadogFlagsConfiguration`
+to let your application suppress evaluation telemetry for selected subjects.
+Set `dd_evaluation_telemetry_opt_out` to boolean `true` in their OpenFeature
+`EvaluationContext.attributes`. The option defaults to false; missing, false,
+null, string, and other attribute values preserve telemetry.
+
+Opted-out evaluations preserve flag values and suppress new evaluation events,
+counts, and automatic annotations from `DatadogRumHook`. Assignment requests
+and exposure events still send the targeting key and attributes. To stop exposure
+events, set `trackExposures: false`. Previously recorded events and manual RUM
+annotations remain.
+
+See the API documentation for
+[`DatadogOpenFeatureProvider`](https://pub.dev/documentation/datadog_flags/latest/datadog_flags/DatadogOpenFeatureProvider-class.html)
+and the legacy
+[`DatadogFlagsClient.initialize`](https://pub.dev/documentation/datadog_flags/latest/datadog_flags/DatadogFlagsClient/initialize.html)
+for context-change and telemetry-policy timing.

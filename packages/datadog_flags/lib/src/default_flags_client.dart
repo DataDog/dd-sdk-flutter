@@ -160,17 +160,20 @@ class DefaultDatadogFlagsClient
       );
     }
     final context = _repository.context;
+    final telemetryOptedOut = _repository.evaluationTelemetryOptedOut;
     if (context == null) {
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: null,
         evaluationContext: FlagsEvaluationContext.empty,
         error: FlagEvaluationError.providerNotReady.code,
+        telemetryOptedOut: telemetryOptedOut,
       );
       return FlagDetails(
         key: key,
         value: defaultValue,
         error: FlagEvaluationError.providerNotReady,
+        evaluationTelemetryOptedOut: telemetryOptedOut,
       );
     }
 
@@ -184,11 +187,13 @@ class DefaultDatadogFlagsClient
         assignment: null,
         evaluationContext: context,
         error: FlagEvaluationError.flagNotFound.code,
+        telemetryOptedOut: telemetryOptedOut,
       );
       return FlagDetails(
         key: key,
         value: defaultValue,
         error: FlagEvaluationError.flagNotFound,
+        evaluationTelemetryOptedOut: telemetryOptedOut,
       );
     }
 
@@ -224,11 +229,13 @@ class DefaultDatadogFlagsClient
         assignment: assignment,
         evaluationContext: context,
         error: FlagEvaluationError.typeMismatch.code,
+        telemetryOptedOut: telemetryOptedOut,
       );
       return FlagDetails(
         key: key,
         value: defaultValue,
         error: FlagEvaluationError.typeMismatch,
+        evaluationTelemetryOptedOut: telemetryOptedOut,
       );
     }
 
@@ -243,6 +250,7 @@ class DefaultDatadogFlagsClient
       assignment: assignment,
       evaluationContext: context,
       error: null,
+      telemetryOptedOut: telemetryOptedOut,
     );
 
     return FlagDetails(
@@ -250,6 +258,7 @@ class DefaultDatadogFlagsClient
       value: resolvedValue as T,
       variant: assignment.variationKey,
       reason: restoredFromStore ? 'CACHED' : assignment.reason,
+      evaluationTelemetryOptedOut: telemetryOptedOut,
       flagMetadata: {
         datadogAllocationKeyMetadata: assignment.allocationKey,
         datadogSerialIdMetadata: ?assignment.serialId,
