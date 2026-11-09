@@ -59,6 +59,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(Uri());
+    registerFallbackValue(Object());
     registerFallbackValue(RumHttpMethod.get);
     registerFallbackValue(RumResourceType.beacon);
     registerFallbackValue(MockHttpClientRequest());
@@ -73,6 +74,7 @@ void main() {
     ).thenAnswer((_) => Future<void>.value());
 
     mockDatadog = MockDatadogSdk();
+    stubResolveErrorType(mockDatadog);
     when(
       () => mockDatadog.headerTypesForHost(
         any(that: HasHost(equals('test_url'))),
@@ -709,6 +711,86 @@ void main() {
           capturedKey,
           error.toString(),
           error.runtimeType.toString(),
+        ),
+      );
+    });
+
+    test('error on openUrl reports type from resolveErrorType', () async {
+      when(
+        () => mockDatadog.resolveErrorType(any()),
+      ).thenReturn('ResolvedType');
+      const error = SocketException('Mock socket exception');
+      when(() => mockClient.openUrl(any(), any())).thenThrow(error);
+      final client = DatadogTrackingHttpClient(
+        mockDatadog,
+        DdHttpTrackingPluginConfiguration(),
+        mockClient,
+      );
+
+      var url = Uri.parse('https://test_url/path');
+
+      await expectLater(
+        () async => await client.openUrl('get', url),
+        throwsA(predicate((e) => e == error)),
+      );
+      verify(() => mockDatadog.resolveErrorType(error));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          error.toString(),
+          'ResolvedType',
+          any(),
+        ),
+      );
+    });
+
+    test('request stream error reports type from resolveErrorType', () async {
+      when(
+        () => mockDatadog.resolveErrorType(any()),
+      ).thenReturn('ResolvedType');
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      var request = await client.openUrl('get', url);
+      const error = SocketException('Mock socket exception');
+      completer.completeError(error);
+      await expectLater(request.done, throwsA(error));
+
+      verify(() => mockDatadog.resolveErrorType(error));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          error.toString(),
+          'ResolvedType',
+          any(),
+        ),
+      );
+    });
+
+    test('response stream error reports type from resolveErrorType', () async {
+      when(
+        () => mockDatadog.resolveErrorType(any()),
+      ).thenReturn('ResolvedType');
+      var url = Uri.parse('https://test_url/path');
+      final completer = setupMockRequest(url);
+
+      var request = await client.openUrl('get', url);
+      var mockResponse = setupMockClientResponse(200);
+      completer.complete(mockResponse);
+      var response = await request.done;
+
+      const error = HttpException('Connection closed');
+      response.listen((event) {}, onError: (Object e) {});
+      mockResponse.streamController.addError(error);
+      await mockResponse.streamController.close();
+
+      verify(() => mockDatadog.resolveErrorType(error));
+      verify(
+        () => mockRum.stopResourceWithErrorInfo(
+          any(),
+          error.toString(),
+          'ResolvedType',
+          any(),
         ),
       );
     });
