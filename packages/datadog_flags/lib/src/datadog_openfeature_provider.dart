@@ -5,6 +5,7 @@
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
@@ -46,6 +47,9 @@ final class DatadogOpenFeatureProvider
 
   final Set<Future<void>> _retiring = {};
   final List<_ExposureFrame> _exposureFrames = [];
+
+  @visibleForTesting
+  int get openExposureFrames => _exposureFrames.length;
   openfeature.EvaluationContext? _requestedContext;
 
   /// Datadog runtime configuration used by each context revision.
@@ -616,14 +620,14 @@ final class DatadogOpenFeatureProvider
     String flagKey,
     ({FlagDetails<T> details, PendingExposure? exposure}) resolution,
   ) {
-    final frame = _exposureFrames.lastOrNull;
-    final ownsFrame =
-        frame != null && !frame.resolved && frame.flagKey == flagKey;
-    if (ownsFrame) frame.resolved = true;
     final exposure = resolution.exposure;
     final details = resolution.details;
     if (exposure == null) return details;
-    if (ownsFrame) frame.exposure = exposure;
+    // Without a frame from the provider hook, nothing records the exposure.
+    if (_exposureFrames.lastOrNull case final frame?
+        when frame.flagKey == flagKey) {
+      frame.exposure = exposure;
+    }
     return FlagDetails(
       key: details.key,
       value: details.value,
@@ -696,7 +700,6 @@ final class _ProviderRuntime {
 
 final class _ExposureFrame {
   final String flagKey;
-  bool resolved = false;
   PendingExposure? exposure;
 
   _ExposureFrame(this.flagKey);

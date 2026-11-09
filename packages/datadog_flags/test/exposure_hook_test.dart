@@ -272,6 +272,42 @@ void main() {
     });
   }
 
+  test('a change in features only is a cache hit', () async {
+    final (client, provider) = await start();
+
+    client.getBooleanValue('flag', false);
+    flags = {
+      'flag': assignment(
+        features: [
+          feature('holdout.key', 'holdout-2', ['HOOK', 'EXPOSURE']),
+        ],
+      ),
+    };
+    await provider.refresh();
+    client.getBooleanValue('flag', false);
+    await api.shutdown();
+
+    expect([for (final e in evaluations) e.isCacheHit], [false, true]);
+    expect(exposureEvents(), hasLength(1));
+  });
+
+  test('closes every exposure frame', () async {
+    final (client, provider) = await start();
+
+    client.getBooleanValue('flag', false);
+    client.getStringValue('flag', 'default');
+    client.getBooleanValue(
+      'plain',
+      false,
+      options: EvaluationOptions(
+        hooks: [_ThrowingAfterHook(), _NestedEvaluationHook(client)],
+      ),
+    );
+    provider.resolveBooleanValue('plain', false, EvaluationContext.empty);
+
+    expect(provider.openExposureFrames, 0);
+  });
+
   test('does not report an allocation without exposure logging', () async {
     final (client, _) = await start();
 
@@ -324,6 +360,27 @@ void main() {
     expect(evaluations.single.shouldSend, isTrue);
     expect(exposureEvents(), hasLength(1));
   });
+
+  test(
+    'a direct provider call inside a hook keeps the outer exposure',
+    () async {
+      final (client, provider) = await start();
+
+      client.getBooleanValue(
+        'flag',
+        false,
+        options: EvaluationOptions(hooks: [_DirectResolveHook(provider)]),
+      );
+      await api.shutdown();
+
+      expect(evaluations.single.flagKey, 'flag');
+      expect(evaluations.single.shouldSend, isTrue);
+      expect(
+        [for (final event in exposureEvents()) (event['flag']! as Map)['key']],
+        ['flag'],
+      );
+    },
+  );
 
   test('records nested evaluations of the same flag once', () async {
     final (client, _) = await start();
@@ -382,6 +439,33 @@ void main() {
     );
 
     expect(client.getBooleanDetails('flag', false).errorCode, isNull);
+  });
+
+  test('contains a failure of its own logging', () {
+    final logger = _MockLogger();
+    when(
+      () => logger.warning(any(), error: any(named: 'error')),
+    ).thenThrow(StateError('logger failed'));
+    final hook = ExposureHook.withLogger(
+      (_) => throw StateError('boom'),
+      logger,
+    );
+
+    expect(
+      () => hook.finallyAfter(
+        HookContext(
+          flagKey: 'flag',
+          defaultValue: false,
+          flagValueType: FlagValueType.boolean,
+          clientMetadata: const ClientMetadata(),
+          providerMetadata: const ProviderMetadata(name: 'Datadog'),
+          evaluationContext: EvaluationContext.empty,
+        ),
+        FlagEvaluationDetails(flagKey: 'flag', value: true),
+        HookHints(),
+      ),
+      returnsNormally,
+    );
   });
 
   test('skips evaluations from other providers', () async {
@@ -583,5 +667,20 @@ final class _NestedEvaluationHook extends HookAdapter {
     if (_nested) return;
     _nested = true;
     _client.getBooleanValue(context.flagKey, false);
+  }
+}
+
+final class _DirectResolveHook extends HookAdapter {
+  final DatadogOpenFeatureProvider _provider;
+
+  _DirectResolveHook(this._provider);
+
+  @override
+  void after(
+    HookContext context,
+    FlagEvaluationDetails<Object> details,
+    HookHints hints,
+  ) {
+    _provider.resolveBooleanValue('plain', false, EvaluationContext.empty);
   }
 }
