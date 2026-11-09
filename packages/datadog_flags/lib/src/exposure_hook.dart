@@ -87,7 +87,9 @@ final class ExposureEvaluation {
 /// for every evaluation, so it must be fast and must not do I/O. Exceptions
 /// from the callback are caught and logged; they never change the evaluation.
 ///
-/// Evaluations from other providers are skipped.
+/// The provider decides the exposure in its own `finallyAfter` hook, which
+/// OpenFeature runs before this one. Evaluations from other providers,
+/// including providers that wrap the Datadog provider, are skipped.
 final class ExposureHook extends HookAdapter {
   final ExposureCallback _callback;
   final FlagsLogger _logger;

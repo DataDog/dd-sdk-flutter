@@ -65,7 +65,7 @@ separate pure-Dart OpenFeature provider in that isolate.
 
 This package exports `ExposureHook` from `datadog_flags`. Use it to record
 exposures in your own data store, also with `trackExposures: false`. See
-[Exposures in your own data store](../datadog_flags/README.md#exposures-in-your-own-data-store).
+[Exposures in your own data store](https://pub.dev/packages/datadog_flags#exposures-in-your-own-data-store).
 
 ## Legacy API migration
 

@@ -198,11 +198,8 @@ The same features are also available in flag metadata under keys that start with
 `__dd_feature.`, for example `__dd_feature.holdout.key`. Other keys that start
 with `__dd_` are internal and can change.
 
-The provider records an exposure only after the whole evaluation succeeds, in
-its own OpenFeature `finallyAfter` hook. If a later hook fails, there is no
-exposure. A direct call to a `DatadogOpenFeatureProvider.resolve...Value`
-method, or a provider that wraps this provider without running its hooks,
-records no exposure.
+An evaluation counts as an exposure only if the whole evaluation succeeds. If
+another hook fails, there is no exposure.
 
 ## Migrate the legacy API
 
