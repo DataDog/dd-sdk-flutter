@@ -235,7 +235,8 @@ class DatadogSessionReplayConfiguration {
   /// When [imageDownscaling] is [ImageDownscaling.enabled], images are
   /// downscaled as needed to meet this budget and the painted bounds.
   ///
-  /// Defaults to approximately 800×800 decoded pixels.
+  /// Defaults to approximately 800×800 decoded pixels. Values below 1 are
+  /// ignored, with a warning, in favor of the default.
   int maxImagePixelBudget;
 
   /// How text widgets are recorded. See [TextCaptureMode].

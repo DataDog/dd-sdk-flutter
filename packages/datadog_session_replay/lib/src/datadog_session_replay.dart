@@ -10,6 +10,8 @@ import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
 import '../datadog_session_replay.dart';
+import 'capture/element_recorders/raster_resources.dart'
+    show defaultMaxImagePixelBudget;
 import 'capture/recorder.dart';
 import 'datadog_session_replay_platform_interface.dart';
 import 'processor/processor.dart';
@@ -89,9 +91,24 @@ class DatadogSessionReplay {
         ),
         touchPrivacyLevel: _configuration.touchPrivacyLevel,
         imageDownscaling: _configuration.imageDownscaling,
-        maxImagePixelBudget: _configuration.maxImagePixelBudget,
+        maxImagePixelBudget: validMaxImagePixelBudget(
+          _configuration.maxImagePixelBudget,
+          internalLogger,
+        ),
         textCaptureMode: _configuration.textCaptureMode,
       );
+
+  /// [budget] if it allows at least one pixel. Otherwise, warns and returns
+  /// [defaultMaxImagePixelBudget], since no bitmap could fit a smaller budget.
+  @visibleForTesting
+  static int validMaxImagePixelBudget(int budget, InternalLogger logger) {
+    if (budget >= 1) return budget;
+    logger.warn(
+      'DatadogSessionReplayConfiguration.maxImagePixelBudget must be at least '
+      '1, but was $budget. Using the default of $defaultMaxImagePixelBudget.',
+    );
+    return defaultMaxImagePixelBudget;
+  }
 
   void addElement(Key key, Element e) {
     _recorder.addElement(key, e);
