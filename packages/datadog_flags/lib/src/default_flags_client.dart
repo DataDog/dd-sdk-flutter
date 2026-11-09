@@ -12,6 +12,7 @@ import 'exposure_logger.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_repository.dart';
+import 'split_features.dart';
 
 class DefaultDatadogFlagsClient
     implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
@@ -119,18 +120,6 @@ class DefaultDatadogFlagsClient
     );
   }
 
-  FlagDetails<Map<String, Object?>> getStructureDetails({
-    required String key,
-    required Map<String, Object?> defaultValue,
-  }) {
-    return getDetails(
-      key: key,
-      defaultValue: defaultValue,
-      requestedType: FlagVariationType.object,
-      valueGuard: (value) => value is Map<String, Object?>,
-    );
-  }
-
   @override
   Future<void> shutdown() async {
     isShutdown = true;
@@ -151,6 +140,55 @@ class DefaultDatadogFlagsClient
     required T defaultValue,
     required FlagVariationType requestedType,
     bool Function(Object?)? valueGuard,
+  }) {
+    final resolution = resolveDeferringExposure(
+      key: key,
+      defaultValue: defaultValue,
+      requestedType: requestedType,
+      valueGuard: valueGuard,
+    );
+    resolution.exposure?.record();
+    return resolution.details;
+  }
+
+  /// Evaluates a flag without recording its exposure.
+  ///
+  /// The returned exposure is non-null for a successful evaluation of an
+  /// allocation that logs exposures. The caller records it once the whole
+  /// evaluation has succeeded.
+  ({FlagDetails<T> details, PendingExposure? exposure})
+  resolveDeferringExposure<T>({
+    required String key,
+    required T defaultValue,
+    required FlagVariationType requestedType,
+    bool Function(Object?)? valueGuard,
+  }) {
+    PendingExposure? exposure;
+    final details = _resolve(
+      key: key,
+      defaultValue: defaultValue,
+      requestedType: requestedType,
+      valueGuard: valueGuard,
+      onSuccess: (assignment, context) {
+        if (assignment.doLog) {
+          exposure = PendingExposure._(
+            _exposureLogger,
+            key,
+            assignment,
+            context,
+          );
+        }
+      },
+    );
+    return (details: details, exposure: exposure);
+  }
+
+  FlagDetails<T> _resolve<T>({
+    required String key,
+    required T defaultValue,
+    required FlagVariationType requestedType,
+    bool Function(Object?)? valueGuard,
+    required void Function(FlagAssignment, FlagsEvaluationContext) onSuccess,
   }) {
     if (isShutdown) {
       return FlagDetails(
@@ -232,12 +270,7 @@ class DefaultDatadogFlagsClient
       );
     }
 
-    _exposureLogger.logExposure(
-      flagKey: key,
-      assignment: assignment,
-      evaluationContext: context,
-    );
-
+    onSuccess(assignment, context);
     _evaluationAggregator.recordEvaluation(
       flagKey: key,
       assignment: assignment,
@@ -253,7 +286,37 @@ class DefaultDatadogFlagsClient
       flagMetadata: {
         datadogAllocationKeyMetadata: assignment.allocationKey,
         datadogSerialIdMetadata: ?assignment.serialId,
+        ...assignment.features.toFlagMetadata(),
       },
     );
   }
+}
+
+/// An exposure that is recorded only after its evaluation succeeds.
+final class PendingExposure {
+  final ExposureLogger _logger;
+  final String flagKey;
+  final FlagAssignment assignment;
+  final FlagsEvaluationContext evaluationContext;
+
+  PendingExposure._(
+    this._logger,
+    this.flagKey,
+    this.assignment,
+    this.evaluationContext,
+  );
+
+  /// Whether the subject was already exposed to this assignment.
+  bool get isCacheHit => _logger.isCached(
+    flagKey: flagKey,
+    assignment: assignment,
+    evaluationContext: evaluationContext,
+  );
+
+  /// Records the exposure and returns whether it was already recorded.
+  bool record() => _logger.logExposure(
+    flagKey: flagKey,
+    assignment: assignment,
+    evaluationContext: evaluationContext,
+  );
 }

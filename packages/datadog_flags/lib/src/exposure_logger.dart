@@ -13,6 +13,7 @@ import 'evaluation_context.dart';
 import 'flags_runtime.dart';
 import 'intake_request.dart';
 import 'json_value.dart';
+import 'split_features.dart';
 
 class ExposureLogger {
   static const Duration defaultUploadTimeout = Duration(seconds: 15);
@@ -56,30 +57,46 @@ class ExposureLogger {
     unawaited(settled.whenComplete(() => _inheritedUploads.remove(settled)));
   }
 
-  void logExposure({
+  /// Whether [assignment] was already exposed to this subject.
+  bool isCached({
     required String flagKey,
     required FlagAssignment assignment,
     required FlagsEvaluationContext evaluationContext,
   }) {
-    final configuration = runtime.configuration;
-    if (!configuration.trackExposures || !assignment.doLog) {
-      return;
+    return _loggedAssignments[_ExposureCacheKey(
+          targetingKey: evaluationContext.targetingKey,
+          flagKey: flagKey,
+        )] ==
+        _ExposureCacheValue.of(assignment);
+  }
+
+  /// Records an exposure of [assignment] in the exposure cache and, when
+  /// exposure tracking is on, queues it for Datadog.
+  ///
+  /// Returns whether the subject was already exposed. The cache records even
+  /// when exposure tracking is off, so exposure hooks keep correct verdicts.
+  bool logExposure({
+    required String flagKey,
+    required FlagAssignment assignment,
+    required FlagsEvaluationContext evaluationContext,
+  }) {
+    if (!assignment.doLog) {
+      return false;
     }
 
     final cacheKey = _ExposureCacheKey(
       targetingKey: evaluationContext.targetingKey,
       flagKey: flagKey,
     );
-    final cacheValue = _ExposureCacheValue(
-      allocationKey: assignment.allocationKey,
-      variationKey: assignment.variationKey,
-      serialId: assignment.serialId,
-    );
+    final cacheValue = _ExposureCacheValue.of(assignment);
     if (_loggedAssignments[cacheKey] == cacheValue) {
-      return;
+      return true;
     }
     _loggedAssignments[cacheKey] = cacheValue;
 
+    if (!runtime.configuration.trackExposures) {
+      return false;
+    }
     _pendingExposures.add(
       _buildExposureEvent(
         flagKey: flagKey,
@@ -88,6 +105,7 @@ class ExposureLogger {
       ),
     );
     _scheduleFlush();
+    return false;
   }
 
   Future<void> shutdown() {
@@ -204,6 +222,9 @@ class ExposureLogger {
       'attributes': sanitizeJsonValue(evaluationContext.attributes),
     });
     final serialId = assignment.serialId;
+    final features = assignment.features.forDestination(
+      SplitFeatureDestination.exposure,
+    );
     return {
       'timestamp': runtime.configuration.dateProvider().millisecondsSinceEpoch,
       'allocation': {'key': assignment.allocationKey},
@@ -211,6 +232,7 @@ class ExposureLogger {
       'variant': {'key': assignment.variationKey},
       'serial_id': ?serialId,
       'subject': subject,
+      if (features.isNotEmpty) 'features': features,
     };
   }
 
@@ -288,6 +310,13 @@ final class _ExposureCacheValue {
     required this.variationKey,
     required this.serialId,
   });
+
+  _ExposureCacheValue.of(FlagAssignment assignment)
+    : this(
+        allocationKey: assignment.allocationKey,
+        variationKey: assignment.variationKey,
+        serialId: assignment.serialId,
+      );
 
   @override
   bool operator ==(Object other) {

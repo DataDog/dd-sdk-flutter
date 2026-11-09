@@ -17,6 +17,9 @@ FlagAssignment _$FlagAssignmentFromJson(Map<String, dynamic> json) =>
       reason: json['reason'] as String,
       doLog: json['doLog'] as bool,
       serialId: (json['serialId'] as num?)?.toInt(),
+      features: json['features'] == null
+          ? const []
+          : SplitFeature.listFromJson(json['features']),
     );
 
 Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
@@ -28,4 +31,5 @@ Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
       'reason': instance.reason,
       'doLog': instance.doLog,
       'serialId': instance.serialId,
+      'features': ?SplitFeature.listToJson(instance.features),
     };
