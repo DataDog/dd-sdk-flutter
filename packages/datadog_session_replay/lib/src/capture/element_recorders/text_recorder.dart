@@ -19,6 +19,23 @@ import 'common_nodes.dart';
 import 'raster_resources.dart';
 import 'recording_extensions.dart';
 
+/// Font families of Flutter's default typography on each platform. For Latin
+/// text, their glyphs stay within the line boxes Flutter lays out, so
+/// paragraphs drawn only with them don't need a margin for glyph ink.
+const Set<String> _platformDefaultFontFamilies = {
+  'Roboto',
+  'CupertinoSystemText',
+  'CupertinoSystemDisplay',
+  '.AppleSystemUIFont',
+  'Segoe UI',
+  '.SF UI Text',
+  '.SF UI Display',
+};
+
+/// The last code point of Latin Extended-B. Other scripts can have marks that
+/// reach past the line, or be drawn with a fallback font.
+const int _lastLatinCodePoint = 0x024F;
+
 /// Captures [RichText] widgets, which also covers [Text].
 ///
 /// In [TextCaptureMode.standard] the text is sent as a text wireframe. In
@@ -64,7 +81,6 @@ class TextElementRecorder implements ElementRecorder {
       );
 
       // For now, contact all child spans into a single string.
-      // TODO(RUM-10230: Research how to support inline spans with different styles
       final stringBuilder = StringBuffer();
       bool hasWidgetChildern = _getText(
         textSpan,
@@ -125,13 +141,24 @@ class TextElementRecorder implements ElementRecorder {
   ) {
     final paragraph = element.renderObject;
     if (paragraph is! RenderParagraph || !paragraph.hasSize) return null;
+
+    // Capture runs on a timer, so a paragraph can be waiting for layout, for
+    // example after a system font change. Its text metrics aren't valid then.
+    // debugNeedsLayout only works in debug builds, where text metrics assert.
+    if (kDebugMode && paragraph.debugNeedsLayout) return null;
+
     final size = paragraph.size;
     if (size.isEmpty) return null;
 
     final scale = math.max(attributes.scaleX, attributes.scaleY);
     if (scale <= 0) return null;
+
+    final bounds = paintedBounds(paragraph);
+    final rasterAttributes = bounds == Offset.zero & size
+        ? attributes
+        : _attributesFor(bounds, size, attributes);
     final (:width, :height) = bitmapSizeAt(
-      size,
+      bounds.size,
       devicePixelRatioOf(element) * rasterScale(scale),
     );
     final (width: pixelWidth, height: pixelHeight) = fitPixelBudget(
@@ -142,11 +169,12 @@ class TextElementRecorder implements ElementRecorder {
 
     final rasterKey = TextRasterKey.fromParagraph(
       paragraph,
+      bounds: bounds,
       pixelWidth: pixelWidth,
       pixelHeight: pixelHeight,
     );
     SpecificElement resourceSemantics(int resourceKey) => resourceElement(
-      attributes,
+      rasterAttributes,
       wireframeId: wireframeId,
       resourceKey: resourceKey,
       subtreeStrategy: subtreeStrategy,
@@ -158,7 +186,7 @@ class TextElementRecorder implements ElementRecorder {
     // Paint now (cheap), while the paragraph shows this frame. Reading the pixels
     // back waits for [AdditionalProcessingElement.process], which the recorder runs
     // one element at a time, so readbacks don't pile up on text-heavy screens.
-    final layer = _paint(paragraph, size, pixelWidth, pixelHeight);
+    final layer = _paint(paragraph, bounds, pixelWidth, pixelHeight);
     if (layer == null) return textSemantics;
 
     return AdditionalProcessingElement(
@@ -180,11 +208,96 @@ class TextElementRecorder implements ElementRecorder {
     );
   }
 
-  /// Paints [paragraph] into a new layer tree scaled to fill a
-  /// [pixelWidth] × [pixelHeight] bitmap. Returns `null` if painting fails.
+  /// The area [paragraph] paints, in its own coordinates.
+  @visibleForTesting
+  static Rect paintedBounds(RenderParagraph paragraph) {
+    final box = Offset.zero & paragraph.size;
+    final textSize = paragraph.textSize;
+
+    final overflows =
+        box.width < textSize.width ||
+        box.height < textSize.height ||
+        paragraph.didExceedMaxLines;
+    if (overflows && paragraph.overflow != TextOverflow.visible) return box;
+
+    final text = overflows ? box.expandToInclude(Offset.zero & textSize) : box;
+
+    var maxFontSize = 0.0;
+    var needsInkMargin = false;
+    final shadows = <Shadow>[];
+
+    void visit(InlineSpan span, TextStyle inherited) {
+      if (span is! TextSpan) return;
+      final style = inherited.merge(span.style);
+      if (span.text case final text? when text.isNotEmpty) {
+        maxFontSize = math.max(
+          maxFontSize,
+          paragraph.textScaler.scale(style.fontSize ?? kDefaultFontSize),
+        );
+        // Once one span needs the margin, the rest don't need checking.
+        needsInkMargin = needsInkMargin || !_staysInLineBoxes(style, text);
+        shadows.addAll(style.shadows ?? const []);
+      }
+      for (final child in span.children ?? const <InlineSpan>[]) {
+        visit(child, style);
+      }
+    }
+
+    visit(paragraph.text, const TextStyle());
+
+    final ink = needsInkMargin ? text.inflate(maxFontSize / 2) : text;
+    var bounds = ink;
+    for (final shadow in shadows) {
+      // A Gaussian blur fades out within about three sigmas.
+      bounds = bounds.expandToInclude(
+        ink.shift(shadow.offset).inflate(3 * shadow.blurSigma),
+      );
+    }
+    return bounds;
+  }
+
+  /// Whether [text] drawn with [style] stays within its line boxes: upright
+  /// Latin text in a platform default font, with normal line height and
+  /// letter spacing.
+  static bool _staysInLineBoxes(TextStyle style, String text) {
+    final fontFamily = style.fontFamily;
+    return (fontFamily == null ||
+            _platformDefaultFontFamilies.contains(fontFamily)) &&
+        (style.fontStyle ?? FontStyle.normal) == FontStyle.normal &&
+        (style.fontVariations?.isEmpty ?? true) &&
+        (style.height ?? 1) >= 1 &&
+        (style.letterSpacing ?? 0) >= 0 &&
+        text.runes.every((codePoint) => codePoint <= _lastLatinCodePoint);
+  }
+
+  /// [attributes], which cover the paragraph's layout box of [size], moved and
+  /// resized to cover [bounds] in the paragraph's coordinates instead.
+  static CapturedViewAttributes _attributesFor(
+    Rect bounds,
+    Size size,
+    CapturedViewAttributes attributes,
+  ) {
+    final box = attributes.paintBounds;
+    final scaleX = box.width / size.width;
+    final scaleY = box.height / size.height;
+    return CapturedViewAttributes(
+      paintBounds: Rect.fromLTWH(
+        box.left + bounds.left * scaleX,
+        box.top + bounds.top * scaleY,
+        bounds.width * scaleX,
+        bounds.height * scaleY,
+      ),
+      scaleX: attributes.scaleX,
+      scaleY: attributes.scaleY,
+    );
+  }
+
+  /// Paints the [bounds] area of [paragraph] into a new layer tree scaled to
+  /// fill a [pixelWidth] × [pixelHeight] bitmap. Returns `null` if painting
+  /// fails.
   static OffsetLayer? _paint(
     RenderParagraph paragraph,
-    Size size,
+    Rect bounds,
     int pixelWidth,
     int pixelHeight,
   ) {
@@ -192,13 +305,13 @@ class TextElementRecorder implements ElementRecorder {
     try {
       final scaleLayer = TransformLayer(
         transform: Matrix4.diagonal3Values(
-          pixelWidth / size.width,
-          pixelHeight / size.height,
+          pixelWidth / bounds.width,
+          pixelHeight / bounds.height,
           1,
-        ),
+        )..translateByDouble(-bounds.left, -bounds.top, 0, 1),
       );
       layer.append(scaleLayer);
-      final context = _ParagraphPaintingContext(scaleLayer, Offset.zero & size);
+      final context = _ParagraphPaintingContext(scaleLayer, bounds);
       paragraph.paint(context, Offset.zero);
       context.finish();
       return layer;
@@ -287,6 +400,10 @@ final class TextRasterKey {
   /// highlight is painted with the text.
   final List<TextSelection> selections;
   final Size size;
+
+  /// The area the paragraph paints, in its own coordinates. See
+  /// [TextElementRecorder.paintedBounds].
+  final Rect bounds;
   final int pixelWidth;
   final int pixelHeight;
 
@@ -305,12 +422,14 @@ final class TextRasterKey {
     required this.selectionColor,
     required this.selections,
     required this.size,
+    required this.bounds,
     required this.pixelWidth,
     required this.pixelHeight,
   });
 
   factory TextRasterKey.fromParagraph(
     RenderParagraph paragraph, {
+    required Rect bounds,
     required int pixelWidth,
     required int pixelHeight,
   }) {
@@ -333,6 +452,7 @@ final class TextRasterKey {
           // ignore: invalid_use_of_visible_for_testing_member
           : paragraph.selections,
       size: paragraph.size,
+      bounds: bounds,
       pixelWidth: pixelWidth,
       pixelHeight: pixelHeight,
     );
@@ -355,6 +475,7 @@ final class TextRasterKey {
         other.selectionColor == selectionColor &&
         listEquals(other.selections, selections) &&
         other.size == size &&
+        other.bounds == bounds &&
         other.pixelWidth == pixelWidth &&
         other.pixelHeight == pixelHeight;
   }
@@ -375,6 +496,7 @@ final class TextRasterKey {
     selectionColor,
     Object.hashAll(selections),
     size,
+    bounds,
     pixelWidth,
     pixelHeight,
   );

@@ -15,6 +15,7 @@ import 'package:datadog_session_replay/src/datadog_session_replay_platform_inter
 import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -124,7 +125,7 @@ void main() {
   });
 
   group('high fidelity mode', () {
-    testWidgets('records paragraph as image at its bounds', (tester) async {
+    testWidgets('records paragraph as image around its bounds', (tester) async {
       final recorder = createRecorder();
       await tester.pumpWidget(
         wrap(
@@ -140,11 +141,17 @@ void main() {
 
       final node = nodes.single as ResourceImageNode;
       final size = tester.getSize(find.byType(RichText));
-      expect(node.attributes.paintBounds, const Offset(10, 20) & size);
+      // Plus a margin of half the 20px font size for glyph ink.
+      expect(
+        node.attributes.paintBounds,
+        (const Offset(10, 20) & size).inflate(10),
+      );
       expect(node.resourceKey, savedResourceKeys().single);
     });
 
-    testWidgets('uploads drawn pixels at size times DPR', (tester) async {
+    testWidgets('uploads drawn pixels at painted size times DPR', (
+      tester,
+    ) async {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.resetDevicePixelRatio);
       final recorder = createRecorder();
@@ -163,8 +170,9 @@ void main() {
       ).captured;
       final width = captured[0] as int;
       final height = captured[1] as int;
-      expect(width, (size.width * 2).ceil());
-      expect(height, (size.height * 2).ceil());
+      // The size plus a 10px glyph margin on each side, at 2x.
+      expect(width, ((size.width + 20) * 2).ceil());
+      expect(height, ((size.height + 20) * 2).ceil());
       final bytes = captured[2] as ByteData;
       expect(bytes.lengthInBytes, width * height * 4);
 
@@ -323,8 +331,12 @@ void main() {
       final height = captured[1] as int;
       expect(width * height, lessThanOrEqualTo(20000));
       final size = tester.getSize(find.byType(RichText));
-      // Keeps the paragraph's aspect ratio, within a pixel of rounding.
-      expect(width / height, closeTo(size.width / size.height, 0.5));
+      // Keeps the painted area's aspect ratio (the size plus a 10px glyph
+      // margin on each side), within a pixel of rounding.
+      expect(
+        width / height,
+        closeTo((size.width + 20) / (size.height + 20), 0.5),
+      );
     });
 
     for (final downscaling in ImageDownscaling.values) {
@@ -523,6 +535,359 @@ void main() {
     });
 
     expect(savedPixels(), expected);
+  });
+
+  group('painted bounds', () {
+    RenderParagraph paragraph(WidgetTester tester) =>
+        tester.renderObject<RenderParagraph>(find.byType(RichText));
+
+    Future<RenderParagraph> pumpText(WidgetTester tester, Widget text) async {
+      await tester.pumpWidget(wrap(createRecorder(), text));
+      return paragraph(tester);
+    }
+
+    // Half of the 20px test font size, allowed for glyph ink on every side.
+    const margin = 10.0;
+
+    testWidgets('add a glyph margin around plain text', (tester) async {
+      final render = await pumpText(tester, const Text('Plain', style: style));
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.size).inflate(margin),
+      );
+    });
+
+    for (final fontFamily in [
+      'Roboto',
+      'CupertinoSystemText',
+      'CupertinoSystemDisplay',
+      '.AppleSystemUIFont',
+      'Segoe UI',
+    ]) {
+      testWidgets('add no margin for Latin text in $fontFamily', (
+        tester,
+      ) async {
+        final render = await pumpText(
+          tester,
+          Text('Plain text', style: style.copyWith(fontFamily: fontFamily)),
+        );
+
+        expect(
+          TextElementRecorder.paintedBounds(render),
+          Offset.zero & render.size,
+        );
+      });
+    }
+
+    testWidgets('add no margin for text without a font family', (tester) async {
+      final render = await pumpText(
+        tester,
+        const DefaultTextStyle(style: style, child: Text('Plain text')),
+      );
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        Offset.zero & render.size,
+      );
+    });
+
+    const roboto = TextStyle(
+      fontSize: 20,
+      color: Color(0xFF000000),
+      fontFamily: 'Roboto',
+    );
+    for (final (description, text, textStyle) in [
+      ('a custom font', 'Plain', roboto.copyWith(fontFamily: 'Lobster')),
+      ('italic text', 'Plain', roboto.copyWith(fontStyle: FontStyle.italic)),
+      (
+        'variable font axes',
+        'Plain',
+        roboto.copyWith(fontVariations: const [FontVariation('slnt', -10)]),
+      ),
+      ('a short line height', 'Plain', roboto.copyWith(height: 0.8)),
+      ('negative letter spacing', 'Plain', roboto.copyWith(letterSpacing: -1)),
+      ('non-Latin text', 'Tiếng Việt', roboto),
+    ]) {
+      testWidgets('add a margin for $description', (tester) async {
+        final render = await pumpText(tester, Text(text, style: textStyle));
+
+        expect(
+          TextElementRecorder.paintedBounds(render),
+          (Offset.zero & render.size).inflate(margin),
+        );
+      });
+    }
+
+    testWidgets('add a margin when any span needs it', (tester) async {
+      final render = await pumpText(
+        tester,
+        const Text.rich(
+          TextSpan(
+            text: 'Upright ',
+            style: roboto,
+            children: [
+              TextSpan(
+                text: 'italic',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.size).inflate(margin),
+      );
+    });
+
+    testWidgets('include shadows without a margin for plain text', (
+      tester,
+    ) async {
+      final render = await pumpText(
+        tester,
+        Text(
+          'Shadow',
+          style: roboto.copyWith(shadows: const [Shadow(offset: Offset(4, 6))]),
+        ),
+      );
+
+      final box = Offset.zero & render.size;
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        Rect.fromLTRB(0, 0, box.right + 4, box.bottom + 6),
+      );
+    });
+
+    testWidgets('use the largest font size for the margin', (tester) async {
+      final render = await pumpText(
+        tester,
+        const Text.rich(
+          TextSpan(
+            text: 'Small ',
+            style: style,
+            children: [TextSpan(text: 'large', style: TextStyle(fontSize: 40))],
+          ),
+        ),
+      );
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.size).inflate(20),
+      );
+    });
+
+    testWidgets('scale the margin with the text', (tester) async {
+      final render = await pumpText(
+        tester,
+        const MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Text('Scaled', style: style),
+        ),
+      );
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.size).inflate(20),
+      );
+    });
+
+    testWidgets('include text running past the box when visible', (
+      tester,
+    ) async {
+      final render = await pumpText(
+        tester,
+        const SizedBox(
+          width: 40,
+          child: Text(
+            'Text wider than its box',
+            style: style,
+            softWrap: false,
+            overflow: TextOverflow.visible,
+          ),
+        ),
+      );
+
+      expect(render.textSize.width, greaterThan(render.size.width));
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.textSize).inflate(margin),
+      );
+    });
+
+    for (final overflow in [
+      TextOverflow.clip,
+      TextOverflow.ellipsis,
+      TextOverflow.fade,
+    ]) {
+      testWidgets('are the layout box when overflow is $overflow', (
+        tester,
+      ) async {
+        final render = await pumpText(
+          tester,
+          SizedBox(
+            width: 40,
+            child: Text(
+              'Text wider than its box',
+              softWrap: false,
+              overflow: overflow,
+              // Clipping covers shadows too.
+              style: style.copyWith(
+                shadows: const [Shadow(offset: Offset(4, 6))],
+              ),
+            ),
+          ),
+        );
+
+        expect(
+          TextElementRecorder.paintedBounds(render),
+          Offset.zero & render.size,
+        );
+      });
+    }
+
+    testWidgets('include shadows', (tester) async {
+      final render = await pumpText(
+        tester,
+        Text(
+          'Shadow',
+          style: style.copyWith(
+            shadows: const [
+              Shadow(offset: Offset(4, 6)),
+              Shadow(offset: Offset(-3, -2)),
+            ],
+          ),
+        ),
+      );
+
+      final ink = (Offset.zero & render.size).inflate(margin);
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        Rect.fromLTRB(ink.left - 3, ink.top - 2, ink.right + 4, ink.bottom + 6),
+      );
+    });
+
+    testWidgets('include shadow blur', (tester) async {
+      const shadow = Shadow(blurRadius: 4);
+      final render = await pumpText(
+        tester,
+        Text('Blur', style: style.copyWith(shadows: const [shadow])),
+      );
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.size).inflate(margin + 3 * shadow.blurSigma),
+      );
+    });
+
+    testWidgets('include shadows on inner spans', (tester) async {
+      final render = await pumpText(
+        tester,
+        const Text.rich(
+          TextSpan(
+            text: 'Outer ',
+            style: style,
+            children: [
+              TextSpan(
+                text: 'inner',
+                style: TextStyle(shadows: [Shadow(offset: Offset(0, 5))]),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final ink = (Offset.zero & render.size).inflate(margin);
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        Rect.fromLTRB(ink.left, ink.top, ink.right, ink.bottom + 5),
+      );
+    });
+
+    testWidgets('extend the recorded image past the box', (tester) async {
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final recorder = createRecorder();
+      await tester.pumpWidget(
+        wrap(
+          recorder,
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: SizedBox(
+              width: 40,
+              child: Text(
+                'Text wider than its box',
+                style: style,
+                softWrap: false,
+                overflow: TextOverflow.visible,
+              ),
+            ),
+          ),
+        ),
+      );
+      final render = paragraph(tester);
+
+      final nodes = await capture(tester, recorder);
+
+      final node = nodes.single as ResourceImageNode;
+      expect(
+        node.attributes.paintBounds,
+        (const Offset(20, 20) & render.textSize).inflate(margin),
+      );
+      final captured = verify(
+        () => platform.saveImageForProcessing(
+          any(),
+          captureAny(),
+          captureAny(),
+          captureAny(),
+        ),
+      ).captured;
+      final width = captured[0] as int;
+      final height = captured[1] as int;
+      expect(width, ((render.textSize.width + 2 * margin) * 2).ceil());
+      // The test font draws glyphs as solid boxes, so text past the 40px box
+      // leaves opaque pixels there. The box ends 50px into the image (the
+      // margin plus its width), which is 100 pixels at 2x.
+      final bytes = captured[2] as ByteData;
+      var opaquePastBox = 0;
+      for (var y = 0; y < height; y++) {
+        for (var x = 100; x < width; x++) {
+          if (bytes.getUint8((y * width + x) * 4 + 3) == 0xFF) opaquePastBox++;
+        }
+      }
+      expect(opaquePastBox, greaterThan(0));
+    });
+
+    testWidgets('move the recorded image for shadows above and left', (
+      tester,
+    ) async {
+      final recorder = createRecorder();
+      await tester.pumpWidget(
+        wrap(
+          recorder,
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(
+              'Shadow',
+              style: style.copyWith(
+                shadows: const [Shadow(offset: Offset(-3, -2))],
+              ),
+            ),
+          ),
+        ),
+      );
+      final size = paragraph(tester).size;
+
+      final nodes = await capture(tester, recorder);
+
+      final node = nodes.single as ResourceImageNode;
+      final ink = (const Offset(20, 20) & size).inflate(margin);
+      expect(
+        node.attributes.paintBounds,
+        Rect.fromLTRB(ink.left - 3, ink.top - 2, ink.right, ink.bottom),
+      );
+    });
   });
 
   group('privacy', () {
