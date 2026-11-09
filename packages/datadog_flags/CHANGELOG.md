@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0
+
+### Breaking Changes
+
+- The minimum supported versions are now Dart 3.10 and Flutter 3.38.
+- Dependency version constraints are relaxed and several dependencies are bumped to new major versions as part of this v4 release.
+
+### Features
+
+- Flag evaluation now transparently supports obfuscated (SHA-256 encoded) flag assignment keys returned by the backend, with no change to evaluation calls, returned values, or telemetry.
+
 ## 1.1.1
 
 * Fix missing Flutter Web flag evaluation counts by sending only supported Datadog metadata (#1196).

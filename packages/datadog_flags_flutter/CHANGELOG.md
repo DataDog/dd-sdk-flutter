@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+### Fixes
+
+- Flag evaluation details now report `CACHED` when the assignment is restored from the configured store, instead of reusing the earlier network response reason.
+
 ## 1.1.0
 
 * Forward `DatadogFlagsConfiguration.initializationTimeout` to the core SDK. The first context initialization has a five-second timeout by default. Set it to `null`, zero, or a negative duration to disable it.
