@@ -367,6 +367,47 @@ void main() {
       });
     }
 
+    testWidgets('rasterizes again when an inline widget resizes', (
+      tester,
+    ) async {
+      final recorder = createRecorder();
+      final inlineWidth = ValueNotifier<double>(10);
+      addTearDown(inlineWidth.dispose);
+      // The span and the paragraph's size stay the same; only the inline
+      // widget resizes, which moves the text around it.
+      await tester.pumpWidget(
+        wrap(
+          recorder,
+          SizedBox(
+            width: 300,
+            height: 40,
+            child: Text.rich(
+              TextSpan(
+                text: 'Before ',
+                children: [
+                  WidgetSpan(
+                    child: ValueListenableBuilder<double>(
+                      valueListenable: inlineWidth,
+                      builder: (context, width, _) =>
+                          SizedBox(width: width, height: 10),
+                    ),
+                  ),
+                  const TextSpan(text: ' after'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await capture(tester, recorder);
+
+      inlineWidth.value = 40;
+      await tester.pump();
+      await capture(tester, recorder);
+
+      expect(savedResourceKeys().toSet().length, 2);
+    });
+
     testWidgets('rasterizes again when the selection changes', (tester) async {
       final recorder = createRecorder();
       await tester.pumpWidget(

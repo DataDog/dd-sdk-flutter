@@ -399,6 +399,12 @@ final class TextRasterKey {
   /// The current selection, for paragraphs inside a [SelectionArea], whose
   /// highlight is painted with the text.
   final List<TextSelection> selections;
+
+  /// Where widgets placed inline with [WidgetSpan] are laid out. The text
+  /// flows around them, so resizing one moves the text even when nothing else
+  /// changes. `null` for a child that isn't laid out, such as one cut off by
+  /// [maxLines].
+  final List<Rect?> inlineChildren;
   final Size size;
 
   /// The area the paragraph paints, in its own coordinates. See
@@ -421,6 +427,7 @@ final class TextRasterKey {
     required this.textHeightBehavior,
     required this.selectionColor,
     required this.selections,
+    required this.inlineChildren,
     required this.size,
     required this.bounds,
     required this.pixelWidth,
@@ -451,11 +458,28 @@ final class TextRasterKey {
           ? const []
           // ignore: invalid_use_of_visible_for_testing_member
           : paragraph.selections,
+      inlineChildren: _inlineChildren(paragraph),
       size: paragraph.size,
       bounds: bounds,
       pixelWidth: pixelWidth,
       pixelHeight: pixelHeight,
     );
+  }
+
+  static List<Rect?> _inlineChildren(RenderParagraph paragraph) {
+    return [
+      for (
+        var child = paragraph.firstChild;
+        child != null;
+        child = paragraph.childAfter(child)
+      )
+        if (child.parentData case TextParentData(
+          :final offset?,
+        ) when child.hasSize)
+          offset & child.size
+        else
+          null,
+    ];
   }
 
   @override
@@ -474,6 +498,7 @@ final class TextRasterKey {
         other.textHeightBehavior == textHeightBehavior &&
         other.selectionColor == selectionColor &&
         listEquals(other.selections, selections) &&
+        listEquals(other.inlineChildren, inlineChildren) &&
         other.size == size &&
         other.bounds == bounds &&
         other.pixelWidth == pixelWidth &&
@@ -495,6 +520,7 @@ final class TextRasterKey {
     textHeightBehavior,
     selectionColor,
     Object.hashAll(selections),
+    Object.hashAll(inlineChildren),
     size,
     bounds,
     pixelWidth,
