@@ -128,9 +128,12 @@ enum TextCaptureMode {
   /// This costs more than [standard]: each new or changed paragraph is
   /// rasterized during capture and uploaded as an image, so screens with
   /// frequently changing text (timers, counters, fast scrolling lists) upload
-  /// more data. Bitmaps are limited to
+  /// more data.
+  ///
+  /// Bitmaps are limited to
   /// [DatadogSessionReplayConfiguration.maxImagePixelBudget] pixels, so very
-  /// large paragraphs are rasterized at a lower resolution.
+  /// large paragraphs are rasterized at a lower resolution. This doesn't depend
+  /// on [DatadogSessionReplayConfiguration.imageDownscaling].
   ///
   /// Text masked by [TextAndInputPrivacyLevel.maskAll] is sent as masked
   /// text and is never rasterized. Editable text fields are always sent as
@@ -149,11 +152,15 @@ enum ImageDownscaling {
   /// Decoded images within that budget are uploaded at native resolution. They
   /// are **not** shrunk to match on-screen painted size; use
   /// [ImageDownscaling.enabled] for that.
+  ///
+  /// Rasterized icons over the same budget use a "Large Icon" placeholder.
   disabled,
 
   /// Downscale decoded images in Dart when needed so they fit the painted bounds
   /// (logical size × device pixel ratio) and
   /// [DatadogSessionReplayConfiguration.maxImagePixelBudget].
+  ///
+  /// Rasterized icons are also drawn at a lower resolution to fit the budget.
   enabled,
 }
 
@@ -210,9 +217,16 @@ class DatadogSessionReplayConfiguration {
   /// [maxImagePixelBudget]. [ImageDownscaling.disabled] (the default) uploads
   /// decoded pixels at native resolution when width × height is within
   /// [maxImagePixelBudget]; if over budget, uses a "Large Image" placeholder.
+  ///
+  /// Also applies to icons from fonts the replay player doesn't have, which
+  /// Session Replay rasterizes. Paragraphs recorded with
+  /// [TextCaptureMode.highFidelity] are always drawn at a lower resolution to
+  /// fit [maxImagePixelBudget], whatever this is set to.
   ImageDownscaling imageDownscaling;
 
-  /// Maximum decoded width × height (pixels) for image uploads.
+  /// Maximum decoded width × height (pixels) for image uploads, including the
+  /// bitmaps of paragraphs recorded with [TextCaptureMode.highFidelity] and of
+  /// rasterized icons.
   ///
   /// When [imageDownscaling] is [ImageDownscaling.disabled], decoded images
   /// above this value use a "Large Image" placeholder; at or below it, native

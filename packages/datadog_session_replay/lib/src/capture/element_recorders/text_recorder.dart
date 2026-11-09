@@ -5,6 +5,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -28,14 +29,9 @@ class TextElementRecorder implements ElementRecorder {
   final TextCaptureMode textCaptureMode;
 
   /// The largest bitmap, in pixels, a paragraph is rasterized into in
-  /// [TextCaptureMode.highFidelity]. What happens to larger paragraphs depends
-  /// on [imageDownscaling].
+  /// [TextCaptureMode.highFidelity]. Larger paragraphs are drawn at a lower
+  /// resolution.
   final int maxImagePixelBudget;
-
-  /// Whether paragraphs larger than [maxImagePixelBudget] are drawn at a lower
-  /// resolution ([ImageDownscaling.enabled]) or recorded as text
-  /// ([ImageDownscaling.disabled]).
-  final ImageDownscaling imageDownscaling;
 
   final RasterResourceCache<TextRasterKey> _rasterCache;
 
@@ -43,7 +39,6 @@ class TextElementRecorder implements ElementRecorder {
     this.keyGenerator, {
     this.textCaptureMode = TextCaptureMode.standard,
     this.maxImagePixelBudget = defaultMaxImagePixelBudget,
-    this.imageDownscaling = ImageDownscaling.disabled,
     int maxCachedRasters = defaultMaxCachedRasters,
   }) : _rasterCache = RasterResourceCache(maxEntries: maxCachedRasters);
 
@@ -120,7 +115,7 @@ class TextElementRecorder implements ElementRecorder {
 
   /// Rasterizes the paragraph [element] renders, falling back to
   /// [textSemantics] if it can't be drawn. Returns `null` if there's nothing
-  /// to rasterize or the bitmap would exceed the pixel budget.
+  /// to rasterize.
   CaptureNodeSemantics? _captureRaster(
     Element element,
     CapturedViewAttributes attributes,
@@ -135,14 +130,15 @@ class TextElementRecorder implements ElementRecorder {
 
     final scale = math.max(attributes.scaleX, attributes.scaleY);
     if (scale <= 0) return null;
-    final bitmapSize = rasterBitmapSize(
+    final (:width, :height) = bitmapSizeAt(
       size,
       devicePixelRatioOf(element) * rasterScale(scale),
-      maxPixels: maxImagePixelBudget,
-      downscaling: imageDownscaling,
     );
-    if (bitmapSize == null) return null;
-    final (width: pixelWidth, height: pixelHeight) = bitmapSize;
+    final (width: pixelWidth, height: pixelHeight) = fitPixelBudget(
+      width,
+      height,
+      maxImagePixelBudget,
+    );
 
     final rasterKey = TextRasterKey.fromParagraph(
       paragraph,
@@ -159,29 +155,40 @@ class TextElementRecorder implements ElementRecorder {
     final cachedKey = _rasterCache.lookup(rasterKey);
     if (cachedKey != null) return resourceSemantics(cachedKey);
 
-    final pending = _rasterCache.rasterizeOnce(
-      rasterKey,
-      () => _rasterize(paragraph, size, pixelWidth, pixelHeight),
-    );
+    // Paint now (cheap), while the paragraph shows this frame. Reading the pixels
+    // back waits for [AdditionalProcessingElement.process], which the recorder runs
+    // one element at a time, so readbacks don't pile up on text-heavy screens.
+    final layer = _paint(paragraph, size, pixelWidth, pixelHeight);
+    if (layer == null) return textSemantics;
+
     return AdditionalProcessingElement(
       subtreeStrategy: subtreeStrategy,
       process: () async {
-        final resourceKey = await pending;
-        return resourceKey == null
-            ? textSemantics
-            : resourceSemantics(resourceKey);
+        try {
+          final resourceKey = await _rasterCache.rasterizeOnce(
+            rasterKey,
+            () => _saveLayer(layer, pixelWidth, pixelHeight),
+          );
+          return resourceKey == null
+              ? textSemantics
+              : resourceSemantics(resourceKey);
+        } finally {
+          layer.dispose();
+        }
       },
+      discard: layer.dispose,
     );
   }
 
-  Future<int?> _rasterize(
+  /// Paints [paragraph] into a new layer tree scaled to fill a
+  /// [pixelWidth] × [pixelHeight] bitmap. Returns `null` if painting fails.
+  static OffsetLayer? _paint(
     RenderParagraph paragraph,
     Size size,
     int pixelWidth,
     int pixelHeight,
-  ) async {
+  ) {
     final layer = OffsetLayer();
-    ui.Image? image;
     try {
       final scaleLayer = TransformLayer(
         transform: Matrix4.diagonal3Values(
@@ -194,7 +201,22 @@ class TextElementRecorder implements ElementRecorder {
       final context = _ParagraphPaintingContext(scaleLayer, Offset.zero & size);
       paragraph.paint(context, Offset.zero);
       context.finish();
+      return layer;
+    } catch (_) {
+      layer.dispose();
+      return null;
+    }
+  }
 
+  /// Reads back the pixels of a layer painted by [_paint] and hands them to
+  /// the platform. Returns `null` on failure. The caller still owns [layer].
+  Future<int?> _saveLayer(
+    OffsetLayer layer,
+    int pixelWidth,
+    int pixelHeight,
+  ) async {
+    ui.Image? image;
+    try {
       image = await layer.toImage(
         Rect.fromLTWH(0, 0, pixelWidth.toDouble(), pixelHeight.toDouble()),
       );
@@ -203,7 +225,6 @@ class TextElementRecorder implements ElementRecorder {
       return null;
     } finally {
       image?.dispose();
-      layer.dispose();
     }
   }
 
@@ -261,6 +282,10 @@ final class TextRasterKey {
   final TextWidthBasis textWidthBasis;
   final ui.TextHeightBehavior? textHeightBehavior;
   final Color? selectionColor;
+
+  /// The current selection, for paragraphs inside a [SelectionArea], whose
+  /// highlight is painted with the text.
+  final List<TextSelection> selections;
   final Size size;
   final int pixelWidth;
   final int pixelHeight;
@@ -278,6 +303,7 @@ final class TextRasterKey {
     required this.textWidthBasis,
     required this.textHeightBehavior,
     required this.selectionColor,
+    required this.selections,
     required this.size,
     required this.pixelWidth,
     required this.pixelHeight,
@@ -301,6 +327,11 @@ final class TextRasterKey {
       textWidthBasis: paragraph.textWidthBasis,
       textHeightBehavior: paragraph.textHeightBehavior,
       selectionColor: paragraph.selectionColor,
+      // RenderParagraph exposes no other way to read its selection.
+      selections: paragraph.registrar == null
+          ? const []
+          // ignore: invalid_use_of_visible_for_testing_member
+          : paragraph.selections,
       size: paragraph.size,
       pixelWidth: pixelWidth,
       pixelHeight: pixelHeight,
@@ -322,6 +353,7 @@ final class TextRasterKey {
         other.textWidthBasis == textWidthBasis &&
         other.textHeightBehavior == textHeightBehavior &&
         other.selectionColor == selectionColor &&
+        listEquals(other.selections, selections) &&
         other.size == size &&
         other.pixelWidth == pixelWidth &&
         other.pixelHeight == pixelHeight;
@@ -341,6 +373,7 @@ final class TextRasterKey {
     textWidthBasis,
     textHeightBehavior,
     selectionColor,
+    Object.hashAll(selections),
     size,
     pixelWidth,
     pixelHeight,

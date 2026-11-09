@@ -107,6 +107,15 @@ double rasterScale(double scale) {
 }
 
 /// The whole-pixel size of a bitmap for content of [logicalSize] drawn at
+/// [pixelRatio].
+({int width, int height}) bitmapSizeAt(Size logicalSize, double pixelRatio) {
+  return (
+    width: math.max(1, (logicalSize.width * pixelRatio).ceil()),
+    height: math.max(1, (logicalSize.height * pixelRatio).ceil()),
+  );
+}
+
+/// The whole-pixel size of a bitmap for content of [logicalSize] drawn at
 /// [pixelRatio], kept within [maxPixels] the way decoded images are.
 ({int width, int height})? rasterBitmapSize(
   Size logicalSize,
@@ -114,8 +123,7 @@ double rasterScale(double scale) {
   required int maxPixels,
   required ImageDownscaling downscaling,
 }) {
-  final width = math.max(1, (logicalSize.width * pixelRatio).ceil());
-  final height = math.max(1, (logicalSize.height * pixelRatio).ceil());
+  final (:width, :height) = bitmapSizeAt(logicalSize, pixelRatio);
   if (width * height <= maxPixels) return (width: width, height: height);
 
   return switch (downscaling) {

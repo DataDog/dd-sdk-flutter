@@ -220,7 +220,6 @@ class SessionReplayRecorder {
       TextElementRecorder(
         keyGenerator,
         textCaptureMode: textCaptureMode,
-        imageDownscaling: imageDownscaling,
         maxImagePixelBudget: maxImagePixelBudget,
       ),
       IconRecorder(

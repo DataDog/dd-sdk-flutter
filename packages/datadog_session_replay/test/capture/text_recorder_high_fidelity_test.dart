@@ -13,6 +13,7 @@ import 'package:datadog_session_replay/src/capture/element_recorders/text_record
 import 'package:datadog_session_replay/src/capture/recorder.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/rum_context.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,7 +54,6 @@ void main() {
     TextAndInputPrivacyLevel textAndInputPrivacyLevel =
         TextAndInputPrivacyLevel.maskSensitiveInputs,
     int maxImagePixelBudget = defaultMaxImagePixelBudget,
-    ImageDownscaling imageDownscaling = ImageDownscaling.disabled,
   }) {
     final recorder = SessionReplayRecorder.withCustomRecorders(
       [
@@ -61,7 +61,6 @@ void main() {
           keyGenerator,
           textCaptureMode: textCaptureMode,
           maxImagePixelBudget: maxImagePixelBudget,
-          imageDownscaling: imageDownscaling,
         ),
         ContainerRecorder(keyGenerator),
       ],
@@ -299,30 +298,12 @@ void main() {
       expect(savedResourceKeys().length, 2);
     });
 
-    testWidgets('records text over the pixel budget', (tester) async {
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final recorder = createRecorder(maxImagePixelBudget: 1000);
-      await tester.pumpWidget(
-        wrap(recorder, const Text('A long paragraph', style: style)),
-      );
-
-      final nodes = await capture(tester, recorder);
-
-      final node = nodes.single as TextElementCaptureNode;
-      expect(node.text, 'A long paragraph');
-      verifyNothingSaved();
-    });
-
-    testWidgets('downscales to the pixel budget when downscaling', (
+    testWidgets('downscales oversized paragraphs to the pixel budget', (
       tester,
     ) async {
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.resetDevicePixelRatio);
-      final recorder = createRecorder(
-        maxImagePixelBudget: 20000,
-        imageDownscaling: ImageDownscaling.enabled,
-      );
+      final recorder = createRecorder(maxImagePixelBudget: 20000);
       await tester.pumpWidget(
         wrap(recorder, const Text('A long paragraph', style: style)),
       );
@@ -344,6 +325,57 @@ void main() {
       final size = tester.getSize(find.byType(RichText));
       // Keeps the paragraph's aspect ratio, within a pixel of rounding.
       expect(width / height, closeTo(size.width / size.height, 0.5));
+    });
+
+    for (final downscaling in ImageDownscaling.values) {
+      testWidgets('downscales oversized paragraphs with $downscaling', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 3.0;
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final recorder = SessionReplayRecorder(
+          defaultCapturePrivacy: TreeCapturePrivacy(
+            textAndInputPrivacyLevel:
+                TextAndInputPrivacyLevel.maskSensitiveInputs,
+            imagePrivacyLevel: ImagePrivacyLevel.maskNone,
+          ),
+          touchPrivacyLevel: TouchPrivacyLevel.show,
+          textCaptureMode: TextCaptureMode.highFidelity,
+          imageDownscaling: downscaling,
+          maxImagePixelBudget: 20000,
+        )..updateContext(context);
+        await tester.pumpWidget(
+          wrap(recorder, const Text('A long paragraph', style: style)),
+        );
+
+        final nodes = await capture(tester, recorder);
+
+        expect(nodes.whereType<ResourceImageNode>().length, 1);
+        expect(nodes.whereType<TextElementCaptureNode>(), isEmpty);
+      });
+    }
+
+    testWidgets('rasterizes again when the selection changes', (tester) async {
+      final recorder = createRecorder();
+      await tester.pumpWidget(
+        wrap(
+          recorder,
+          const SelectionArea(child: Text('Selectable text', style: style)),
+        ),
+      );
+      await capture(tester, recorder);
+
+      final textRect = tester.getRect(find.byType(RichText));
+      final gesture = await tester.startGesture(
+        textRect.centerLeft + const Offset(1, 0),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveTo(textRect.center);
+      await gesture.up();
+      await tester.pump();
+      await capture(tester, recorder);
+
+      expect(savedResourceKeys().toSet().length, 2);
     });
 
     testWidgets('records WidgetSpan children as their own nodes', (
@@ -400,6 +432,97 @@ void main() {
 
       expect((nodes.single as TextElementCaptureNode).text, 'Hello');
     });
+  });
+
+  testWidgets('reads back one paragraph at a time', (tester) async {
+    var inFlight = 0;
+    var maxInFlight = 0;
+    when(
+      () => platform.saveImageForProcessing(any(), any(), any(), any()),
+    ).thenAnswer((_) async {
+      inFlight++;
+      if (inFlight > maxInFlight) maxInFlight = inFlight;
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      inFlight--;
+    });
+    final recorder = createRecorder();
+    await tester.pumpWidget(
+      wrap(
+        recorder,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [for (var i = 0; i < 5; i++) Text('Paragraph $i')],
+        ),
+      ),
+    );
+
+    final nodes = await capture(tester, recorder);
+
+    expect(nodes, everyElement(isA<ResourceImageNode>()));
+    expect(savedResourceKeys().length, 5);
+    expect(maxInFlight, 1);
+  });
+
+  testWidgets('records the text shown when the capture started', (
+    tester,
+  ) async {
+    final label = ValueNotifier('Before');
+    addTearDown(label.dispose);
+    // The changing paragraph comes second, so it's processed after the
+    // recorder has already awaited the first one.
+    Widget tree(SessionReplayRecorder recorder) => wrap(
+      recorder,
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Static', style: style),
+          SizedBox(
+            width: 200,
+            height: 20,
+            child: ValueListenableBuilder<String>(
+              valueListenable: label,
+              builder: (context, value, _) => Text(value, style: style),
+            ),
+          ),
+        ],
+      ),
+    );
+    // Uploads happen in tree order, so the last one is the changing paragraph.
+    Uint8List savedPixels() {
+      final bytes =
+          verify(
+                () => platform.saveImageForProcessing(
+                  any(),
+                  any(),
+                  any(),
+                  captureAny(),
+                ),
+              ).captured.last
+              as ByteData;
+      return bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
+    }
+
+    // Pixels of the unchanged text.
+    final reference = createRecorder();
+    await tester.pumpWidget(tree(reference));
+    await capture(tester, reference);
+    final expected = savedPixels();
+    clearInteractions(platform);
+
+    // A new recorder, so nothing is cached. The text changes after the tree
+    // walk but before the pixels are read back.
+    final recorder = createRecorder();
+    // Unmount first so the capture widget registers with the new recorder.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(tree(recorder));
+    await tester.runAsync(() async {
+      final pending = recorder.performCapture();
+      label.value = 'Changed';
+      await tester.pump();
+      await pending;
+    });
+
+    expect(savedPixels(), expected);
   });
 
   group('privacy', () {
