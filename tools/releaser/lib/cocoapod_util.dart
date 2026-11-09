@@ -3,14 +3,71 @@ import 'dart:io';
 import 'package:logging/logging.dart';
 
 import 'helpers.dart';
+import 'native_sdk.dart';
 
 /// Matches a podspec's `s.dependency 'Datadog...', '<constraint>'` line --
 /// mirrors `native_sdk.dart`'s private matcher of the same shape, kept
 /// separate deliberately: a matcher wants to be permissive, a rewriter has
 /// to reproduce exactly what it matched.
 final _iosPodspecDependencyRewritePattern = RegExp(
-  r"(?<prefix>\s+s\.dependency\s+'Datadog\w*'\s*,\s*')(?<constraint>[^']+)(?<suffix>'.*)",
+  r"(?<prefix>\s+s\.dependency\s+'(?<pod>Datadog\w*)'\s*,\s*')(?<constraint>[^']+)(?<suffix>'.*)",
 );
+
+typedef CocoaPodsVersionLookup =
+    Future<bool> Function(String pod, String version);
+
+/// Checks the public CocoaPods registry for a specific pod version.
+Future<bool> cocoaPodVersionExists(
+  String pod,
+  String version, {
+  HttpClient? client,
+}) async {
+  final http = client ?? HttpClient();
+  try {
+    final request = await http
+        .getUrl(
+          Uri.https('trunk.cocoapods.org', '/api/v1/pods/$pod/specs/$version'),
+        )
+        .timeout(const Duration(seconds: 30));
+    final response = await request.close().timeout(const Duration(seconds: 30));
+    await response.drain<void>().timeout(const Duration(seconds: 30));
+    if (response.statusCode == HttpStatus.ok) return true;
+    if (response.statusCode == HttpStatus.notFound) return false;
+    throw StateError(
+      'CocoaPods returned ${response.statusCode} for $pod $version. '
+      'Release preparation requires a successful registry check.',
+    );
+  } finally {
+    if (client == null) http.close(force: true);
+  }
+}
+
+/// Validates every CocoaPods dependency that release preparation will pin.
+Future<void> validateIosPodAvailability(
+  Iterable<NativeSdkDelta> deltas, {
+  CocoaPodsVersionLookup lookup = cocoaPodVersionExists,
+}) async {
+  final checked = <(String, String)>{};
+  for (final delta in deltas) {
+    final version = delta.targetVersion;
+    if (delta.sdk != NativeSdk.ios || version == null) continue;
+    for (final file in delta.files.where((f) => f.path.endsWith('.podspec'))) {
+      final content = await file.readAsString();
+      for (final match in _iosPodspecDependencyRewritePattern.allMatches(
+        content,
+      )) {
+        final pod = match.namedGroup('pod')!;
+        if (!checked.add((pod, version))) continue;
+        if (!await lookup(pod, version)) {
+          throw StateError(
+            'CocoaPods does not contain $pod $version. Select a published '
+            'version with --ios-sdk-version, or wait for native publication.',
+          );
+        }
+      }
+    }
+  }
+}
 
 /// Also used by `bin/pinner.dart` to strip its own Podfile overrides block.
 final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
