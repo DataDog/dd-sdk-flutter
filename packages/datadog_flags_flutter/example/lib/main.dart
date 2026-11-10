@@ -8,25 +8,22 @@ import 'dart:async';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import 'flags_example_configuration.dart';
 
-const _clientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
-const _applicationId = String.fromEnvironment('DD_APPLICATION_ID');
-const _env = String.fromEnvironment('DD_ENV', defaultValue: 'dev');
-const _site = String.fromEnvironment('DD_SITE', defaultValue: 'us1');
-const _targetingKey = String.fromEnvironment(
-  'DD_TARGETING_KEY',
-  defaultValue: 'example-user',
-);
-const _flagKey = String.fromEnvironment(
-  'DD_FLAG_KEY',
-  defaultValue: 'checkout.enabled',
-);
+String get _clientToken => dotenv.get('DD_CLIENT_TOKEN', fallback: '');
+String get _applicationId => dotenv.get('DD_APPLICATION_ID', fallback: '');
+String get _env => dotenv.get('DD_ENV', fallback: 'dev');
+String get _site => dotenv.get('DD_SITE', fallback: 'us1');
+String get _targetingKey =>
+    dotenv.get('DD_TARGETING_KEY', fallback: 'example-user');
+String get _flagKey => dotenv.get('DD_FLAG_KEY', fallback: 'checkout.enabled');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
 
   final isConfigured = _clientToken.isNotEmpty;
   final flagsConfiguration = flagsExampleConfiguration(
@@ -122,7 +119,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       setState(() {
         _status =
             widget.configurationError ??
-            'Set DD_CLIENT_TOKEN with --dart-define to evaluate flags.';
+            'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
       });
       return;
     }

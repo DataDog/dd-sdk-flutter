@@ -10,6 +10,7 @@ dependencies:
   openfeature_dart_client_sdk: ^0.0.1
   flutter:
     sdk: flutter
+  flutter_dotenv: ^6.0.0
   datadog_flags_flutter:
     path: ..
   datadog_flutter_plugin: ^4.0.0
@@ -27,3 +28,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
