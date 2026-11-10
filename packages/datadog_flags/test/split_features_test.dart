@@ -3,6 +3,8 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
+
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/flags_log.dart';
@@ -170,42 +172,53 @@ void main() {
   });
 
   group('persistence', () {
-    test('stores features with assignments', () {
-      final data = FlagsData(
-        flags: {
-          'flag': FlagAssignment.fromJson(
-            assignmentJson(
-              features: [
-                feature('holdout.key', 'h-1'),
-                feature('ratio', 2, ['EXPOSURE', 'FUTURE']),
-              ],
-            ),
-          ),
-        },
-        context: const FlagsEvaluationContext(targetingKey: 'user'),
-        date: DateTime.utc(2026),
+    final storedFeatures = [
+      {
+        'key': 'holdout.key',
+        'value': 'h-1',
+        'destinations': ['HOOK'],
+      },
+      {
+        'key': 'ratio',
+        'value': 2.0,
+        'destinations': ['EXPOSURE', 'FUTURE'],
+      },
+    ];
+
+    FlagsData snapshot(Object? features) => FlagsData(
+      flags: {
+        'flag': FlagAssignment.fromJson(assignmentJson(features: features)),
+      },
+      context: const FlagsEvaluationContext(targetingKey: 'user'),
+      date: DateTime.utc(2026),
+    );
+
+    Map<String, Object?> storedAssignment(FlagsData data) =>
+        ((jsonDecode(jsonEncode(data.toJson())) as Map)['flags'] as Map)['flag']
+            as Map<String, Object?>;
+
+    test('stores features in the response format', () {
+      final data = snapshot(storedFeatures);
+
+      final stored = storedAssignment(data);
+      final restored = FlagsData.fromJson(
+        jsonDecode(jsonEncode(data.toJson())) as Map<String, Object?>,
       );
 
-      final restored = FlagsData.fromJson(data.toJson()).flags['flag']!;
-
-      expect(SplitFeature.listToJson(restored.features), [
-        {
-          'key': 'holdout.key',
-          'value': 'h-1',
-          'destinations': ['HOOK'],
-        },
-        {
-          'key': 'ratio',
-          'value': 2.0,
-          'destinations': ['EXPOSURE', 'FUTURE'],
-        },
-      ]);
+      expect(stored['features'], storedFeatures);
+      expect(storedAssignment(restored), stored);
+      expect(storedAssignment(FlagsData.fromJson(data.toJson())), stored);
     });
 
-    test('omits the field without features', () {
-      final assignment = FlagAssignment.fromJson(assignmentJson());
-      expect(assignment.toJson().containsKey('features'), isFalse);
-    });
+    final empty = <String, Object?>{'missing': null, 'empty': <Object?>[]};
+    for (final MapEntry(key: name, value: features) in empty.entries) {
+      test('omits the field for $name features', () {
+        expect(
+          storedAssignment(snapshot(features)),
+          isNot(contains('features')),
+        );
+      });
+    }
   });
 
   group('UnknownDestinationWarnings', () {

@@ -64,7 +64,7 @@ final class PrecomputedAssignments {
 }
 
 @immutable
-@JsonSerializable(constructor: '_')
+@JsonSerializable(constructor: '_', explicitToJson: true)
 final class FlagAssignment {
   final String allocationKey;
   final String variationKey;
@@ -78,12 +78,12 @@ final class FlagAssignment {
   final String reason;
   final bool doLog;
   final int? serialId;
-  @JsonKey(
-    fromJson: SplitFeature.listFromJson,
-    toJson: SplitFeature.listToJson,
-    includeIfNull: false,
-  )
+  @JsonKey(fromJson: SplitFeature.listFromJson, includeToJson: false)
   final List<SplitFeature> features;
+
+  // Stored assignments omit `features` when there are none.
+  @JsonKey(name: 'features', includeIfNull: false, includeToJson: true)
+  List<SplitFeature>? get _storedFeatures => features.isEmpty ? null : features;
 
   const FlagAssignment._({
     required this.allocationKey,

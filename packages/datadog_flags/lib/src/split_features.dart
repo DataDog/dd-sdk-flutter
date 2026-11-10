@@ -3,9 +3,12 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'flags_log.dart';
+
+part 'split_features.g.dart';
 
 /// Where the SDK routes a split feature.
 enum SplitFeatureDestination {
@@ -28,6 +31,7 @@ enum SplitFeatureDestination {
 
 /// A key and value attached to the selected split of an assignment.
 @immutable
+@JsonSerializable(createFactory: false)
 final class SplitFeature {
   final String key;
 
@@ -59,16 +63,7 @@ final class SplitFeature {
     return features.isEmpty ? const [] : List.unmodifiable(features);
   }
 
-  static Object? listToJson(List<SplitFeature> features) => features.isEmpty
-      ? null
-      : [
-          for (final feature in features)
-            {
-              'key': feature.key,
-              'value': feature.value,
-              'destinations': feature.destinations,
-            },
-        ];
+  Map<String, Object?> toJson() => _$SplitFeatureToJson(this);
 
   static SplitFeature? _tryParse(Object? entry) {
     if (entry is! Map) return null;

@@ -31,5 +31,5 @@ Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
       'reason': instance.reason,
       'doLog': instance.doLog,
       'serialId': instance.serialId,
-      'features': ?SplitFeature.listToJson(instance.features),
+      'features': ?instance._storedFeatures?.map((e) => e.toJson()).toList(),
     };
