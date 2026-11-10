@@ -41,7 +41,16 @@ abstract interface class DatadogFlagsClient {
 
   /// Calls [listener] once with the first accepted cached or network configuration.
   ///
-  /// Returns an unregister function.
+  /// Retains that event for later registrations. Each registration receives it
+  /// asynchronously in its registration zone. Evaluations in the callback read
+  /// the client's current assignments.
+  ///
+  /// Returns an idempotent unregister function that suppresses delivery until
+  /// the callback starts. If no usable configuration is installed, the
+  /// registration remains pending until cancelled.
+  ///
+  /// Isolates synchronous listener errors. Errors from asynchronous work
+  /// started by the listener remain the application's responsibility.
   void Function() onFirstFlags(FlagsClientEventListener listener);
 
   /// Fetches assignments for [context] and makes them available to evaluations.

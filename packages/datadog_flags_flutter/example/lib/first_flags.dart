@@ -146,6 +146,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
     } on FlagsInitializationTimeoutException catch (error) {
       status = 'using stored assignments or defaults: ${error.message}';
     } catch (error) {
+      if (!mounted) return;
       setState(() {
         _details = null;
         _status = 'using defaults: $error';
@@ -153,6 +154,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       return;
     }
 
+    if (!mounted) return;
     final details = client.getBooleanDetails(
       key: _flagKey,
       defaultValue: false,
