@@ -16,14 +16,6 @@ import 'package:fake_async/fake_async.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
-import 'helpers/first_flags_test_client.dart';
-
-// Test fixture deliberately constructs an SDK-internal event.
-// ignore: invalid_use_of_internal_member
-final _event = FlagsClientEvent(
-  type: FlagsClientEventType.configurationChanged,
-  flagsChanged: ['checkout.enabled'],
-);
 
 class _Sdk extends Mock implements DatadogSdk {}
 
@@ -31,6 +23,8 @@ class _Rum extends Mock implements DatadogRum {}
 
 // Models the core's async, registration-zone and one-shot contract.
 class _Delegate extends Fake implements DatadogFlagsClient {
+  final FlagsClientEvent event;
+  _Delegate(this.event);
   int registrations = 0;
   int initializations = 0;
   int cancellations = 0;
@@ -58,7 +52,7 @@ class _Delegate extends Fake implements DatadogFlagsClient {
       final callback = listener;
       listener = null;
       try {
-        callback?.call(_event);
+        callback?.call(event);
       } catch (_) {
         // The core isolates synchronous listener failures.
       }
@@ -81,14 +75,23 @@ class _Delegate extends Fake implements DatadogFlagsClient {
 Future<void> _waitForEventLoop() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  final event = FlagsClientEvent(
+    type: FlagsClientEventType.configurationChanged,
+    flagsChanged: ['checkout.enabled'],
+  );
+
   for (final retained in [false, true]) {
     test(
       'shutdown before resolution prevents forwarding (retained=$retained)',
       () {
         fakeAsync((async) {
           final resolving = Completer<DatadogFlagsClient>();
-          final core = _Delegate()..replayOnRegistration = retained;
-          final client = createFirstFlagsTestClient(() => resolving.future);
+          final core = _Delegate(event)..replayOnRegistration = retained;
+          final client = DatadogFlutterFlagsClient(
+            name: 'default',
+            resolveDelegate: () => resolving.future,
+            addRumFeatureFlagEvaluation: null,
+          );
           var calls = 0;
           final cancel = client.onFirstFlags((_) => calls++);
           var shutdownCompleted = false;
@@ -111,8 +114,12 @@ void main() {
   test('cancel before resolver completes never registers with the core', () {
     fakeAsync((async) {
       final resolving = Completer<DatadogFlagsClient>();
-      final core = _Delegate();
-      final client = createFirstFlagsTestClient(() => resolving.future);
+      final core = _Delegate(event);
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () => resolving.future,
+        addRumFeatureFlagEvaluation: null,
+      );
       var calls = 0;
       final cancel = client.onFirstFlags((_) => calls++);
       cancel();
@@ -128,8 +135,12 @@ void main() {
   test('resolved registration waits without starting initialization', () {
     fakeAsync((async) {
       final resolving = Completer<DatadogFlagsClient>();
-      final core = _Delegate();
-      final client = createFirstFlagsTestClient(() => resolving.future);
+      final core = _Delegate(event);
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () => resolving.future,
+        addRumFeatureFlagEvaluation: null,
+      );
       var calls = 0;
       final cancel = client.onFirstFlags((_) => calls++);
       expect(core.registrations, 0);
@@ -149,8 +160,12 @@ void main() {
     'cancel after core enqueue suppresses delivery and unregisters once',
     () {
       fakeAsync((async) {
-        final core = _Delegate();
-        final client = createFirstFlagsTestClient(() async => core);
+        final core = _Delegate(event);
+        final client = DatadogFlutterFlagsClient(
+          name: 'default',
+          resolveDelegate: () async => core,
+          addRumFeatureFlagEvaluation: null,
+        );
         var calls = 0;
         final cancel = client.onFirstFlags((_) => calls++);
         async.flushMicrotasks();
@@ -168,8 +183,12 @@ void main() {
 
   test('forwards within core delivery without another microtask', () {
     fakeAsync((async) {
-      final core = _Delegate();
-      final client = createFirstFlagsTestClient(() async => core);
+      final core = _Delegate(event);
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async => core,
+        addRumFeatureFlagEvaluation: null,
+      );
       final order = <String>[];
       late void Function() cancel;
       cancel = client.onFirstFlags((_) {
@@ -189,14 +208,22 @@ void main() {
   test('resolver and registration failures do not escape registration', () {
     fakeAsync((async) {
       final resolving = Completer<DatadogFlagsClient>();
-      final client = createFirstFlagsTestClient(() => resolving.future);
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () => resolving.future,
+        addRumFeatureFlagEvaluation: null,
+      );
       var calls = 0;
       final cancel = client.onFirstFlags((_) => calls++);
       resolving.completeError(StateError('enable failed'));
       async.flushMicrotasks();
       cancel();
-      final core = _Delegate()..throwRegistration = true;
-      final failed = createFirstFlagsTestClient(() async => core);
+      final core = _Delegate(event)..throwRegistration = true;
+      final failed = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async => core,
+        addRumFeatureFlagEvaluation: null,
+      );
       final cancelFailed = failed.onFirstFlags((_) => calls++);
       async.flushMicrotasks();
       cancelFailed();
@@ -206,8 +233,12 @@ void main() {
 
   test('unregister isolates delegate errors and remains idempotent', () {
     fakeAsync((async) {
-      final core = _Delegate()..throwCancel = true;
-      final client = createFirstFlagsTestClient(() async => core);
+      final core = _Delegate(event)..throwCancel = true;
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async => core,
+        addRumFeatureFlagEvaluation: null,
+      );
       final cancel = client.onFirstFlags((_) {});
       async.flushMicrotasks();
       expect(cancel, returnsNormally);
@@ -218,8 +249,12 @@ void main() {
 
   test('core isolates app throws and completion clears unregister', () {
     fakeAsync((async) {
-      final core = _Delegate();
-      final client = createFirstFlagsTestClient(() async => core);
+      final core = _Delegate(event);
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async => core,
+        addRumFeatureFlagEvaluation: null,
+      );
       var calls = 0;
       final cancel = client.onFirstFlags((_) {
         calls++;
@@ -257,7 +292,11 @@ void main() {
         if (late) await core.initialize(FlagsEvaluationContext.empty);
         fakeAsync((async) {
           final resolving = Completer<DatadogFlagsClient>();
-          final client = createFirstFlagsTestClient(() => resolving.future);
+          final client = DatadogFlutterFlagsClient(
+            name: 'default',
+            resolveDelegate: () => resolving.future,
+            addRumFeatureFlagEvaluation: null,
+          );
           final order = <String>[];
           final zones = <Object?>[];
           final errors = <Object>[];

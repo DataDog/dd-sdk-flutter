@@ -10,8 +10,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:mocktail/mocktail.dart';
 
-const _context = FlagsEvaluationContext(targetingKey: 'user');
 Future<DatadogFlags> _owner({
   DatadogFlagsStore? store,
   void Function()? onRequest,
@@ -56,12 +56,13 @@ Future<DatadogFlags> _owner({
 // Yield to the next event-loop turn so queued callback microtasks can run.
 Future<void> _waitForEventLoop() => Future<void>.delayed(Duration.zero);
 void main() {
+  const context = FlagsEvaluationContext(targetingKey: 'user');
   for (final late in [false, true]) {
     test(
       '${late ? "late" : "early"} callback uses registration zone and routes async errors there',
       () async {
         final client = (await _owner()).sharedClient();
-        if (late) await client.initialize(_context);
+        if (late) await client.initialize(context);
         Object? observed;
         final errors = <Object>[];
         runZonedGuarded(
@@ -77,7 +78,7 @@ void main() {
         );
         if (!late) {
           await runZoned(
-            () => client.initialize(_context),
+            () => client.initialize(context),
             zoneValues: {#listenerZone: 'initialization'},
           );
         }
@@ -97,7 +98,7 @@ void main() {
       client.onFirstFlags(events.add);
       client.onFirstFlags(events.add);
       expect(events, isEmpty);
-      await client.initialize(_context);
+      await client.initialize(context);
       expect(events, hasLength(2));
       expect(events[0], same(events[1]));
       await client.initialize(
@@ -119,7 +120,7 @@ void main() {
     client.onFirstFlags(callback);
     cancel();
     cancel();
-    await client.initialize(_context);
+    await client.initialize(context);
     expect(calls, 1);
     client.onFirstFlags(callback);
     await _waitForEventLoop();
@@ -130,7 +131,7 @@ void main() {
     'late replay uses one microtask and queued cancellation is idempotent',
     () async {
       final client = (await _owner()).sharedClient();
-      await client.initialize(_context);
+      await client.initialize(context);
       fakeAsync((async) {
         final events = <FlagsClientEvent>[];
         final canceled = client.onFirstFlags(events.add);
@@ -159,7 +160,7 @@ void main() {
       final second = client.onFirstFlags(callback);
       first();
       first();
-      client.initialize(_context);
+      client.initialize(context);
       expect(calls, 0);
       async.flushMicrotasks();
       expect(calls, 1);
@@ -192,8 +193,10 @@ void main() {
     () async {
       late Completer<FlagsData?> disk;
       var requests = 0;
+      final store = _PendingStore();
+      when(() => store.read(any())).thenAnswer((_) => disk.future);
       final client = (await _owner(
-        store: _PendingStore(() => disk.future),
+        store: store,
         onRequest: () => requests++,
       )).sharedClient();
       fakeAsync((async) {
@@ -201,7 +204,7 @@ void main() {
         var initialized = false;
         disk = Completer<FlagsData?>();
         final cancel = client.onFirstFlags((_) => calls++);
-        client.initialize(_context).then((_) => initialized = true);
+        client.initialize(context).then((_) => initialized = true);
         client.shutdown();
         disk.complete(null);
         async.flushMicrotasks();
@@ -227,7 +230,7 @@ void main() {
         calls++;
       });
       second = client.onFirstFlags((_) => calls += 100);
-      await client.initialize(_context);
+      await client.initialize(context);
       expect(calls, 1);
     },
   );
@@ -245,7 +248,7 @@ void main() {
           throw error;
         });
         client.onFirstFlags((_) => order.add('second'));
-        await client.initialize(_context);
+        await client.initialize(context);
         await _waitForEventLoop();
         expect(order, ['first', 'second', 'nested']);
       },
@@ -259,7 +262,7 @@ void main() {
       var canceledCalls = 0;
       final cancel = client.onFirstFlags((_) => canceledCalls++);
       cancel();
-      await client.initialize(_context);
+      await client.initialize(context);
       final delivered = Completer<FlagsClientEvent>();
       client.onFirstFlags(delivered.complete);
       expect((await delivered.future).flagsChanged, ['checkout.enabled']);
@@ -277,7 +280,7 @@ void main() {
     'reset and shutdown retain event but evaluations read current assignments',
     () async {
       final client = (await _owner()).sharedClient();
-      await client.initialize(_context);
+      await client.initialize(context);
       await client.reset();
       await client.shutdown();
       final delivered = Completer<FlagsClientEvent>();
@@ -298,7 +301,7 @@ void main() {
     final client = owner.sharedClient();
     var calls = 0;
     final cancel = client.onFirstFlags((_) => calls++);
-    await client.initialize(_context);
+    await client.initialize(context);
     cancel();
     cancel();
     await _waitForEventLoop();
@@ -306,13 +309,4 @@ void main() {
   });
 }
 
-class _PendingStore implements DatadogFlagsStore {
-  final Future<FlagsData?> Function() load;
-  _PendingStore(this.load);
-  @override
-  Future<FlagsData?> read(String name) => load();
-  @override
-  Future<void> write(String name, FlagsData data) async {}
-  @override
-  Future<void> delete(String name) async {}
-}
+class _PendingStore extends Mock implements DatadogFlagsStore {}

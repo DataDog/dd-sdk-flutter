@@ -10,8 +10,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:test/test.dart';
-
-const _context = FlagsEvaluationContext(targetingKey: 'example-user');
+import 'package:mocktail/mocktail.dart';
 
 Map<String, Object?> _flag(bool value) => {
   'allocationKey': 'allocation',
@@ -42,20 +41,7 @@ FlagsData _cached({String subject = 'example-user', bool empty = false}) =>
       'flags': empty ? <String, Object?>{} : {'checkout.enabled': _flag(false)},
     });
 
-class _Store implements DatadogFlagsStore {
-  final Future<FlagsData?> Function() load;
-  Future<void> Function(FlagsData)? save;
-  _Store(this.load);
-  @override
-  Future<FlagsData?> read(String name) async => await load();
-  @override
-  Future<void> write(String name, FlagsData data) async {
-    await save?.call(data);
-  }
-
-  @override
-  Future<void> delete(String name) async {}
-}
+class _Store extends Mock implements DatadogFlagsStore {}
 
 Future<DatadogFlags> _owner({
   required void Function(FlagsClientEvent) callback,
@@ -82,6 +68,14 @@ Future<DatadogFlags> _owner({
 }
 
 void main() {
+  const context = FlagsEvaluationContext(targetingKey: 'example-user');
+  late _Store store;
+  setUpAll(() => registerFallbackValue(_cached()));
+  setUp(() {
+    store = _Store();
+    when(() => store.read(any())).thenAnswer((_) async => null);
+    when(() => store.write(any(), any())).thenAnswer((_) async {});
+  });
   test(
     'cache callback can evaluate before pending network initialization completes',
     () async {
@@ -90,8 +84,11 @@ void main() {
       late DatadogFlagsClient client;
       FlagDetails<bool>? early;
       final events = <FlagsClientEvent>[];
+      when(
+        () => store.read(any()),
+      ).thenAnswer((_) => Future<FlagsData?>.value(_cached()));
       final flags = await _owner(
-        store: _Store(() async => _cached()),
+        store: store,
         request: (_) => network.future,
         callback: (event) {
           early = client.getBooleanDetails(
@@ -104,7 +101,7 @@ void main() {
       );
       client = flags.sharedClient();
       var completed = false;
-      final init = client.initialize(_context).then((_) => completed = true);
+      final init = client.initialize(context).then((_) => completed = true);
       await delivered.future;
       expect(completed, isFalse);
       expect(early!.value, isFalse);
@@ -128,16 +125,19 @@ void main() {
       () async {
         final delivered = Completer<FlagsClientEvent>();
         final network = Completer<http.Response>();
+        when(
+          () => store.read(any()),
+        ).thenAnswer((_) => Future<FlagsData?>.value(_cached(empty: true)));
         final flags = await _owner(
           callback: delivered.complete,
-          store: fromCache ? _Store(() async => _cached(empty: true)) : null,
+          store: fromCache ? store : null,
           request: (_) =>
               fromCache ? network.future : Future.value(_response({})),
         );
         var initialized = false;
         final initialize = flags
             .sharedClient()
-            .initialize(_context)
+            .initialize(context)
             .then((_) => initialized = true);
         final event = await delivered.future;
         expect(event.type, FlagsClientEventType.configurationChanged);
@@ -172,21 +172,22 @@ void main() {
           final network = Completer<http.Response>();
           final delivered = Completer<FlagsClientEvent>();
           final events = <FlagsClientEvent>[];
+          when(() => store.read(any())).thenAnswer(
+            (_) => Future<FlagsData?>.value(
+              FlagsData.fromJson({
+                ...encoding,
+                'context': {'targetingKey': 'example-user'},
+                'date': '2026-10-01T00:00:00.000Z',
+                'encodedFlags': encodedFlags,
+              }),
+            ),
+          );
           final owner = await _owner(
             callback: (event) {
               events.add(event);
               delivered.complete(event);
             },
-            store: fromCache
-                ? _Store(
-                    () async => FlagsData.fromJson({
-                      ...encoding,
-                      'context': {'targetingKey': 'example-user'},
-                      'date': '2026-10-01T00:00:00.000Z',
-                      'encodedFlags': encodedFlags,
-                    }),
-                  )
-                : null,
+            store: fromCache ? store : null,
             request: (_) => fromCache
                 ? network.future
                 : Future.value(
@@ -201,7 +202,7 @@ void main() {
                   ),
           );
           final client = owner.sharedClient();
-          final initialize = client.initialize(_context);
+          final initialize = client.initialize(context);
           final event = await delivered.future;
           expect(event.type, FlagsClientEventType.configurationChanged);
           expect(event.flagsChanged, isNull);
@@ -228,15 +229,18 @@ void main() {
       'accepted cache keys are immutable and detached from source (empty=$empty)',
       () async {
         final cached = _cached(empty: empty);
+        when(
+          () => store.read(any()),
+        ).thenAnswer((_) => Future<FlagsData?>.value(cached));
         final originalKeys = cached.flags.keys.toList();
         final network = Completer<http.Response>();
         final delivered = Completer<FlagsClientEvent>();
         final flags = await _owner(
           callback: delivered.complete,
-          store: _Store(() async => cached),
+          store: store,
           request: (_) => network.future,
         );
-        final initialize = flags.sharedClient().initialize(_context);
+        final initialize = flags.sharedClient().initialize(context);
         final event = await delivered.future;
         cached.flags.clear();
         cached.flags['later'] = _cached().flags.values.single;
@@ -266,7 +270,7 @@ void main() {
     test('$cacheCase cache cannot claim notification', () async {
       final disk = Completer<FlagsData?>();
       final events = <FlagsClientEvent>[];
-      final store = _Store(() async {
+      when(() => store.read(any())).thenAnswer((_) async {
         if (cacheCase == 'invalid') throw FormatException('invalid cache');
         if (cacheCase == 'mismatched') return _cached(subject: 'someone-else');
         if (cacheCase == 'late') return await disk.future;
@@ -277,7 +281,7 @@ void main() {
         store: store,
         request: (_) async => _response({'network-only': true}),
       );
-      await flags.sharedClient().initialize(_context);
+      await flags.sharedClient().initialize(context);
       if (cacheCase == 'late') disk.complete(_cached());
       await Future<void>.delayed(Duration.zero);
       expect(events.single.flagsChanged, ['network-only']);
@@ -306,7 +310,7 @@ void main() {
               ++attempts == 1 ? failure.value() : Future.value(_response({})),
         );
         final client = flags.sharedClient();
-        await client.initialize(_context);
+        await client.initialize(context);
         expect(events, isEmpty);
         expect(
           client
@@ -314,7 +318,7 @@ void main() {
               .error,
           FlagEvaluationError.providerNotReady,
         );
-        await client.initialize(_context);
+        await client.initialize(context);
         expect(attempts, 2);
         expect(events, hasLength(1));
         expect(events.single.flagsChanged, isEmpty);
@@ -349,7 +353,7 @@ void main() {
           200,
         ),
       );
-      await flags.sharedClient().initialize(_context);
+      await flags.sharedClient().initialize(context);
       expect(events, hasLength(1));
       expect(events.single.flagsChanged, unorderedEquals(['first', 'second']));
     },
@@ -360,14 +364,13 @@ void main() {
     var reads = 0;
     var writes = 0;
     final events = <FlagsClientEvent>[];
-    final store =
-        _Store(() async {
-            reads++;
-            return null;
-          })
-          ..save = (_) async {
-            writes++;
-          };
+    when(() => store.read(any())).thenAnswer((_) async {
+      reads++;
+      return null;
+    });
+    when(() => store.write(any(), any())).thenAnswer((_) async {
+      writes++;
+    });
     final flags = await _owner(
       callback: events.add,
       store: store,
@@ -377,7 +380,7 @@ void main() {
       },
     );
     final client = flags.sharedClient();
-    await client.initialize(_context);
+    await client.initialize(context);
     expect((requests, reads, writes), (1, 1, 1));
     final first = events.single;
     client.onFirstFlags(events.add);
@@ -408,7 +411,7 @@ void main() {
           },
         );
         final client = flags.sharedClient();
-        await client.initialize(_context);
+        await client.initialize(context);
         final first = events.single;
         await client.initialize(
           const FlagsEvaluationContext(targetingKey: 'updated-user'),
@@ -449,7 +452,7 @@ void main() {
             : Future.value(_response({'current': true})),
       );
       final client = flags.sharedClient();
-      final old = client.initialize(_context);
+      final old = client.initialize(context);
       await client.initialize(
         const FlagsEvaluationContext(targetingKey: 'new-user'),
       );
@@ -476,7 +479,7 @@ void main() {
         },
       );
       client = flags.sharedClient();
-      await client.initialize(_context);
+      await client.initialize(context);
       await refresh;
       expect(calls, 1);
       final details = client.getBooleanDetails(
@@ -499,14 +502,14 @@ void main() {
         },
       );
       final client = flags.sharedClient();
-      await client.initialize(_context);
+      await client.initialize(context);
       expect(
         client
             .getBooleanDetails(key: 'checkout.enabled', defaultValue: false)
             .value,
         isTrue,
       );
-      await client.initialize(_context);
+      await client.initialize(context);
       expect(calls, 1);
     },
   );
@@ -514,10 +517,10 @@ void main() {
   test('each client independently retains its first event', () async {
     final events = <FlagsClientEvent>[];
     final flags = await _owner(callback: events.add);
-    await flags.sharedClient().initialize(_context);
-    await flags.sharedClient().initialize(_context);
+    await flags.sharedClient().initialize(context);
+    await flags.sharedClient().initialize(context);
     flags.sharedClient(name: 'other').onFirstFlags(events.add);
-    await flags.sharedClient(name: 'other').initialize(_context);
+    await flags.sharedClient(name: 'other').initialize(context);
     expect(events, hasLength(2));
   });
 
@@ -527,7 +530,7 @@ void main() {
       final saved = Completer<void>();
       final delivered = Completer<void>();
       final requests = <Uri>[];
-      final store = _Store(() async => null)..save = (_) => saved.future;
+      when(() => store.write(any(), any())).thenAnswer((_) => saved.future);
       final flags = await _owner(
         store: store,
         callback: (_) => delivered.complete(),
@@ -539,7 +542,7 @@ void main() {
       var completed = false;
       final init = flags
           .sharedClient()
-          .initialize(_context)
+          .initialize(context)
           .then((_) => completed = true);
       await delivered.future;
       expect(completed, isFalse);
@@ -561,7 +564,7 @@ void main() {
         request: (_) => response.future,
       );
       await expectLater(
-        flags.sharedClient().initialize(_context),
+        flags.sharedClient().initialize(context),
         throwsA(isA<FlagsInitializationTimeoutException>()),
       );
       expect(delivered.isCompleted, isFalse);

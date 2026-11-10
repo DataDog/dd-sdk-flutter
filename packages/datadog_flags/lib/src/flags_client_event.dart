@@ -32,10 +32,8 @@ final class FlagsClientEvent {
   /// supplied empty list. This value does not infer or evaluate any keys.
   final List<String>? flagsChanged;
 
-  /// SDK-internal event construction;  copies [flagsChanged] into an
-  /// unmodifiable list when supplied. Later changes to the source list cannot
-  /// change this value.
-  @internal
+  /// Creates an event, copying [flagsChanged] into an unmodifiable list when
+  /// supplied. Later changes to the source list cannot change this value.
   FlagsClientEvent({required this.type, List<String>? flagsChanged})
     : flagsChanged = flagsChanged == null
           ? null
