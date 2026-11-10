@@ -383,6 +383,7 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - tools/ci/emulator.log
       - .build/test-results/*.jsonl
 
 ios-integration-test:
@@ -852,6 +853,7 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - tools/ci/emulator.log
       - .build/test-results/*.jsonl
 
 # Verify the published Dart floor with the repository's Flutter version manager.

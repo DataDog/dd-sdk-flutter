@@ -185,12 +185,26 @@ Future<Map<String, String>> _getRunningDevices() async {
   return result;
 }
 
-Future<bool> _startEmulator(String emulatorName) async {
-  print("Starting device");
+/// The file the emulator's output is written to, relative to the working
+/// directory.
+const emulatorLogFile = 'emulator.log';
 
+Future<bool> _startEmulator(String emulatorName) async {
+  final accelCheck = await Process.run(emulatorCmd, ['-accel-check']);
+  print('Emulator acceleration check (exit code ${accelCheck.exitCode}):');
+  print(accelCheck.stdout);
+  print(accelCheck.stderr);
+
+  print("Starting device, logging to $emulatorLogFile");
+
+  // The emulator outlives this process, so its output goes to a file rather
+  // than a pipe.
   await Process.start(
-      emulatorCmd,
+      'sh',
       [
+        '-c',
+        'exec "\$0" "\$@" > $emulatorLogFile 2>&1',
+        emulatorCmd,
         "@$emulatorName",
         '-verbose',
         '-show-kernel',
@@ -220,6 +234,10 @@ Future<bool> _startEmulator(String emulatorName) async {
   // time to boot.
   if (launched) {
     await Future.delayed(Duration(seconds: 10));
+  } else {
+    print('Emulator failed to start. Output from $emulatorLogFile:');
+    final log = File(emulatorLogFile);
+    print(log.existsSync() ? log.readAsStringSync() : '(no log written)');
   }
 
   return launched;
