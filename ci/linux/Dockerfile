@@ -89,6 +89,9 @@ RUN \
 RUN mkdir /root/.android \
   && touch /root/.android/repositories.cfg
 
+# Lets the Android emulator use /dev/kvm on KVM runners.
+RUN usermod -aG kvm dog
+
 # That should be everything needed for root. Switch users for the rest
 USER dog
 WORKDIR /home/dog
@@ -101,6 +104,7 @@ RUN \
     mv android-sdk-linux/cmdline-tools/cmdline-tools android-sdk-linux/cmdline-tools/latest && \
     echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platforms;android-${ANDROID_COMPILE_SDK}" >/dev/null && \
     echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "platform-tools" >/dev/null && \
+    echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "emulator" >/dev/null && \
     echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager "build-tools;${ANDROID_BUILD_TOOLS}" >/dev/null && \
     echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VERSION}" >/dev/null && \
     echo y | android-sdk-linux/cmdline-tools/latest/bin/sdkmanager --install "cmake;${CMAKE_VERSION}" >/dev/null && \
