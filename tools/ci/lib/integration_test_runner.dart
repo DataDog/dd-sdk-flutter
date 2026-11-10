@@ -97,7 +97,7 @@ class IntegrationTestRunner {
     this.outputDir,
     this.dartDefines = const [],
     this.extraArgs = const [],
-    this.startupTimeout = const Duration(minutes: 5),
+    this.startupTimeout = const Duration(minutes: 3),
     this.hardTimeout = const Duration(minutes: 15),
   });
 
@@ -112,6 +112,52 @@ class IntegrationTestRunner {
   final List<String> extraArgs;
   final Duration startupTimeout;
   final Duration hardTimeout;
+
+  /// Builds the app for [testFile] before any test runs, so the startup
+  /// watchdog only has to cover launching an already-built app.
+  ///
+  /// A failed or hung build is reported and otherwise ignored; the first test
+  /// then fails with the real error.
+  Future<void> warmUp(String testFile) async {
+    final buildArgs = platform.warmUpBuildArgs;
+    if (buildArgs == null) return;
+
+    final args = [
+      ...buildArgs,
+      '--target',
+      testFile,
+      for (final define in dartDefines) ...['--dart-define', define],
+    ];
+    print('[${_timestamp()}] flutter ${args.join(' ')} (warm-up build)');
+
+    final stopwatch = Stopwatch()..start();
+    final process = await Process.start(
+      'flutter',
+      args,
+      runInShell: Platform.isWindows,
+    );
+    final outputDone = Future.wait([
+      for (final stream in [process.stdout, process.stderr])
+        stream
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .forEach((line) => print('[${_timestamp()}] $line')),
+    ]);
+
+    final exitCode = await process.exitCode.timeout(
+      hardTimeout,
+      onTimeout: () async {
+        await _killProcessTree(process);
+        return -1;
+      },
+    );
+    await outputDone.timeout(_drainTimeout, onTimeout: () => []);
+    final result = exitCode == 0 ? 'finished' : 'failed (exit code $exitCode)';
+    print(
+      '[${_timestamp()}] warm-up build $result after '
+      '${stopwatch.elapsed.inSeconds}s',
+    );
+  }
 
   /// Runs [testFile] and returns the final outcome.
   Future<AttemptOutcome> runFile(String testFile, String testName) async {
