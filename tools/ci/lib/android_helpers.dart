@@ -194,6 +194,11 @@ Future<bool> _startEmulator(String emulatorName) async {
   print('Emulator acceleration check (exit code ${accelCheck.exitCode}):');
   print(accelCheck.stdout);
   print(accelCheck.stderr);
+  if (accelCheck.exitCode != 0) {
+    final kvmInfo = await Process.run('sh', ['-c', 'id; ls -ln /dev/kvm']);
+    print(kvmInfo.stdout);
+    print(kvmInfo.stderr);
+  }
 
   print("Starting device, logging to $emulatorLogFile");
 

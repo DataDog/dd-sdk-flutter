@@ -2,7 +2,7 @@ include:
   - 'https://gitlab-templates.ddbuild.io/slack-notifier/v3-sdm/template.yml'
 
 variables:
-  CURRENT_CI_IMAGE: "12"
+  CURRENT_CI_IMAGE: "14"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
   DISTRIBUTION_REGISTRY: registry.ddbuild.io
   # Linux CI Images
