@@ -721,35 +721,71 @@ nightly-min-version-test:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
-nightly-beta-test:
-  extends: [.nightly, .tart-runner]
+.nightly-beta-artifacts:
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Switches the fvm-managed Flutter SDK on a Tart runner to the beta channel.
+.use-fvm-beta:
+  script:
+    - fvm destroy
+    - fvm install beta
+    - fvm use beta
+    - fvm flutter upgrade --force
+
+nightly-beta-test-flutter:
+  extends: [.nightly, .nightly-beta-artifacts, .tart-runner]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  script:
+    - !reference [.pre-tart, script]
+    - !reference [.use-fvm-beta, script]
+    - fvm exec dart pub global activate melos
+    - flutter doctor
+    - fvm exec melos pub:get
+    - fvm exec melos run analyze:dart
+    - fvm exec melos run unit_test:flutter
+
+nightly-beta-test-ios:
+  extends: [.nightly, .nightly-beta-artifacts, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
     - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
-    - !reference [.install-gradle-mirror, script]
-    - fvm destroy
-    - fvm install beta
-    - fvm use beta
-    - fvm flutter upgrade --force
+    - !reference [.use-fvm-beta, script]
     - fvm flutter precache --ios
     - fvm exec dart pub global activate melos
     - pod repo update
     - flutter doctor
     - fvm exec melos pub:get
     - fvm exec melos remove_podfile_lock --no-select
-    - fvm exec melos run analyze
-    - fvm exec melos run build
-    - fvm exec melos run unit_test:flutter
-    - fvm exec melos run unit_test:android
+    - fvm exec melos run analyze:ios
+    - fvm exec melos run build:ios
     - fvm exec melos run unit_test:ios
-  artifacts:
-    when: always
-    expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+nightly-beta-test-android:
+  extends: [.nightly, .nightly-beta-artifacts]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  image: $CI_IMAGE_DOCKER
+  tags:
+    - "arch:amd64"
+  script:
+    - !reference [.pre, script]
+    - git -C "$(dirname $(dirname $(which flutter)))" reset --hard
+    - flutter channel beta
+    - flutter upgrade --force
+    - !reference [.pre-android, script]
+    - melos run analyze:android
+    - melos run build:android
+    - melos run unit_test:android
 
 nightly-beta-test-web:
   extends: .nightly
