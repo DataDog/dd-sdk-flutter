@@ -59,6 +59,8 @@ class FlagsRepository {
 
   DatadogFlagsClientStatus get status => _status;
 
+  Object? lastLoadError;
+
   Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   FlagAssignment? flagAssignment(String key) {
@@ -131,10 +133,12 @@ class FlagsRepository {
         date: dateProvider(),
         obfuscation: assignments.obfuscation,
       );
+      lastLoadError = null;
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       _setStatus(DatadogFlagsClientStatus.ready);
       await _writeCached(data);
-    } catch (_) {
+    } on Object catch (error) {
+      if (!token.isCanceled) lastLoadError = error;
       if (!token.isCanceled &&
           matchingCached == null &&
           !_hasCurrentStateForContext(context)) {

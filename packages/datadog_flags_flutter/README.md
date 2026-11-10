@@ -1,58 +1,60 @@
 # Datadog Flags Flutter
 
 Use OpenFeature to evaluate Datadog feature flags in Flutter applications.
-`datadog_flags` supplies `DatadogOpenFeatureProvider`. This package supplies
+`datadog_flags` supplies `DatadogProvider`. This package supplies
 `DatadogRumHook` to associate successful evaluations with the active RUM view.
 
 This integration requires Flutter 3.38.1 or later, which includes stable Dart 3.10.
 It uses the published OpenFeature `0.0.1` dependency described in the
 [core package](../datadog_flags/).
+Use `datadog_flutter_plugin` 3.4.0 or later and earlier than 5.0.0, and
+`datadog_flags` 1.2.0 or later and earlier than 2.0.0.
 
 ## OpenFeature with RUM
 
-Initialize the Datadog Flutter SDK for RUM. RUM controls distributed tracing.
-Then configure the OpenFeature provider and add the RUM hook one time:
+Initialize the Datadog Flutter SDK for RUM.
+Then configure the OpenFeature provider and register the RUM hook:
 
 ```dart
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/widgets.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
-await DatadogSdk.instance.initialize(
-  DatadogConfiguration(
-    service: 'my-flutter-app',
-    clientToken: '<CLIENT_TOKEN>',
-    env: 'production',
-    site: DatadogSite.us1,
-    rumConfiguration: DatadogRumConfiguration(applicationId: '<RUM_APP_ID>'),
-  ),
-  TrackingConsent.granted,
+WidgetsFlutterBinding.ensureInitialized();
+final configuration = DatadogConfiguration(
+  service: 'my-flutter-app',
+  clientToken: '<CLIENT_TOKEN>',
+  env: 'production',
+  site: DatadogSite.us1,
+  version: '1.0.0',
+  rumConfiguration: DatadogRumConfiguration(applicationId: '<RUM_APP_ID>'),
 );
-
+await DatadogSdk.instance.initialize(configuration, TrackingConsent.granted);
 final api = OpenFeatureAPI.instance;
-final client = api.getClient();
-client.addHooks([DatadogRumHook()]);
+api.addHooks([DatadogRumHook()]);
 await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'user-123'));
 try {
-  await api.setProviderAndWait(DatadogOpenFeatureProvider(
-    configuration: DatadogFlagsConfiguration(
-      datadogConfig: DatadogFlagsConfig(
-        clientToken: '<CLIENT_TOKEN>',
-        env: 'production',
-        site: DatadogFlagsSite.us1,
-      ),
-    ),
+  await api.setProviderAndWait(DatadogProvider(
+    clientToken: configuration.clientToken,
+    env: configuration.env,
+    site: DatadogFlagsSite.us1,
+    applicationId: configuration.rumConfiguration?.applicationId,
+    service: configuration.service,
+    version: configuration.versionTag,
   ));
 } on OpenFeatureException {
-  // Continue with cached assignments or defaults. Initial loading can still succeed later.
+  // Evaluations return defaults until initial assignments become available.
 }
-final enabled = client.getBooleanValue('checkout.enabled', false);
+final enabled = api.getClient().getBooleanValue('checkout.enabled', false);
 ```
 
-The hook adds the variant to the active RUM view, or the evaluated value if no
-variant is available. It skips evaluations that return errors. The provider
-handles Datadog exposure and evaluation telemetry separately. It does not
-implement the OpenFeature tracking API.
+The hook adds the variant from a successful evaluation to the active RUM view.
+It runs after other evaluation hooks and skips errors and results without a variant.
+Register it with `OpenFeatureAPI.addHooks`, and register it again after shutdown.
+A hook registered on a client applies only to that client object.
+Each `getClient()` call returns a new client.
+The provider handles Datadog exposure and evaluation telemetry separately.
 
 If you create your own `DatadogSdk` instance, pass it with
 `DatadogRumHook(sdk: instance)`. If you do not use RUM, use the provider from
@@ -68,10 +70,12 @@ separate pure-Dart OpenFeature provider in that isolate.
 Removal is planned for the next major version. Existing users can continue to
 use the plugin during migration.
 
-Replace plugin registration with `DatadogOpenFeatureProvider`. Replace
+Replace plugin registration with `DatadogProvider`. Replace
 `sharedClient()` with `OpenFeatureAPI.instance.getClient()`. Replace client
 initialization with `setEvaluationContextAndWait()`. Add `DatadogRumHook` to
 preserve RUM association. Do not run both integrations for the same evaluations.
+The provider does not read the Datadog SDK configuration. Pass `applicationId`,
+`service`, and `version` as shown above to retain these fields in flag telemetry.
 
 Legacy client shutdown is terminal. Obtain another client from `sharedClient()`
 to restart. Shutdown does not wait indefinitely for plugin readiness. A delegate
@@ -92,5 +96,5 @@ network response replaces those assignments, details report the response reason.
 ## Contributing
 
 See the [contributing guide](../../CONTRIBUTING.md) and
-[OpenFeature validation instructions](../datadog_flags/OPENFEATURE_VALIDATION.md).
+[OpenFeature validation instructions](../datadog_flags/CONTRIBUTING.md).
 Licensed under [Apache 2.0](LICENSE).

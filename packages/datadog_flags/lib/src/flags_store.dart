@@ -37,6 +37,7 @@ class FlagsData {
   final DateTime date;
 
   /// Encoding metadata stored with these assignments. Null means legacy keys.
+  @internal
   final FlagKeyObfuscation? obfuscation;
 
   /// Creates a flag assignment snapshot.

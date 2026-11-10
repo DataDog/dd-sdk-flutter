@@ -21,8 +21,8 @@ final class DatadogProviderFixture implements ClientProviderFixture {
   _HeldResponse? _nextGate;
   bool _failNext = false;
   late final http.Client _transport = MockClient(_respond);
-  late final datadog = DatadogOpenFeatureProvider(
-    configuration: DatadogFlagsConfiguration(
+  late final datadog = DatadogProvider.fromConfiguration(
+    DatadogFlagsConfiguration(
       datadogConfig: const DatadogFlagsConfig(
         clientToken: 'contract-test-token',
         env: 'test',
@@ -121,7 +121,7 @@ final class _CountingProvider
         ShutdownProvider,
         ProviderEventSource,
         DomainScopedProvider {
-  final DatadogOpenFeatureProvider delegate;
+  final DatadogProvider delegate;
   int shutdownCalls = 0;
   _CountingProvider(this.delegate);
   @override

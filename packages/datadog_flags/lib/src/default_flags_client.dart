@@ -18,6 +18,8 @@ class DefaultDatadogFlagsClient
   static final Object _typeMismatch = Object();
   bool isShutdown = false;
 
+  Object? get lastLoadError => _repository.lastLoadError;
+
   @override
   final String name;
   final FlagsRepository _repository;
@@ -252,6 +254,10 @@ class DefaultDatadogFlagsClient
       reason: restoredFromStore ? 'CACHED' : assignment.reason,
       flagMetadata: {
         datadogAllocationKeyMetadata: assignment.allocationKey,
+        datadogDoLogMetadata: assignment.doLog,
+        datadogVariationTypeMetadata: assignment.variationType.wireName,
+        datadogInternalAllocationKeyMetadata: assignment.allocationKey,
+        datadogInternalDoLogMetadata: assignment.doLog,
         datadogSerialIdMetadata: ?assignment.serialId,
       },
     );

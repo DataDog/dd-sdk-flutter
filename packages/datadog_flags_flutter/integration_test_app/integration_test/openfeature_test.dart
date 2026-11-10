@@ -3,6 +3,7 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
@@ -22,11 +23,13 @@ void main() {
     (tester) async {
       final requests = <http.Request>[];
       var enabled = true;
+      Completer<void>? assignmentGate;
       final transport = MockClient((request) async {
         requests.add(request);
         if (request.url.path != '/precompute-assignments') {
           return http.Response('{}', 202);
         }
+        await assignmentGate?.future;
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         final subject = body['data']['attributes']['subject']['targeting_key'];
         final values = <String, Object>{
@@ -78,19 +81,18 @@ void main() {
         TrackingConsent.notGranted,
       );
       await api.setEvaluationContextAndWait(
-        EvaluationContext(targetingKey: 'simulator-user'),
-      );
-      final provider = DatadogOpenFeatureProvider(
-        configuration: DatadogFlagsConfiguration(
-          datadogConfig: const DatadogFlagsConfig(
-            clientToken: 'simulator-test-token',
-            env: 'integration-test',
-            site: DatadogFlagsSite.us1,
-          ),
-          httpClient: transport,
+        EvaluationContext(
+          targetingKey: 'simulator-user',
+          attributes: {'signupDate': DateTime.utc(2026, 1, 2)},
         ),
       );
-      api.getClient().addHooks([DatadogRumHook()]);
+      final provider = DatadogProvider(
+        clientToken: 'simulator-test-token',
+        env: 'integration-test',
+        site: DatadogFlagsSite.us1,
+        httpClient: transport,
+      );
+      api.addHooks([DatadogRumHook()]);
       await api.setProviderAndWait(provider);
       await tester.pumpWidget(
         const MaterialApp(home: Text('OpenFeature test')),
@@ -115,14 +117,34 @@ void main() {
       await provider.refresh();
       await tester.pumpAndSettle();
       expect(client.getBooleanValue('checkout.enabled', true), isFalse);
-      await api.setEvaluationContextAndWait(
+      assignmentGate = Completer<void>();
+      final changingIdentity = api.setEvaluationContextAndWait(
         EvaluationContext(targetingKey: 'second-user'),
       );
+      await tester.pump();
+      expect(
+        client.getStringDetails('checkout.copy', 'default').errorCode,
+        ErrorCode.providerNotReady,
+      );
+      assignmentGate.complete();
+      await changingIdentity;
+      assignmentGate = null;
       await tester.pumpAndSettle();
       expect(client.getStringValue('checkout.copy', ''), 'second-user');
       expect(
         requests.where((r) => r.url.path == '/precompute-assignments'),
         hasLength(3),
+      );
+      final initialBody =
+          jsonDecode(
+                requests
+                    .firstWhere((r) => r.url.path == '/precompute-assignments')
+                    .body,
+              )
+              as Map<String, dynamic>;
+      expect(
+        initialBody['data']['attributes']['subject']['targeting_attributes']['signupDate'],
+        '2026-01-02T00:00:00.000Z',
       );
       await api.shutdown();
       expect(client.providerStatus, ProviderStatus.notReady);

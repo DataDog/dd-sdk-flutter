@@ -8,7 +8,7 @@
 
 export 'package:datadog_flags/datadog_flags.dart'
     show
-        DatadogOpenFeatureProvider,
+        DatadogProvider,
         DatadogFlagsConfig,
         DatadogFlagsClient,
         DatadogFlagsConfiguration,

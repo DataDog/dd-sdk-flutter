@@ -27,7 +27,7 @@ extension DatadogSdkFlagsExtension on DatadogSdk {
 /// Flags SDK account metadata from the initialized [DatadogSdk] and to add
 /// successful flag evaluations to the active RUM view.
 @Deprecated(
-  'Use DatadogOpenFeatureProvider and DatadogRumHook. Removal is planned for the next major version.',
+  'Use DatadogProvider and DatadogRumHook. Removal is planned for the next major version.',
 )
 class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
   /// Optional Flags SDK configuration overrides.
@@ -63,7 +63,7 @@ class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
 /// flag-evaluation telemetry through `datadog_flags`; this plugin only adds the
 /// Flutter-specific setup and RUM feature flag tagging.
 @Deprecated(
-  'Use DatadogOpenFeatureProvider and DatadogRumHook. Removal is planned for the next major version.',
+  'Use DatadogProvider and DatadogRumHook. Removal is planned for the next major version.',
 )
 class DatadogFlagsPlugin extends DatadogPlugin {
   final DatadogFlagsConfiguration _flagsConfiguration;
@@ -375,14 +375,5 @@ class DatadogFlutterFlagsClient
 ///
 /// Some Datadog Flutter SDK sites, such as FedRAMP, do not currently have a
 /// matching Datadog Flags endpoint.
-DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) {
-  return switch (site) {
-    DatadogSite.us1 => DatadogFlagsSite.us1,
-    DatadogSite.us3 => DatadogFlagsSite.us3,
-    DatadogSite.us5 => DatadogFlagsSite.us5,
-    DatadogSite.eu1 => DatadogFlagsSite.eu1,
-    DatadogSite.ap1 => DatadogFlagsSite.ap1,
-    DatadogSite.ap2 => DatadogFlagsSite.ap2,
-    DatadogSite.us1Fed => null,
-  };
-}
+DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) =>
+    DatadogFlagsSite.values.asNameMap()[site.name];

@@ -32,7 +32,7 @@ jobs:
     # Generous, but not unbounded.
     timeout-minutes: 360
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
           # Otherwise the default GITHUB_TOKEN lingers and overrides the STS
@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
       - name: Fetch every branch (dev-line + release-content/*)
         run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
-      - uses: dart-lang/setup-dart@v1
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
       - name: dart pub get
         working-directory: tools/releaser
         run: dart pub get
@@ -67,7 +67,7 @@ jobs:
           dart run tools/releaser/bin/publish_release.dart --repo-root="$GITHUB_WORKSPACE"
       - name: Notify Slack on Failure
         if: failure()
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL_DD_SDK_FLUTTER }}
           webhook-type: incoming-webhook

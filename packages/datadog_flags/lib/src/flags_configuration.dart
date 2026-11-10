@@ -54,6 +54,7 @@ final class DatadogFlagsConfiguration {
   ///
   /// Legacy clients do not limit how large this value can be.
   /// The OpenFeature provider requires a positive timeout of at most 20 seconds.
+  /// It applies this budget to initialization, each context change, and each refresh.
   ///
   /// The timeout applies only to the first
   /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or

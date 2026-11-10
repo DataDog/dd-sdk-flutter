@@ -5,23 +5,27 @@
 
 import 'dart:async';
 
+import 'package:http/http.dart' as http;
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
 import 'datadog_flags.dart';
+import 'datadog_flags_config.dart';
 import 'default_flags_client.dart';
 import 'evaluation_context.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
+import 'flags_store.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
 /// One provider instance owns one OpenFeature domain. Context reconciliation
 /// creates a candidate Datadog runtime and swaps it into use only after
-/// assignments for the new context are available. Evaluations therefore keep
-/// using the previous context while reconciliation is in progress or fails.
-final class DatadogOpenFeatureProvider
+/// assignments for the new context are available. Attribute-only changes retain
+/// assignments while loading or after failure. Targeting-key changes return
+/// application defaults until assignments for the new key are available.
+final class DatadogProvider
     implements
         openfeature.FeatureProvider,
         openfeature.InitializableProvider,
@@ -35,6 +39,9 @@ final class DatadogOpenFeatureProvider
   /// OpenFeature flag metadata key containing the Datadog assignment serial ID.
   static const serialIdMetadata = datadogSerialIdMetadata;
 
+  /// Metadata key containing the assignment logging policy.
+  static const doLogMetadata = datadogDoLogMetadata;
+
   /// Largest initialization budget accepted by this provider.
   ///
   /// The budget must expire before OpenFeature's 30-second lifecycle deadline.
@@ -47,31 +54,72 @@ final class DatadogOpenFeatureProvider
   /// Datadog runtime configuration used by each context revision.
   final DatadogFlagsConfiguration configuration;
 
-  /// Explicit Datadog client name, or `null` to derive it from the domain.
-  final String? clientName;
   final StreamController<openfeature.ProviderEvent> _events =
       StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
 
   _ProviderRuntime? _activeRuntime;
+  _ProviderRuntime? _telemetrySource;
   _ProviderRuntime? _pendingRuntime;
   var _contextRevision = 0;
   var _shutdownGeneration = 0;
   Future<void>? _contextOperation;
   String? _resolvedClientName;
 
-  /// Creates a provider that owns its Datadog runtime lifecycle.
+  /// Creates a provider for a Datadog organization and environment.
   ///
-  /// When [clientName] is omitted, a domain binding uses its domain as the
-  /// Datadog client name and the default binding uses
+  /// The domain name identifies stored snapshots. The default domain uses
   /// [DatadogFlags.defaultClientName].
-  DatadogOpenFeatureProvider({required this.configuration, this.clientName});
+  DatadogProvider({
+    required String clientToken,
+    required String env,
+    required DatadogFlagsSite site,
+    String? applicationId,
+    String? service,
+    String? version,
+    bool trackExposures = true,
+    bool trackEvaluations = true,
+    Duration evaluationFlushInterval =
+        DatadogFlagsConfiguration.defaultEvaluationFlushInterval,
+    Duration initializationTimeout =
+        DatadogFlagsConfiguration.defaultInitializationTimeout,
+    Uri? customFlagsEndpoint,
+    Map<String, String>? customFlagsHeaders,
+    Uri? customExposureEndpoint,
+    Uri? customEvaluationEndpoint,
+    http.Client? httpClient,
+    DatadogFlagsStore? store,
+  }) : this.fromConfiguration(
+         DatadogFlagsConfiguration(
+           datadogConfig: DatadogFlagsConfig(
+             clientToken: clientToken,
+             env: env,
+             site: site,
+             applicationId: applicationId,
+             service: service,
+             version: version,
+           ),
+           trackExposures: trackExposures,
+           trackEvaluations: trackEvaluations,
+           evaluationFlushInterval: evaluationFlushInterval,
+           initializationTimeout: initializationTimeout,
+           customFlagsEndpoint: customFlagsEndpoint,
+           customFlagsHeaders: customFlagsHeaders,
+           customExposureEndpoint: customExposureEndpoint,
+           customEvaluationEndpoint: customEvaluationEndpoint,
+           httpClient: httpClient,
+           store: store,
+         ),
+       );
+
+  /// Creates a provider from an existing Datadog runtime configuration.
+  DatadogProvider.fromConfiguration(this.configuration);
 
   @override
   Stream<openfeature.ProviderEvent> get events => _events.stream;
 
   @override
   openfeature.ProviderMetadata get metadata =>
-      const openfeature.ProviderMetadata(name: 'Datadog');
+      const openfeature.ProviderMetadata(name: 'datadog');
 
   @override
   Future<void> initialize(
@@ -79,8 +127,7 @@ final class DatadogOpenFeatureProvider
     String? domain,
   }) async {
     _requestedContext = context;
-    _resolvedClientName =
-        clientName ?? domain ?? DatadogFlags.defaultClientName;
+    _resolvedClientName = domain ?? DatadogFlags.defaultClientName;
     await _runContextOperation(context, isInitialization: true);
   }
 
@@ -92,11 +139,11 @@ final class DatadogOpenFeatureProvider
     // Only initialization can recover through refresh before an active context
     // exists. Failed reconciliation must be retried through OpenFeature.
     _requestedContext = null;
-    // Sign-out must retire private assignments even if anonymous loading fails.
-    if (newContext.targetingKey == null) {
-      final previous = _activeRuntime;
+    final active = _activeRuntime;
+    final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
+    if (active != null && (newContext.targetingKey ?? '') != activeKey) {
       _activeRuntime = null;
-      _retire(previous);
+      _telemetrySource = active;
     }
     _events.add(
       openfeature.ProviderEvent(
@@ -111,10 +158,13 @@ final class DatadogOpenFeatureProvider
   /// Waits for pending initialization or context reconciliation. After failed
   /// sign-out, retry the context change through OpenFeature before refreshing.
   ///
-  /// Before the first successful load, uses the requested initial context.
+  /// Before the first successful load, retries the requested initial context.
+  /// A retry replaces the pending request. Avoid retrying from every error event.
   ///
   /// A successful refresh emits a configuration-changed event. A failed
-  /// refresh emits an error and preserves assignments for the active context.
+  /// refresh emits an error followed by stale and preserves active assignments.
+  /// Throws [StateError] before initialization, after shutdown, or after a failed
+  /// targeting-key change leaves no active assignments.
   Future<void> refresh() async {
     final generation = _shutdownGeneration;
     while (_contextOperation != null) {
@@ -136,7 +186,11 @@ final class DatadogOpenFeatureProvider
         'Initialize or reconcile the provider before refreshing assignments.',
       );
     }
-    await _loadContext(context, isInitialization: false, isRefresh: true);
+    await _loadContext(
+      context,
+      isInitialization: activeContext == null,
+      isRefresh: activeContext != null,
+    );
   }
 
   @override
@@ -145,13 +199,17 @@ final class DatadogOpenFeatureProvider
     _contextRevision += 1;
     final activeRuntime = _activeRuntime;
     final pendingRuntime = _pendingRuntime;
+    final telemetrySource = _telemetrySource;
     _activeRuntime = null;
     _pendingRuntime = null;
     _resolvedClientName = null;
     _requestedContext = null;
+    _telemetrySource = null;
     await Future.wait([
       ..._retiring,
       if (activeRuntime != null) _disableQuietly(activeRuntime),
+      if (telemetrySource != null && !identical(telemetrySource, activeRuntime))
+        _disableQuietly(telemetrySource),
       if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
         _disableQuietly(pendingRuntime),
     ]);
@@ -284,7 +342,7 @@ final class DatadogOpenFeatureProvider
     }
 
     if (configuration.datadogConfig == null) {
-      _emitLoadError('Datadog Flags configuration is required.');
+      _emitLoadError('Datadog Flags configuration is required.', fatal: true);
       return;
     }
 
@@ -296,6 +354,7 @@ final class DatadogOpenFeatureProvider
         'initializationTimeout must be positive and at most '
         '${maxInitializationTimeout.inSeconds} seconds. It must expire '
         'before the OpenFeature lifecycle timeout.',
+        fatal: true,
       );
       return;
     }
@@ -383,10 +442,14 @@ final class DatadogOpenFeatureProvider
       return;
     }
 
-    if (isRefresh && status == DatadogFlagsClientStatus.stale) {
+    if (isRefresh &&
+        _activeRuntime != null &&
+        status != DatadogFlagsClientStatus.ready) {
       _pendingRuntime = null;
       _retire(runtime);
-      _emitLoadError('Datadog assignment refresh failed.');
+      _emitLoadError(
+        _loadMessage(runtime, 'Datadog assignment refresh failed.'),
+      );
       _events.add(
         openfeature.ProviderEvent(
           type: openfeature.ProviderEventType.stale,
@@ -422,7 +485,10 @@ final class DatadogOpenFeatureProvider
         await _disableQuietly(runtime);
         if (revision == _contextRevision) {
           _emitLoadError(
-            'Datadog assignments are not available for the requested context.',
+            _loadMessage(
+              runtime,
+              'Datadog assignments are not available for the requested context.',
+            ),
           );
         }
     }
@@ -490,8 +556,10 @@ final class DatadogOpenFeatureProvider
     }
 
     final previous = _activeRuntime;
-    if (previous != null && !identical(previous, runtime)) {
-      runtime.client.inheritTelemetry(previous.client);
+    final telemetrySource = previous ?? _telemetrySource;
+    _telemetrySource = null;
+    if (telemetrySource != null && !identical(telemetrySource, runtime)) {
+      runtime.client.inheritTelemetry(telemetrySource.client);
     }
     _activeRuntime = runtime;
     if (identical(_pendingRuntime, runtime)) {
@@ -517,14 +585,15 @@ final class DatadogOpenFeatureProvider
       _events.add(
         openfeature.ProviderEvent(
           type: openfeature.ProviderEventType.stale,
-          message:
-              'Using existing Datadog assignments. Fresh assignments '
-              'are not available.',
+          message: _loadMessage(
+            runtime,
+            'Using existing Datadog assignments. Fresh assignments are not available.',
+          ),
         ),
       );
     }
-    if (previous != null && !identical(previous, runtime)) {
-      _retire(previous);
+    if (telemetrySource != null && !identical(telemetrySource, runtime)) {
+      _retire(telemetrySource);
     }
   }
 
@@ -558,11 +627,22 @@ final class DatadogOpenFeatureProvider
     }
   }
 
-  void _emitLoadError(String message) {
+  String _loadMessage(_ProviderRuntime runtime, String message) {
+    final error = runtime.client.lastLoadError;
+    if (error is FlagsException && error.type == FlagsErrorType.networkError) {
+      return '$message ${error.message}';
+    }
+    if (error is FlagsException) return '$message ${error.type.name}.';
+    return message;
+  }
+
+  void _emitLoadError(String message, {bool fatal = false}) {
     _events.add(
       openfeature.ProviderEvent(
         type: openfeature.ProviderEventType.error,
-        errorCode: openfeature.ErrorCode.general,
+        errorCode: fatal
+            ? openfeature.ErrorCode.providerFatal
+            : openfeature.ErrorCode.general,
         message: message,
       ),
     );
@@ -626,7 +706,10 @@ final class _ProviderRuntime {
 extension _DatadogContext on openfeature.EvaluationContext {
   FlagsEvaluationContext get datadogContext => FlagsEvaluationContext(
     targetingKey: targetingKey,
-    attributes: attributes,
+    attributes: {
+      for (final MapEntry(:key, :value) in attributes.entries)
+        key: _jsonAttribute(value),
+    },
   );
 }
 
@@ -640,3 +723,14 @@ extension _OpenFeatureError on FlagEvaluationError {
 
   String get message => 'Datadog flag evaluation failed with $code.';
 }
+
+Object? _jsonAttribute(Object? value) => switch (value) {
+  DateTime() => value.toUtc().toIso8601String(),
+  double() when !value.isFinite => null,
+  Map<String, Object?>() => {
+    for (final MapEntry(:key, :value) in value.entries)
+      key: _jsonAttribute(value),
+  },
+  List<Object?>() => [for (final item in value) _jsonAttribute(item)],
+  _ => value,
+};

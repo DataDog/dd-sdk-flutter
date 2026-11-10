@@ -287,7 +287,13 @@ void main() {
         key: 'show-paywall',
         defaultValue: false,
       );
-      expect(success.flagMetadata, {'datadog.allocation_key': 'allocation-a'});
+      expect(success.flagMetadata, {
+        'allocationKey': 'allocation-a',
+        'doLog': true,
+        'variationType': 'boolean',
+        '__dd_allocation_key': 'allocation-a',
+        '__dd_do_log': true,
+      });
     },
   );
 

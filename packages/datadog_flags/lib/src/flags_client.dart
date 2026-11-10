@@ -8,10 +8,15 @@ import 'dart:async';
 import 'evaluation_context.dart';
 import 'flags_error.dart';
 
-const datadogAllocationKeyMetadata = 'datadog.allocation_key';
-const datadogSerialIdMetadata = 'datadog.serial_id';
+const datadogAllocationKeyMetadata = 'allocationKey';
+const datadogDoLogMetadata = 'doLog';
+const datadogVariationTypeMetadata = 'variationType';
+const datadogInternalAllocationKeyMetadata = '__dd_allocation_key';
+const datadogInternalDoLogMetadata = '__dd_do_log';
+const datadogSerialIdMetadata = '__dd_split_serial_id';
 
 /// Current assignment availability for a Datadog feature flags client.
+@Deprecated('Use OpenFeature provider events and status.')
 enum DatadogFlagsClientStatus {
   /// No assignments are available for evaluation.
   notReady,
@@ -51,6 +56,7 @@ abstract interface class DatadogFlagsClient {
   ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
+  /// Throws [StateError] if this client has been shut down.
   Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
@@ -94,6 +100,7 @@ abstract interface class DatadogFlagsClient {
 ///
 /// This is separate from [DatadogFlagsClient] so existing custom clients and
 /// test doubles are not required to implement lifecycle reporting.
+@Deprecated('Use OpenFeature provider events and status.')
 abstract interface class DatadogFlagsClientLifecycle {
   /// Current assignment availability for this client.
   DatadogFlagsClientStatus get status;
