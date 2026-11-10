@@ -162,7 +162,14 @@ class TextElementRecorder implements ElementRecorder {
     final scale = math.max(attributes.scaleX, attributes.scaleY);
     if (scale <= 0) return null;
 
-    final bounds = paintedBounds(paragraph);
+    final Rect bounds;
+    try {
+      bounds = paintedBounds(paragraph);
+    } catch (_) {
+      // Reading text metrics throws if the paragraph's text layout isn't
+      // valid. Send the paragraph as text rather than fail the capture.
+      return null;
+    }
     final rasterAttributes = bounds == Offset.zero & size
         ? attributes
         : _attributesFor(bounds, size, attributes);
