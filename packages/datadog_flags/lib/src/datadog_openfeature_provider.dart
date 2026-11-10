@@ -144,6 +144,8 @@ final class DatadogProvider
     if (active != null && (newContext.targetingKey ?? '') != activeKey) {
       _activeRuntime = null;
       _telemetrySource = active;
+      unawaited(active.statusSubscription?.cancel());
+      active.statusSubscription = null;
     }
     _events.add(
       openfeature.ProviderEvent(

@@ -76,6 +76,76 @@ void main() {
     },
   );
 
+  test(
+    'late cached response preserves outgoing telemetry after identity failure',
+    () async {
+      EvaluationAggregator.maxBatchSize = 1;
+      addTearDown(
+        () => EvaluationAggregator.maxBatchSize =
+            EvaluationAggregator.defaultMaxBatchSize,
+      );
+      final initialUpload = Completer<http.Response>();
+      final started = Completer<void>();
+      final firstAssignment = Completer<http.Response>();
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      var assignments = 0;
+      var attempts = 0;
+      final delivered = <Map<String, Object?>>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            if (request.url.path == '/api/v2/flagevaluation') {
+              if (++attempts == 1) {
+                started.complete();
+                return initialUpload.future;
+              }
+              delivered.addAll(_evaluationEvents(request));
+              return http.Response('{}', 202);
+            }
+            if (request.url.path == '/precompute-assignments') {
+              if (++assignments == 1) {
+                return firstAssignment.future;
+              }
+              return http.Response('offline', 503);
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 20),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'A'),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await started.future;
+      await expectLater(
+        api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      firstAssignment.complete(
+        http.Response(jsonEncode(_assignmentsResponse()), 200),
+      );
+      await Future<void>.delayed(Duration.zero);
+      initialUpload.complete(http.Response('offline', 503));
+      await _waitUntil(() => delivered.isNotEmpty);
+      expect(delivered.single['targeting_key'], 'A');
+      await api.shutdown();
+      expect(attempts, 2);
+    },
+  );
+
   for (final key in <String?>[null, '', 'user']) {
     test('attribute-only change retains assignments for key $key', () async {
       var requests = 0;
