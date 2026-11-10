@@ -36,6 +36,9 @@ const Set<String> _platformDefaultFontFamilies = {
 /// reach past the line, or be drawn with a fallback font.
 const int _lastLatinCodePoint = 0x024F;
 
+/// The miter limit [Paint] uses when [Paint.strokeMiterLimit] isn't set.
+const double _defaultStrokeMiterLimit = 4.0;
+
 /// Captures [RichText] widgets, which also covers [Text].
 ///
 /// In [TextCaptureMode.standard] the text is sent as a text wireframe. In
@@ -52,6 +55,11 @@ class TextElementRecorder implements ElementRecorder {
 
   final RasterResourceCache<TextRasterKey> _rasterCache;
   bool _listeningToFontChanges = false;
+
+  /// Incremented whenever the available fonts change. It's part of each
+  /// [TextRasterKey], so a paragraph painted before a change never matches a
+  /// key built after it, even if its bitmap is stored after the change.
+  int _fontGeneration = 0;
 
   TextElementRecorder(
     this.keyGenerator, {
@@ -173,6 +181,7 @@ class TextElementRecorder implements ElementRecorder {
       bounds: bounds,
       pixelWidth: pixelWidth,
       pixelHeight: pixelHeight,
+      fontGeneration: _fontGeneration,
     );
     SpecificElement resourceSemantics(int resourceKey) => resourceElement(
       rasterAttributes,
@@ -226,6 +235,7 @@ class TextElementRecorder implements ElementRecorder {
 
     var maxFontSize = 0.0;
     var needsInkMargin = false;
+    var maxStrokeReach = 0.0;
     final shadows = <Shadow>[];
 
     void visit(InlineSpan span, TextStyle inherited) {
@@ -238,6 +248,9 @@ class TextElementRecorder implements ElementRecorder {
         );
         // Once one span needs the margin, the rest don't need checking.
         needsInkMargin = needsInkMargin || !_staysInLineBoxes(style, text);
+        if (style.foreground case final foreground?) {
+          maxStrokeReach = math.max(maxStrokeReach, _strokeReach(foreground));
+        }
         shadows.addAll(style.shadows ?? const []);
       }
       for (final child in span.children ?? const <InlineSpan>[]) {
@@ -247,7 +260,8 @@ class TextElementRecorder implements ElementRecorder {
 
     visit(paragraph.text, const TextStyle());
 
-    final ink = needsInkMargin ? text.inflate(maxFontSize / 2) : text;
+    final glyphMargin = needsInkMargin ? maxFontSize / 2 : 0.0;
+    final ink = text.inflate(glyphMargin + maxStrokeReach);
     var bounds = ink;
     for (final shadow in shadows) {
       // A Gaussian blur fades out within about three sigmas.
@@ -256,6 +270,19 @@ class TextElementRecorder implements ElementRecorder {
       );
     }
     return bounds;
+  }
+
+  /// How far a [foreground] paint draws past the glyph outlines. A stroke is
+  /// centered on the outline, and miter joins can spike out at sharp corners
+  /// by up to [Paint.strokeMiterLimit] times half the stroke width.
+  static double _strokeReach(Paint foreground) {
+    if (foreground.style != PaintingStyle.stroke) return 0;
+    final halfWidth = foreground.strokeWidth / 2;
+    if (foreground.strokeJoin != StrokeJoin.miter) return halfWidth;
+    final miterLimit = kIsWeb
+        ? foreground.strokeMiterLimit
+        : foreground.strokeMiterLimit + _defaultStrokeMiterLimit;
+    return halfWidth * math.max(1, miterLimit);
   }
 
   /// Whether [text] drawn with [style] stays within its line boxes: upright
@@ -294,12 +321,17 @@ class TextElementRecorder implements ElementRecorder {
     );
   }
 
-  /// Clears the raster cache whenever the available fonts change, such as
-  /// when a font loads at runtime.
+  /// Starts a new font generation and clears the raster cache whenever the
+  /// available fonts change, such as when a font loads at runtime.
   void _listenToFontChanges() {
     if (_listeningToFontChanges) return;
     _listeningToFontChanges = true;
-    PaintingBinding.instance.systemFonts.addListener(_rasterCache.clear);
+    PaintingBinding.instance.systemFonts.addListener(_onFontsChanged);
+  }
+
+  void _onFontsChanged() {
+    _fontGeneration++;
+    _rasterCache.clear();
   }
 
   /// Paints the [bounds] area of [paragraph] into a new layer tree scaled to
@@ -423,6 +455,10 @@ final class TextRasterKey {
   final int pixelWidth;
   final int pixelHeight;
 
+  /// The [TextElementRecorder]'s font generation when the paragraph was
+  /// painted.
+  final int fontGeneration;
+
   const TextRasterKey({
     required this.text,
     required this.textAlign,
@@ -442,6 +478,7 @@ final class TextRasterKey {
     required this.bounds,
     required this.pixelWidth,
     required this.pixelHeight,
+    required this.fontGeneration,
   });
 
   factory TextRasterKey.fromParagraph(
@@ -449,6 +486,7 @@ final class TextRasterKey {
     required Rect bounds,
     required int pixelWidth,
     required int pixelHeight,
+    required int fontGeneration,
   }) {
     return TextRasterKey(
       text: paragraph.text,
@@ -473,6 +511,7 @@ final class TextRasterKey {
       bounds: bounds,
       pixelWidth: pixelWidth,
       pixelHeight: pixelHeight,
+      fontGeneration: fontGeneration,
     );
   }
 
@@ -512,7 +551,8 @@ final class TextRasterKey {
         other.size == size &&
         other.bounds == bounds &&
         other.pixelWidth == pixelWidth &&
-        other.pixelHeight == pixelHeight;
+        other.pixelHeight == pixelHeight &&
+        other.fontGeneration == fontGeneration;
   }
 
   @override
@@ -535,5 +575,6 @@ final class TextRasterKey {
     bounds,
     pixelWidth,
     pixelHeight,
+    fontGeneration,
   );
 }

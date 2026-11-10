@@ -2,6 +2,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
+import 'dart:async';
+
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:datadog_session_replay/src/capture/capture_node.dart';
@@ -439,6 +441,75 @@ void main() {
       expect(savedResourceKeys().toSet().length, 2);
     });
 
+    testWidgets('rasterizes again when fonts change before processing', (
+      tester,
+    ) async {
+      // Hold the first upload, so the font change lands after both paragraphs
+      // are painted but before the second one is processed. The completers
+      // are created inside runAsync: futures from the test's fake async zone
+      // only complete when it's pumped.
+      Completer<void>? firstUploadStarted;
+      Completer<void>? releaseFirstUpload;
+      var uploads = 0;
+      when(
+        () => platform.saveImageForProcessing(any(), any(), any(), any()),
+      ).thenAnswer((_) async {
+        if (uploads++ == 0) {
+          firstUploadStarted?.complete();
+          await releaseFirstUpload?.future;
+        }
+      });
+      final recorder = createRecorder();
+      // Fixed-size boxes keep the same key whatever font the text uses.
+      await tester.pumpWidget(
+        wrap(
+          recorder,
+          const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 200,
+                height: 30,
+                child: Text('First', style: style),
+              ),
+              SizedBox(
+                width: 200,
+                height: 30,
+                child: Text('Second', style: style),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      await tester.runAsync(() async {
+        final started = firstUploadStarted = Completer<void>();
+        final release = releaseFirstUpload = Completer<void>();
+        final pending = recorder.performCapture();
+        await started.future;
+        // The message Flutter receives when a font loads at runtime. The test
+        // binding handles it in its fake async zone, which pumping flushes.
+        unawaited(
+          tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+            SystemChannels.system.name,
+            SystemChannels.system.codec.encodeMessage(<String, Object?>{
+              'type': 'fontsChange',
+            }),
+            (_) {},
+          ),
+        );
+        await tester.pump();
+        release.complete();
+        await pending;
+      });
+      await tester.pump();
+      await capture(tester, recorder);
+
+      // Both paragraphs are drawn again: their keys from before the change
+      // don't match keys built after it.
+      expect(savedResourceKeys().toSet().length, 4);
+    });
+
     testWidgets('rasterizes again when the selection changes', (tester) async {
       final recorder = createRecorder();
       await tester.pumpWidget(
@@ -711,6 +782,66 @@ void main() {
       expect(
         TextElementRecorder.paintedBounds(render),
         (Offset.zero & render.size).inflate(margin),
+      );
+    });
+
+    Paint stroke({
+      double width = 8,
+      StrokeJoin join = StrokeJoin.miter,
+      double? miterLimit,
+    }) {
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = width
+        ..strokeJoin = join;
+      if (miterLimit != null) paint.strokeMiterLimit = miterLimit;
+      return paint;
+    }
+
+    for (final (description, foreground, reach) in [
+      // Half the 8px width, times the default miter limit of 4.
+      ('a miter stroke', stroke(), 16.0),
+      ('a miter stroke with limit 6', stroke(miterLimit: 6), 24.0),
+      ('a round stroke', stroke(join: StrokeJoin.round), 4.0),
+      ('a bevel stroke', stroke(join: StrokeJoin.bevel), 4.0),
+      ('a fill paint', Paint()..color = const Color(0xFF000000), 0.0),
+    ]) {
+      testWidgets('grow plain text by $reach for $description', (tester) async {
+        final render = await pumpText(
+          tester,
+          Text(
+            'Outline',
+            style: TextStyle(
+              fontSize: 20,
+              fontFamily: 'Roboto',
+              foreground: foreground,
+            ),
+          ),
+        );
+
+        expect(
+          TextElementRecorder.paintedBounds(render),
+          (Offset.zero & render.size).inflate(reach),
+        );
+      });
+    }
+
+    testWidgets('add a stroke to the glyph margin', (tester) async {
+      final render = await pumpText(
+        tester,
+        Text(
+          'Outline',
+          style: TextStyle(
+            fontSize: 20,
+            fontFamily: 'Lobster',
+            foreground: stroke(join: StrokeJoin.round),
+          ),
+        ),
+      );
+
+      expect(
+        TextElementRecorder.paintedBounds(render),
+        (Offset.zero & render.size).inflate(margin + 4),
       );
     });
 
