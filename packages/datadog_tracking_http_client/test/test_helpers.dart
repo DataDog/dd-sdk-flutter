@@ -6,7 +6,10 @@ import 'dart:io';
 
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:datadog_flutter_plugin/datadog_internal.dart';
+import 'package:datadog_tracking_http_client/datadog_tracking_http_client.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 extension HttpHeadersToMap on HttpHeaders {
   Map<String, String> toMap() {
@@ -19,8 +22,12 @@ extension HttpHeadersToMap on HttpHeaders {
   }
 }
 
-void verifyHeaders(Map<String, String> headers, TracingHeaderType type,
-    bool sampled, TraceContextInjection traceContextInjection) {
+void verifyHeaders(
+  Map<String, String> headers,
+  TracingHeaderType type,
+  bool sampled,
+  TraceContextInjection traceContextInjection,
+) {
   BigInt? traceInt;
   BigInt? spanInt;
 
@@ -111,4 +118,15 @@ void verifyHeaders(Map<String, String> headers, TracingHeaderType type,
   if (spanInt != null) {
     expect(spanInt.bitLength, lessThanOrEqualTo(63));
   }
+}
+
+/// Mirrors [DatadogSdk.resolveErrorType] with the resolvers this package
+/// registers, for mocked [DatadogSdk]s.
+void stubResolveErrorType(DatadogSdk mockDatadog) {
+  when(() => mockDatadog.resolveErrorType(any())).thenAnswer((i) {
+    final error = i.positionalArguments[0] as Object;
+    return httpErrorTypeResolver(error) ??
+        defaultErrorTypeResolver(error) ??
+        error.runtimeType.toString();
+  });
 }

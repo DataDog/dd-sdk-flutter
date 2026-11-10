@@ -16,7 +16,7 @@ class InstrumentationScenario extends StatefulWidget {
   final AbstractClient client;
 
   const InstrumentationScenario({Key? key, required this.client})
-      : super(key: key);
+    : super(key: key);
 
   @override
   State<InstrumentationScenario> createState() =>
@@ -48,9 +48,7 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            settings: const RouteSettings(
-              name: 'rum_io_second_screen',
-            ),
+            settings: const RouteSettings(name: 'rum_io_second_screen'),
             builder: (_) {
               return InstrumentationSecondScreen(client: widget.client);
             },
@@ -82,9 +80,7 @@ class _InstrumentationScenarioState extends State<InstrumentationScenario> {
     final imageUrls = RumAutoInstrumentationScenarioConfig.instance.imageUrls;
     return _doneWait
         ? Scaffold(
-            appBar: AppBar(
-              title: const Text('Auto RUM'),
-            ),
+            appBar: AppBar(title: const Text('Auto RUM')),
             body: SingleChildScrollView(
               child: Column(
                 children: [

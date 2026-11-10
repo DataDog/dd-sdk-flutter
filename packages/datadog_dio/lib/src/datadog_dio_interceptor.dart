@@ -45,7 +45,9 @@ class DatadogDioInterceptor extends Interceptor {
 
   @override
   void onResponse(
-      Response<dynamic> response, ResponseInterceptorHandler handler) {
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) {
     final rum = datadogSdk.rum;
     final rumKey = response.requestOptions.extra[datadogRumExtraKey];
     if (!kIsWeb && rum != null && rumKey is String) {
@@ -79,7 +81,11 @@ class DatadogDioInterceptor extends Interceptor {
         } else {
           final attributes = attributesProvider?.onError(err) ?? {};
           rum.stopResourceWithErrorInfo(
-              rumKey, err.toString(), err.type.toString(), attributes);
+            rumKey,
+            err.toString(),
+            err.type.toString(),
+            attributes,
+          );
         }
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
@@ -108,7 +114,10 @@ class DatadogDioInterceptor extends Interceptor {
   }
 
   void _stopWithResponse(
-      DatadogRum rum, String rumKey, Response<dynamic> response) {
+    DatadogRum rum,
+    String rumKey,
+    Response<dynamic> response,
+  ) {
     final contentTypeHeader =
         response.headers[Headers.contentTypeHeader]?.firstOrNull;
     final contentType = contentTypeHeader != null
@@ -177,7 +186,11 @@ class DatadogDioInterceptor extends Interceptor {
         rumKey = _uuid.v1();
         options.extra[datadogRumExtraKey] = rumKey;
         rum.startResource(
-            rumKey, rumHttpMethod, options.uri.toString(), attributes);
+          rumKey,
+          rumHttpMethod,
+          options.uri.toString(),
+          attributes,
+        );
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
           '$DatadogDioInterceptor encountered an error while attempting'
@@ -211,11 +224,17 @@ class DatadogDioInterceptor extends Interceptor {
 
     if (tracingHeaderTypes.isNotEmpty) {
       attributes = generateDatadogAttributes(
-          context, datadogSdk.rum?.traceSampleRate ?? 0);
+        context,
+        datadogSdk.rum?.traceSampleRate ?? 0,
+      );
 
       for (final headerType in tracingHeaderTypes) {
-        injectTracingHeaders(context, headerType, requestOptions.headers,
-            contextInjection: contextInjection);
+        injectTracingHeaders(
+          context,
+          headerType,
+          requestOptions.headers,
+          contextInjection: contextInjection,
+        );
       }
     }
 

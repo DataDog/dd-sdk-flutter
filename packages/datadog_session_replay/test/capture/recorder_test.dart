@@ -9,12 +9,14 @@ import 'package:datadog_session_replay/src/capture/capture_node.dart';
 import 'package:datadog_session_replay/src/capture/pointer_capture.dart';
 import 'package:datadog_session_replay/src/capture/recorder.dart';
 import 'package:datadog_session_replay/src/capture/view_tree_snapshot.dart';
+import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/rum_context.dart';
 import 'package:datadog_session_replay/src/sr_data_models.dart';
 import 'package:datadog_session_replay/src/widgets.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'simple_test_capture.dart';
 
@@ -37,6 +39,10 @@ class MockPointerSnapshotRecorder extends Mock
     implements PointerSnapshotRecorder {}
 
 class MockTimeProvider extends Mock implements DatadogTimeProvider {}
+
+class MockDatadogSessionReplayPlatform extends Mock
+    with MockPlatformInterfaceMixin
+    implements DatadogSessionReplayPlatform {}
 
 void main() {
   late SessionReplayRecorder recorder;
@@ -286,22 +292,22 @@ void main() {
       // Then
       verifyInOrder([
         () => mockRecorderA.captureSemantics(
-              any(),
-              any(),
-              TreeCapturePrivacy(
-                textAndInputPrivacyLevel:
-                    TextAndInputPrivacyLevel.maskSensitiveInputs,
-                imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
-              ),
-            ),
+          any(),
+          any(),
+          TreeCapturePrivacy(
+            textAndInputPrivacyLevel:
+                TextAndInputPrivacyLevel.maskSensitiveInputs,
+            imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
+          ),
+        ),
         () => mockRecorderA.captureSemantics(
-              any(),
-              any(),
-              TreeCapturePrivacy(
-                textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
-                imagePrivacyLevel: ImagePrivacyLevel.maskAll,
-              ),
-            ),
+          any(),
+          any(),
+          TreeCapturePrivacy(
+            textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskAll,
+            imagePrivacyLevel: ImagePrivacyLevel.maskAll,
+          ),
+        ),
       ]);
     });
 
@@ -494,5 +500,114 @@ void main() {
       expect(capture!.pointerSnapshot, isNotNull);
       expect(capture.pointerSnapshot!.pointerEvents, expectedPointerNodes);
     });
+  });
+
+  group('recorder errors', () {
+    final mockRecorderA = MockElementRecorder();
+    late MockDatadogSessionReplayPlatform platform;
+
+    setUp(() {
+      reset(mockRecorderA);
+      platform = MockDatadogSessionReplayPlatform();
+      DatadogSessionReplayPlatform.instance = platform;
+      mockTimeProvider = MockTimeProvider();
+      when(() => mockTimeProvider.now()).thenReturn(expectedDateTime);
+      recorder = SessionReplayRecorder.withCustomRecorders(
+        [mockRecorderA],
+        timeProvider: mockTimeProvider,
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
+        ),
+        touchPrivacyLevel: TouchPrivacyLevel.show,
+      );
+      recorder.updateContext(
+        RUMContext(applicationId: randomString(), sessionId: randomString()),
+      );
+
+      registerFallbackValue(
+        CapturedViewAttributes(
+          paintBounds: Rect.zero,
+          scaleX: 1.0,
+          scaleY: 1.0,
+        ),
+      );
+      registerFallbackValue(
+        TreeCapturePrivacy(
+          textAndInputPrivacyLevel:
+              TextAndInputPrivacyLevel.maskSensitiveInputs,
+          imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
+        ),
+      );
+      registerFallbackValue(MockElement());
+    });
+
+    testWidgets('throwing element recorder does not block later captures', (
+      tester,
+    ) async {
+      // Given
+      var shouldThrow = true;
+      when(
+        () => mockRecorderA.captureSemantics(any(), any(), any()),
+      ).thenAnswer((_) {
+        if (shouldThrow) throw UnsupportedError('Infinity or NaN toInt');
+        return SpecificElement(
+          subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
+          nodes: [MockCaptureNode()],
+        );
+      });
+      final testedTree = SimpleTestCapture(
+        key: UniqueKey(),
+        recorder: recorder,
+      );
+      await tester.pumpWidget(testedTree);
+
+      // When
+      // The exception propagates to the caller, which reports it
+      await expectLater(recorder.performCapture(), throwsUnsupportedError);
+      shouldThrow = false;
+      final nextCapture = await recorder.performCapture();
+
+      // Then
+      expect(nextCapture, isNotNull);
+      expect(nextCapture!.viewTreeSnapshot.nodes.length, 1);
+    });
+
+    testWidgets(
+      'throwing additional processing does not block later captures',
+      (tester) async {
+        // Given
+        var shouldThrow = true;
+        when(
+          () => mockRecorderA.captureSemantics(any(), any(), any()),
+        ).thenAnswer(
+          (_) => AdditionalProcessingElement(
+            subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
+            process: () async {
+              if (shouldThrow) throw StateError('disposed');
+              return SpecificElement(
+                subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
+                nodes: [MockCaptureNode()],
+              );
+            },
+          ),
+        );
+        final testedTree = SimpleTestCapture(
+          key: UniqueKey(),
+          recorder: recorder,
+        );
+        await tester.pumpWidget(testedTree);
+
+        // When
+        final failedCapture = await recorder.performCapture();
+        shouldThrow = false;
+        final nextCapture = await recorder.performCapture();
+
+        // Then
+        expect(failedCapture, isNull);
+        expect(nextCapture, isNotNull);
+      },
+    );
   });
 }

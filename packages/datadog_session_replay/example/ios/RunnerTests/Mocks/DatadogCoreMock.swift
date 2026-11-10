@@ -36,6 +36,10 @@ open class PassthroughCoreMock: DatadogCoreProtocol, FeatureScope, @unchecked Se
     /// Callback called when `eventWriteContext` closure is executed.
     public var onEventWriteContext: ((Bool) -> Void)?
 
+    public var telemetry: Telemetry { NOPTelemetry() }
+
+    public var remoteConfiguration: RemoteConfiguration? { nil }
+
     /// Creates a Passthrough core mock.
     ///
     /// - Parameters:

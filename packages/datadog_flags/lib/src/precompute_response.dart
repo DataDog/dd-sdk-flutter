@@ -7,6 +7,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'assignment.dart';
+import 'flag_key_obfuscation.dart';
 
 part 'precompute_response.g.dart';
 
@@ -40,15 +41,28 @@ final class PrecomputeAttributes {
   final String? environment;
   @JsonKey(fromJson: _flagsFromJson)
   final Map<String, FlagAssignment> flags;
+  @JsonKey(includeFromJson: false)
+  final FlagKeyObfuscation? obfuscation;
 
   const PrecomputeAttributes({
     this.createdAt,
     this.environment,
     required this.flags,
+    this.obfuscation,
   });
 
-  factory PrecomputeAttributes.fromJson(Map<String, Object?> json) =>
-      _$PrecomputeAttributesFromJson(json);
+  factory PrecomputeAttributes.fromJson(Map<String, Object?> json) {
+    final obfuscation = FlagKeyObfuscation.fromSnapshot(json);
+    final flags = json['flags'] as Map<String, dynamic>;
+    obfuscation?.validateKeys(flags.keys);
+    final decoded = _$PrecomputeAttributesFromJson(json);
+    return PrecomputeAttributes(
+      flags: decoded.flags,
+      createdAt: decoded.createdAt,
+      environment: decoded.environment,
+      obfuscation: obfuscation,
+    );
+  }
 }
 
 Map<String, FlagAssignment> _flagsFromJson(Map<String, dynamic> json) {

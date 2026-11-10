@@ -30,7 +30,27 @@ abstract interface class DatadogGqlListener {
   void requestStarted(Request request, Map<String, Object?> attributes);
   void responseReceived(Response response, Map<String, Object?> attributes);
   void requestError(
-      Object error, StackTrace stackTrace, Map<String, Object?> attributes);
+    Object error,
+    StackTrace stackTrace,
+    Map<String, Object?> attributes,
+  );
+}
+
+/// An [ErrorTypeResolver] for the exceptions of the `gql_link` package, so
+/// their type is not obfuscated in apps built with `--obfuscate`.
+/// [DatadogGqlLink] registers it automatically.
+///
+/// This matches exact types only. Subclasses defined by terminating links,
+/// such as `HttpLinkServerException`, keep reporting their own `runtimeType`.
+String? gqlErrorTypeResolver(Object error) {
+  return switch (error.runtimeType) {
+    const (ServerException) => 'ServerException',
+    const (RequestFormatException) => 'RequestFormatException',
+    const (ResponseFormatException) => 'ResponseFormatException',
+    const (ContextReadException) => 'ContextReadException',
+    const (ContextWriteException) => 'ContextWriteException',
+    _ => null,
+  };
 }
 
 /// DatadogGqlLink automatically creates RUM Resources, enables distributed
@@ -58,7 +78,9 @@ class DatadogGqlLink extends Link {
     this.uri, {
     this.listener,
     this.trackPayload = false,
-  });
+  }) {
+    datadogSdk.addIntegrationErrorTypeResolver(gqlErrorTypeResolver);
+  }
 
   @override
   Stream<Response> request(Request request, [NextLink? forward]) {
@@ -92,64 +114,76 @@ class DatadogGqlLink extends Link {
     Map<String, Object?> userAttributes = {};
     listener?.requestStarted(request, userAttributes);
     final resourceId = _startRumResource(
-        request, internalAttributes, tracingContext, userAttributes);
+      request,
+      internalAttributes,
+      tracingContext,
+      userAttributes,
+    );
 
     final capturedRequestHeaders =
         request.context.entry<HttpLinkHeaders>()?.headers ?? const {};
 
-    return forward!(request).transform(StreamTransformer.fromHandlers(
-      handleData: (data, sink) {
-        listener?.responseReceived(data, userAttributes);
+    return forward!(request).transform(
+      StreamTransformer.fromHandlers(
+        handleData: (data, sink) {
+          listener?.responseReceived(data, userAttributes);
 
-        var linkResponseContext = data.context.entry<HttpLinkResponseContext>();
-        int? statusCode;
-        int? size;
-        if (linkResponseContext != null) {
-          statusCode = linkResponseContext.statusCode;
-          final contentLength = linkResponseContext.headers?['content-length'];
-          if (contentLength != null) {
-            size = int.tryParse(contentLength);
+          var linkResponseContext = data.context
+              .entry<HttpLinkResponseContext>();
+          int? statusCode;
+          int? size;
+          if (linkResponseContext != null) {
+            statusCode = linkResponseContext.statusCode;
+            final contentLength =
+                linkResponseContext.headers?['content-length'];
+            if (contentLength != null) {
+              size = int.tryParse(contentLength);
+            }
           }
-        }
 
-        Map<String, Object?>? errorMap;
-        try {
-          errorMap = _serializeResponseErrors(data);
-        } catch (e, st) {
-          datadogSdk.internalLogger.sendToDatadog(
-            '$DatadogGqlLink encountered an error serializing errors; $e',
-            st,
-            e.runtimeType.toString(),
+          Map<String, Object?>? errorMap;
+          try {
+            errorMap = _serializeResponseErrors(data);
+          } catch (e, st) {
+            datadogSdk.internalLogger.sendToDatadog(
+              '$DatadogGqlLink encountered an error serializing errors; $e',
+              st,
+              e.runtimeType.toString(),
+            );
+          }
+
+          final headerAttributes = _extractHeaderAttributes(
+            capturedRequestHeaders,
+            linkResponseContext?.headers ?? const {},
           );
-        }
 
-        final headerAttributes = _extractHeaderAttributes(
-          capturedRequestHeaders,
-          linkResponseContext?.headers ?? const {},
-        );
+          datadogSdk.rum?.stopResource(
+            resourceId,
+            statusCode,
+            RumResourceType.native,
+            size,
+            {
+              if (errorMap != null) ...errorMap,
+              ...userAttributes,
+              ...headerAttributes,
+            },
+          );
 
-        datadogSdk.rum?.stopResource(
-          resourceId,
-          statusCode,
-          RumResourceType.native,
-          size,
-          {
-            if (errorMap != null) ...errorMap,
-            ...userAttributes,
-            ...headerAttributes,
-          },
-        );
+          sink.add(data);
+        },
+        handleError: (error, stackTrace, sink) {
+          listener?.requestError(error, stackTrace, userAttributes);
+          datadogSdk.rum?.stopResourceWithErrorInfo(
+            resourceId,
+            error.toString(),
+            datadogSdk.resolveErrorType(error),
+            userAttributes,
+          );
 
-        sink.add(data);
-      },
-      handleError: (error, stackTrace, sink) {
-        listener?.requestError(error, stackTrace, userAttributes);
-        datadogSdk.rum?.stopResourceWithErrorInfo(resourceId, error.toString(),
-            error.runtimeType.toString(), userAttributes);
-
-        sink.addError(error, stackTrace);
-      },
-    ));
+          sink.addError(error, stackTrace);
+        },
+      ),
+    );
   }
 
   Map<String, String> _getInternalAttributes(Request request) {
@@ -203,8 +237,9 @@ class DatadogGqlLink extends Link {
 
     if (trackPayload) {
       try {
-        attributes[_GraphQLAttributes.payload] =
-            printNode(request.operation.document);
+        attributes[_GraphQLAttributes.payload] = printNode(
+          request.operation.document,
+        );
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
           '$DatadogGqlLink encountered an error while attempting to serialize payload: $e',
@@ -218,13 +253,16 @@ class DatadogGqlLink extends Link {
   }
 
   String _startRumResource(
-      Request request,
-      Map<String, String> internalAttributes,
-      TracingContext? tracingContext,
-      Map<String, Object?> userAttributes) {
+    Request request,
+    Map<String, String> internalAttributes,
+    TracingContext? tracingContext,
+    Map<String, Object?> userAttributes,
+  ) {
     final resourceId = _uuid.v1();
     final datadogAttributes = generateDatadogAttributes(
-        tracingContext, datadogSdk.rum?.traceSampleRate ?? 0);
+      tracingContext,
+      datadogSdk.rum?.traceSampleRate ?? 0,
+    );
     final attributes = {
       ...userAttributes,
       ...datadogAttributes,
@@ -233,13 +271,19 @@ class DatadogGqlLink extends Link {
 
     // TODO: RUM-1027 - Assume `post` for now, but most links support `get` queries.
     datadogSdk.rum?.startResource(
-        resourceId, RumHttpMethod.post, uri.toString(), attributes);
+      resourceId,
+      RumHttpMethod.post,
+      uri.toString(),
+      attributes,
+    );
 
     return resourceId;
   }
 
   Request _injectTracingHeaders(
-      Request request, TracingContext tracingContext) {
+    Request request,
+    TracingContext tracingContext,
+  ) {
     // On Web the Browser SDK injects tracing headers itself; skipping here
     // avoids two independent trace contexts ending up on the wire.
     if (kIsWeb) return request;
@@ -252,8 +296,12 @@ class DatadogGqlLink extends Link {
           var headers = context?.headers ?? <String, String>{};
 
           for (final headerType in tracingHeaderTypes) {
-            injectTracingHeaders(tracingContext, headerType, headers,
-                contextInjection: rum.contextInjectionSetting);
+            injectTracingHeaders(
+              tracingContext,
+              headerType,
+              headers,
+              contextInjection: rum.contextInjectionSetting,
+            );
           }
 
           return HttpLinkHeaders(headers: headers);
@@ -290,17 +338,12 @@ class DatadogGqlLink extends Link {
         'message': e.message,
         if (e.locations != null)
           'locations': e.locations!
-              .map((l) => {
-                    'line': l.line,
-                    'column': l.column,
-                  })
+              .map((l) => {'line': l.line, 'column': l.column})
               .toList(),
         if (e.path != null) 'path': e.path,
         if (e.extensions?['code'] != null) 'code': e.extensions!['code'],
       };
     }).toList();
-    return {
-      _GraphQLAttributes.errors: json.encode(serializedErrors),
-    };
+    return {_GraphQLAttributes.errors: json.encode(serializedErrors)};
   }
 }

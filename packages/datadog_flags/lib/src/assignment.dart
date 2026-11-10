@@ -7,6 +7,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'json_value.dart';
+import 'flag_key_obfuscation.dart';
 
 part 'assignment.g.dart';
 
@@ -51,11 +52,13 @@ final class PrecomputedAssignments {
   final Map<String, FlagAssignment> flags;
   final DateTime? createdAt;
   final String? environment;
+  final FlagKeyObfuscation? obfuscation;
 
   const PrecomputedAssignments({
     required this.flags,
     this.createdAt,
     this.environment,
+    this.obfuscation,
   });
 }
 

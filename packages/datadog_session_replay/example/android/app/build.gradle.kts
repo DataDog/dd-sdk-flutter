@@ -15,6 +15,7 @@ if (agpMajor < 9) {
 android {
     namespace = "com.datadoghq.flutter.sessionreplay"
     compileSdk = 36
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -16,8 +16,9 @@ class NamedScreen extends StatefulWidget {
 class _NamedScreenState extends State<NamedScreen>
     with RouteAware, DatadogRouteAwareMixin {
   void _onNextScreen() {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => const UnnamedScreen()));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const UnnamedScreen()));
   }
 
   @override
@@ -25,10 +26,11 @@ class _NamedScreenState extends State<NamedScreen>
     return Scaffold(
       appBar: AppBar(title: const Text('Named Screen')),
       body: Center(
-          child: ElevatedButton(
-        onPressed: _onNextScreen,
-        child: const Text('Next Screen'),
-      )),
+        child: ElevatedButton(
+          onPressed: _onNextScreen,
+          child: const Text('Next Screen'),
+        ),
+      ),
     );
   }
 }

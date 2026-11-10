@@ -19,8 +19,28 @@ import 'package:uuid/uuid.dart';
 /// [response].
 ///
 /// If this function throws, it will prevent proper tracking of this resource.
-typedef DatadogClientAttributesProvider = Map<String, Object?> Function(
-    http.BaseRequest request, http.StreamedResponse? response, Object? error);
+typedef DatadogClientAttributesProvider =
+    Map<String, Object?> Function(
+      http.BaseRequest request,
+      http.StreamedResponse? response,
+      Object? error,
+    );
+
+/// An [ErrorTypeResolver] for the errors of the `http` package, so their type
+/// is not obfuscated in apps built with `--obfuscate`. [DatadogClient]
+/// registers it automatically.
+String? httpErrorTypeResolver(Object error) {
+  if (error.runtimeType == http.ClientException) {
+    return 'ClientException';
+  }
+  // `IOClient` wraps every SocketException (no connection, DNS failure,
+  // connection refused) in a private subclass of ClientException that also
+  // implements SocketException. Report the name it has in unobfuscated builds.
+  if (error is http.ClientException && error is SocketException) {
+    return '_ClientSocketException';
+  }
+  return null;
+}
 
 /// A composable client for use with the `http` package that supports tracking
 /// network requests and sending them to Datadog.
@@ -68,8 +88,11 @@ class DatadogClient extends http.BaseClient {
     this.ignoreUrlPatterns = const [],
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
+    datadogSdk.addIntegrationErrorTypeResolver(httpErrorTypeResolver);
     datadogSdk.updateConfigurationInfo(
-        LateConfigurationProperty.trackNetworkRequests, true);
+      LateConfigurationProperty.trackNetworkRequests,
+      true,
+    );
   }
 
   @override
@@ -84,7 +107,10 @@ class DatadogClient extends http.BaseClient {
   }
 
   Future<http.StreamedResponse> _trackingSend(
-      http.BaseRequest request, DatadogSdk sdk, DatadogRum rum) async {
+    http.BaseRequest request,
+    DatadogSdk sdk,
+    DatadogRum rum,
+  ) async {
     String? rumKey;
 
     if (_shouldTrackRequest(request)) {
@@ -106,7 +132,11 @@ class DatadogClient extends http.BaseClient {
 
         rumKey = _uuid.v1();
         rum.startResource(
-            rumKey, rumHttpMethod, request.url.toString(), attributes);
+          rumKey,
+          rumHttpMethod,
+          request.url.toString(),
+          attributes,
+        );
       } catch (e, st) {
         datadogSdk.internalLogger.sendToDatadog(
           '$DatadogClient encountered an error while attempting'
@@ -127,7 +157,11 @@ class DatadogClient extends http.BaseClient {
         try {
           final attributes = attributesProvider?.call(request, null, e) ?? {};
           rum.stopResourceWithErrorInfo(
-              rumKey, e.toString(), e.runtimeType.toString(), attributes);
+            rumKey,
+            e.toString(),
+            datadogSdk.resolveErrorType(e),
+            attributes,
+          );
         } catch (innerE, st) {
           datadogSdk.internalLogger.sendToDatadog(
             '$DatadogClient encountered an error while attempting '
@@ -163,7 +197,7 @@ class DatadogClient extends http.BaseClient {
               rum.stopResourceWithErrorInfo(
                 rumKey!,
                 firstError.toString(),
-                firstError.runtimeType.toString(),
+                datadogSdk.resolveErrorType(e),
                 attributes,
               );
             }
@@ -175,7 +209,14 @@ class DatadogClient extends http.BaseClient {
                   attributesProvider?.call(request, response, null) ?? {};
               final size = response.contentLength ?? bytesReceived;
               _onFinish(
-                  rum, rumKey, request, response, attributes, firstError, size);
+                rum,
+                rumKey,
+                request,
+                response,
+                attributes,
+                firstError,
+                size,
+              );
             }
             spyStream.close();
           },
@@ -214,13 +255,14 @@ class DatadogClient extends http.BaseClient {
   }
 
   void _onFinish(
-      DatadogRum rum,
-      String rumKey,
-      http.BaseRequest request,
-      http.StreamedResponse response,
-      Map<String, Object?> attributes,
-      Object? error,
-      int? size) {
+    DatadogRum rum,
+    String rumKey,
+    http.BaseRequest request,
+    http.StreamedResponse response,
+    Map<String, Object?> attributes,
+    Object? error,
+    int? size,
+  ) {
     try {
       // If we saw an error, this resource has already been stopped
       if (error == null) {
@@ -266,11 +308,17 @@ class DatadogClient extends http.BaseClient {
 
     if (tracingHeaderTypes.isNotEmpty) {
       attributes = generateDatadogAttributes(
-          context, datadogSdk.rum?.traceSampleRate ?? 0);
+        context,
+        datadogSdk.rum?.traceSampleRate ?? 0,
+      );
 
       for (final headerType in tracingHeaderTypes) {
-        injectTracingHeaders(context, headerType, request.headers,
-            contextInjection: contextInjection);
+        injectTracingHeaders(
+          context,
+          headerType,
+          request.headers,
+          contextInjection: contextInjection,
+        );
       }
     }
 

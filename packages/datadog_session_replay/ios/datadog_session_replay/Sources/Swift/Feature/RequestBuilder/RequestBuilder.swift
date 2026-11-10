@@ -24,15 +24,21 @@ internal struct RequestBuilder: FeatureRequestBuilder {
 
         // If we can't decode `events: [Data]` there is no way to recover, so we throw an
         // error to let the core delete the batch:
-        let decoder = JSONDecoder()
-        let wrappers: [RecordWrapper] = try events.compactMap {
-            try decoder.decode(RecordWrapper.self, from: $0.data)
-        }
-        let segments = try wrappers.map { try $0.extractEnrichedRecord() }
+        let segments = try events.map { try Self.enrichedRecord(from: $0.data) }
             .map { try SegmentJSON($0, source: source) }
             .merge()
 
         return try createRequest(segments: segments, context: context)
+    }
+
+    /// Decodes a batched event, which is either a Flutter `RecordWrapper` or a WebView record written by
+    /// `WebViewRecordReceiver` (already in the `EnrichedRecordJSON` shape).
+    private static func enrichedRecord(from data: Data) throws -> EnrichedRecordJSON {
+        let jsonObject: JSONObject = try decode(data)
+        if let recordJson = jsonObject[RecordWrapper.CodingKeys.recordJson.stringValue] as? String {
+            return try RecordWrapper(recordJson: recordJson).extractEnrichedRecord()
+        }
+        return try EnrichedRecordJSON(jsonObjectData: data)
     }
 
     private func createRequest(segments: [SegmentJSON], context: DatadogContext) throws -> URLRequest {

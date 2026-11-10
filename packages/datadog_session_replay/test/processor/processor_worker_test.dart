@@ -88,57 +88,56 @@ void main() {
     verifyNoMoreInteractions(mockPlatform);
   });
 
-  test('generateWireframes maps text wireframe font family via smart transform',
-      () {
-    final mockCapture = MockCaptureNode();
-    final original = SRTextWireframe(
-      id: 5,
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 20,
-      text: 'hello',
-      textStyle: SRTextStyle(
-        color: '#FF000000',
-        family: '',
-        size: 14,
-      ),
-    );
-    when(() => mockCapture.buildWireframes()).thenReturn([original]);
+  test(
+    'generateWireframes maps text wireframe font family via smart transform',
+    () {
+      final mockCapture = MockCaptureNode();
+      final original = SRTextWireframe(
+        id: 5,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 20,
+        text: 'hello',
+        textStyle: SRTextStyle(color: '#FF000000', family: '', size: 14),
+      );
+      when(() => mockCapture.buildWireframes()).thenReturn([original]);
 
-    final worker = ProcessorWorker(
-      fontFamilyTransform: const FontFamilyTransformConfig(
-        strategy: FontFamilyStrategy.smart,
-      ),
-    );
-    final capture = CaptureResult(
-      ViewTreeSnapshot(
-        date: DateTime.now(),
-        context: RUMContext(
-          applicationId: randomString(),
-          sessionId: randomString(),
-          viewId: randomString(),
+      final worker = ProcessorWorker(
+        fontFamilyTransform: const FontFamilyTransformConfig(
+          strategy: FontFamilyStrategy.smart,
         ),
-        viewportSize: Size(600, 800),
-        nodes: [mockCapture],
-      ),
-      null,
-    );
+      );
+      final capture = CaptureResult(
+        ViewTreeSnapshot(
+          date: DateTime.now(),
+          context: RUMContext(
+            applicationId: randomString(),
+            sessionId: randomString(),
+            viewId: randomString(),
+          ),
+          viewportSize: Size(600, 800),
+          nodes: [mockCapture],
+        ),
+        null,
+      );
 
-    final wireframes = worker.generateWireframes(capture);
-    expect(wireframes.length, 1);
-    final text = wireframes.single as SRTextWireframe;
-    expect(text.textStyle.family, defaultReplayFontStack);
-    expect(identical(text, original), isFalse);
-  });
+      final wireframes = worker.generateWireframes(capture);
+      expect(wireframes.length, 1);
+      final text = wireframes.single as SRTextWireframe;
+      expect(text.textStyle.family, defaultReplayFontStack);
+      expect(identical(text, original), isFalse);
+    },
+  );
 
   test('generateWireframes leaves non-text wireframes unchanged', () {
     final mockCapture = MockCaptureNode();
     final shape = createMockShapeWireframe(0);
     when(() => mockCapture.buildWireframes()).thenReturn([shape]);
 
-    final worker =
-        ProcessorWorker(fontFamilyTransform: const FontFamilyTransformConfig());
+    final worker = ProcessorWorker(
+      fontFamilyTransform: const FontFamilyTransformConfig(),
+    );
     final capture = CaptureResult(
       ViewTreeSnapshot(
         date: DateTime.now(),
@@ -352,8 +351,9 @@ void main() {
         final encodedRecord = jsonDecode(jsonRecord);
 
         // Then
-        final encodedMutation = encodedRecord['records'][0]['data']['updates']
-            [0] as Map<String, Object?>;
+        final encodedMutation =
+            encodedRecord['records'][0]['data']['updates'][0]
+                as Map<String, Object?>;
         expect(encodedMutation.containsKey('x'), isFalse);
         expect(encodedMutation.containsKey('y'), isFalse);
       },

@@ -5,13 +5,13 @@ repository: https://github.com/DataDog/dd-sdk-flutter
 version: 2.2.0
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=2.27.0"
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  datadog_flutter_plugin: ">=3.0.0 <5.0.0"
+  datadog_flutter_plugin: ">=4.0.0-preview.2 <5.0.0"
   gql_exec: ^1.0.0
   gql_link: ^1.0.0
   uuid: ^4.0.0
@@ -20,7 +20,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ">=1.0.0"
+  flutter_lints: "^6.0.0"
   mocktail: ^1.0.0
   datadog_common_test:
     path: ../datadog_common_test

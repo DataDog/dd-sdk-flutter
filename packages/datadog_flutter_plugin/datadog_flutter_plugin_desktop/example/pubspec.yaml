@@ -1,0 +1,22 @@
+name: datadog_flutter_plugin_desktop_example
+description: Demonstrates how to use the datadog_flutter_plugin_desktop package.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  datadog_flutter_plugin_desktop:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

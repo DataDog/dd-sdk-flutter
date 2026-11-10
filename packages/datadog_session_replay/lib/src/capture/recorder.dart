@@ -20,6 +20,7 @@ import 'element_recorders/cupertino_widgets/cupertino_slider_recorder.dart';
 import 'element_recorders/cupertino_widgets/cupertino_switch_recorder.dart';
 import 'element_recorders/custom_paint_recorder.dart';
 import 'element_recorders/editable_text_recorder.dart';
+import 'element_recorders/icon_recorder.dart';
 import 'element_recorders/image_recorder.dart';
 import 'element_recorders/material_widgets/checkbox_recorder.dart';
 import 'element_recorders/material_widgets/radio_recorder.dart';
@@ -27,6 +28,7 @@ import 'element_recorders/material_widgets/slider_recorder.dart';
 import 'element_recorders/material_widgets/switch_recorder.dart';
 import 'element_recorders/privacy_recorder.dart';
 import 'element_recorders/text_recorder.dart';
+import 'element_recorders/webview_recorder.dart';
 import 'pointer_capture.dart';
 import 'view_tree_snapshot.dart';
 
@@ -105,6 +107,7 @@ class KeyGenerator {
 
   final Expando<Map<int, int>> _nodeIdExpando = Expando('sr-key');
   final Expando<int> _resourceIdExpando = Expando('sr-resource-key');
+  final Map<String, int> _webViewSlotKeys = {};
 
   int keyForElement(Element e, {int wireframeId = 0}) {
     var wireFrames = _nodeIdExpando[e];
@@ -116,10 +119,20 @@ class KeyGenerator {
     final existing = wireFrames[wireframeId];
     if (existing != null) return existing;
 
+    final value = _nextKey();
+    wireFrames[wireframeId] = value;
+    return value;
+  }
+
+  /// A key tied to a WebView slot rather than an element, so the wireframe
+  /// keeps its ID when the WebView leaves the tree and is recorded as hidden.
+  int keyForWebViewSlot(String slotId) =>
+      _webViewSlotKeys.putIfAbsent(slotId, _nextKey);
+
+  int _nextKey() {
     final value = _nextElementKey;
     _nextElementKey = _nextElementKey + 1;
     if (_nextElementKey >= maxKey) _nextElementKey = 0;
-    wireFrames[wireframeId] = value;
     return value;
   }
 
@@ -129,11 +142,17 @@ class KeyGenerator {
     var value = _resourceIdExpando[e];
     if (value != null) return value;
 
-    value = _nextResourceKey;
+    value = nextResourceKey();
+    _resourceIdExpando[e] = value;
+    return value;
+  }
+
+  /// Allocates a resource key that isn't tied to a [ui.Image], for resources
+  /// the caller caches itself.
+  int nextResourceKey() {
+    final value = _nextResourceKey;
     _nextResourceKey = _nextResourceKey + 1;
     if (_nextResourceKey >= maxKey) _nextResourceKey = startingResourceKey;
-
-    _resourceIdExpando[e] = value;
     return value;
   }
 
@@ -153,6 +172,7 @@ class CaptureResult {
 class SessionReplayRecorder {
   final DatadogTimeProvider _timeProvider;
   final List<ElementRecorder> _elementRecorders = [];
+  final WebViewSlotTracker _webViewSlotTracker;
 
   final Map<Key, Element> _elements = {};
   RUMContext? _currentContext;
@@ -175,13 +195,13 @@ class SessionReplayRecorder {
     ImageDownscaling imageDownscaling = ImageDownscaling.disabled,
     int maxImagePixelBudget = defaultMaxImagePixelBudget,
   }) : this._(
-          KeyGenerator(),
-          timeProvider,
-          defaultCapturePrivacy,
-          touchPrivacyLevel,
-          imageDownscaling,
-          maxImagePixelBudget,
-        );
+         KeyGenerator(),
+         timeProvider,
+         defaultCapturePrivacy,
+         touchPrivacyLevel,
+         imageDownscaling,
+         maxImagePixelBudget,
+       );
 
   SessionReplayRecorder._(
     KeyGenerator keyGenerator,
@@ -190,10 +210,11 @@ class SessionReplayRecorder {
     this._touchPrivacyLevel,
     ImageDownscaling imageDownscaling,
     int maxImagePixelBudget,
-  ) {
+  ) : _webViewSlotTracker = WebViewSlotTracker(keyGenerator) {
     _elementRecorders.addAll([
       ContainerRecorder(keyGenerator),
       TextElementRecorder(keyGenerator),
+      IconRecorder(keyGenerator),
       EditableTextRecorder(keyGenerator),
       InputDecoratorRecorder(keyGenerator),
       ImageRecorder(
@@ -211,6 +232,7 @@ class SessionReplayRecorder {
       CupertinoSwitchRecorder(keyGenerator),
       SliderRecorder(keyGenerator),
       CupertinoSliderRecorder(keyGenerator),
+      WebViewRecorder(keyGenerator, _webViewSlotTracker),
     ]);
   }
 
@@ -220,9 +242,12 @@ class SessionReplayRecorder {
     DatadogTimeProvider timeProvider = const DefaultTimeProvider(),
     required TreeCapturePrivacy defaultCapturePrivacy,
     required TouchPrivacyLevel touchPrivacyLevel,
-  })  : _timeProvider = timeProvider,
-        _defaultTreeCapturePrivacy = defaultCapturePrivacy,
-        _touchPrivacyLevel = touchPrivacyLevel {
+    WebViewSlotTracker? webViewSlotTracker,
+  }) : _timeProvider = timeProvider,
+       _defaultTreeCapturePrivacy = defaultCapturePrivacy,
+       _touchPrivacyLevel = touchPrivacyLevel,
+       _webViewSlotTracker =
+           webViewSlotTracker ?? WebViewSlotTracker(KeyGenerator()) {
     _elementRecorders.addAll(elementRecorders);
   }
 
@@ -249,49 +274,65 @@ class SessionReplayRecorder {
     if (_captureInProgress) return null;
 
     _captureInProgress = true;
+    // Always clear the flag, otherwise a single exception would block every
+    // subsequent capture.
+    return _capture(context).whenComplete(() => _captureInProgress = false);
+  }
+
+  Future<CaptureResult?> _capture(RUMContext context) async {
+    _webViewSlotTracker.beginCapture();
     List<CaptureNodeSemantics> capturedSemantics = [];
     List<PointerSnapshot> pointerSnapshots = [];
     DateTime now = _timeProvider.now();
     var size = Size.zero;
 
-    Timeline.timeSync('Datadog SR Tree Capture', () {
-      for (final e in _elements.values) {
-        final renderObject = e.renderObject;
-        if (kDebugMode) {
-          // During hot reload, elements can be inserted that still need layout, and
-          // these will throw when we get their size. Avoid capturing these
-          if (renderObject?.debugNeedsLayout == true) continue;
+    try {
+      Timeline.timeSync('Datadog SR Tree Capture', () {
+        for (final e in _elements.values) {
+          final renderObject = e.renderObject;
+          if (kDebugMode) {
+            // During hot reload, elements can be inserted that still need layout, and
+            // these will throw when we get their size. Avoid capturing these
+            if (renderObject?.debugNeedsLayout == true) continue;
+          }
+
+          /// This shouldn't happen as we now remove widgets from capture requests during
+          /// dispose. But, just in case, let's skip any widgets that are in a defunct state.
+          if (!e.mounted) continue;
+
+          // In debug mode, Flutter will assert if you attempt to access the size of an
+          // object that shouldn't have size. We can skip elements that have no size for
+          // whatever reason.
+          if (renderObject is RenderBox && !renderObject.hasSize) continue;
+
+          final elementSize = e.size;
+          if (elementSize != null) {
+            // Need to copy this value because the size class
+            // returned by the element is not serializable over the isolate
+            size = Size(elementSize.width, elementSize.height);
+          }
+          _captureElement(
+            e,
+            capturedSemantics,
+            pointerSnapshots,
+            _defaultTreeCapturePrivacy,
+          );
         }
-
-        /// This shouldn't happen as we now remove widgets from capture requests during
-        /// dispose. But, just in case, let's skip any widgets that are in a defunct state.
-        if (!e.mounted) continue;
-
-        // In debug mode, Flutter will assert if you attempt to access the size of an
-        // object that shouldn't have size. We can skip elements that have no size for
-        // whatever reason.
-        if (renderObject is RenderBox && !renderObject.hasSize) continue;
-
-        final elementSize = e.size;
-        if (elementSize != null) {
-          // Need to copy this value because the size class
-          // returned by the element is not serializable over the isolate
-          size = Size(elementSize.width, elementSize.height);
-        }
-        _captureElement(
-          e,
-          capturedSemantics,
-          pointerSnapshots,
-          _defaultTreeCapturePrivacy,
-        );
+      });
+    } catch (_) {
+      // Elements collected before the failure will never be processed, so
+      // release what they hold before the error propagates.
+      for (final s in capturedSemantics) {
+        if (s is AdditionalProcessingElement) s.discard?.call();
       }
-    });
+      rethrow;
+    }
 
     final addedProcessingTimelineTask = TimelineTask()
       ..start('Datadog SR Capture Processing');
 
     // Process anything that needs additional processing
-    final nodes = <CaptureNode>[];
+    final nodes = <CaptureNode>[..._webViewSlotTracker.hiddenSlotNodes()];
     for (var s in capturedSemantics) {
       try {
         if (s is AdditionalProcessingElement) {
@@ -307,8 +348,6 @@ class SessionReplayRecorder {
       }
     }
     addedProcessingTimelineTask.finish();
-
-    _captureInProgress = false;
 
     if (nodes.isEmpty) return null;
 
@@ -328,10 +367,6 @@ class SessionReplayRecorder {
 
   void onContextChanged(RUMContext context) {
     _currentContext = context;
-
-    if (context.viewId case final viewId?) {
-      DatadogSessionReplayPlatform.instance.setHasReplay(viewId, true);
-    }
   }
 
   // Certain elements will cause everything under the element to be invisible, such
@@ -389,8 +424,9 @@ class SessionReplayRecorder {
       }
 
       final widget = e.widget;
-      final recorder =
-          _elementRecorders.firstWhereOrNull((r) => r.accepts(widget));
+      final recorder = _elementRecorders.firstWhereOrNull(
+        (r) => r.accepts(widget),
+      );
       var subtreeStrategy = CaptureNodeSubtreeStrategy.record;
       if (recorder != null) {
         final transformMatrix = renderObject.getTransformTo(

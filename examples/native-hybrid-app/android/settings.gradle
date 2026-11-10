@@ -12,13 +12,10 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url "https://storage.googleapis.com/download.flutter.io" }
-        maven {
-            url "https://central.sonatype.com/repository/maven-snapshots/"
-        }
-    }    
+    }
 }
 
-rootProject.name = "Datadog Flutter Hybrid Example"
+rootProject.name = "Datadog Hybrid Session Replay Example"
 include ':app'
 setBinding(new Binding([gradle: this]))
 evaluate(new File(

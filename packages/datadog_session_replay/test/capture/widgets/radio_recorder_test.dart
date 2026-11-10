@@ -35,9 +35,7 @@ SimpleTestCapture captureRadio(
     key: Key('key'),
     recorder: recorder,
     child: MaterialApp(
-      home: Scaffold(
-        body: Center(child: content),
-      ),
+      home: Scaffold(body: Center(child: content)),
     ),
   );
 }
@@ -48,10 +46,7 @@ void main() {
 
   setUp(() {
     recorder = SessionReplayRecorder.withCustomRecorders(
-      [
-        RadioRecorder(KeyGenerator()),
-        CupertinoRadioRecorder(KeyGenerator()),
-      ],
+      [RadioRecorder(KeyGenerator()), CupertinoRadioRecorder(KeyGenerator())],
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
@@ -109,8 +104,11 @@ void main() {
       'selected radio produces 2 wireframes',
       [
         () => captureRadio(recorder, Radio<int>(value: 1), groupValue: 1),
-        () => captureRadio(recorder, CupertinoRadio<int>(value: 1),
-            groupValue: 1),
+        () => captureRadio(
+          recorder,
+          CupertinoRadio<int>(value: 1),
+          groupValue: 1,
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -122,8 +120,11 @@ void main() {
       'unselected radio produces 1 wireframe',
       [
         () => captureRadio(recorder, Radio<int>(value: 1), groupValue: 2),
-        () => captureRadio(recorder, CupertinoRadio<int>(value: 1),
-            groupValue: 2),
+        () => captureRadio(
+          recorder,
+          CupertinoRadio<int>(value: 1),
+          groupValue: 2,
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -145,8 +146,9 @@ void main() {
   });
 
   group('fill color', () {
-    testWidgets('material radio selected inner dot uses fill color',
-        (tester) async {
+    testWidgets('material radio selected inner dot uses fill color', (
+      tester,
+    ) async {
       // Given
       final fill = WidgetStateProperty.all<Color?>(Colors.red);
       final tree = captureRadio(
@@ -161,12 +163,15 @@ void main() {
 
       // Then
       expect(capture, isNotNull);
-      expect(innerDotOf(capture).shapeStyle!.backgroundColor,
-          Colors.red.toHexString());
+      expect(
+        innerDotOf(capture).shapeStyle!.backgroundColor,
+        Colors.red.toHexString(),
+      );
     });
 
-    testWidgets('cupertino radio selected inner dot uses fill color',
-        (tester) async {
+    testWidgets('cupertino radio selected inner dot uses fill color', (
+      tester,
+    ) async {
       // Given
       final tree = captureRadio(
         recorder,
@@ -180,20 +185,19 @@ void main() {
 
       // Then
       expect(capture, isNotNull);
-      expect(innerDotOf(capture).shapeStyle!.backgroundColor,
-          Colors.red.toHexString());
+      expect(
+        innerDotOf(capture).shapeStyle!.backgroundColor,
+        Colors.red.toHexString(),
+      );
     });
   });
 
   group('background color', () {
-    testWidgets('material radio background is transparent by default',
-        (tester) async {
+    testWidgets('material radio background is transparent by default', (
+      tester,
+    ) async {
       // Given
-      final tree = captureRadio(
-        recorder,
-        Radio<int>(value: 1),
-        groupValue: 2,
-      );
+      final tree = captureRadio(recorder, Radio<int>(value: 1), groupValue: 2);
       await tester.pumpWidget(tree);
 
       // When
@@ -201,12 +205,15 @@ void main() {
 
       // Then
       expect(capture, isNotNull);
-      expect(outerRingOf(capture).shapeStyle!.backgroundColor,
-          Colors.transparent.toHexString());
+      expect(
+        outerRingOf(capture).shapeStyle!.backgroundColor,
+        Colors.transparent.toHexString(),
+      );
     });
 
-    testWidgets('material radio background uses backgroundColor',
-        (tester) async {
+    testWidgets('material radio background uses backgroundColor', (
+      tester,
+    ) async {
       // Given
       final bgColor = WidgetStateProperty.all<Color?>(Colors.yellow);
       final tree = captureRadio(
@@ -221,12 +228,15 @@ void main() {
 
       // Then
       expect(capture, isNotNull);
-      expect(outerRingOf(capture).shapeStyle!.backgroundColor,
-          Colors.yellow.toHexString());
+      expect(
+        outerRingOf(capture).shapeStyle!.backgroundColor,
+        Colors.yellow.toHexString(),
+      );
     });
 
-    testWidgets('cupertino radio selected background uses activeColor',
-        (tester) async {
+    testWidgets('cupertino radio selected background uses activeColor', (
+      tester,
+    ) async {
       // Given
       final tree = captureRadio(
         recorder,
@@ -240,12 +250,15 @@ void main() {
 
       // Then
       expect(capture, isNotNull);
-      expect(outerRingOf(capture).shapeStyle!.backgroundColor,
-          Colors.purple.toHexString());
+      expect(
+        outerRingOf(capture).shapeStyle!.backgroundColor,
+        Colors.purple.toHexString(),
+      );
     });
 
-    testWidgets('cupertino radio unselected background uses inactiveColor',
-        (tester) async {
+    testWidgets('cupertino radio unselected background uses inactiveColor', (
+      tester,
+    ) async {
       // Given
       final tree = captureRadio(
         recorder,
@@ -259,8 +272,10 @@ void main() {
 
       // Then
       expect(capture, isNotNull);
-      expect(outerRingOf(capture).shapeStyle!.backgroundColor,
-          Colors.orange.toHexString());
+      expect(
+        outerRingOf(capture).shapeStyle!.backgroundColor,
+        Colors.orange.toHexString(),
+      );
     });
   });
 
@@ -269,10 +284,7 @@ void main() {
       // Given
       final tree = captureRadio(
         recorder,
-        Radio<int>(
-          value: 1,
-          side: BorderSide(color: Colors.green, width: 3),
-        ),
+        Radio<int>(value: 1, side: BorderSide(color: Colors.green, width: 3)),
         groupValue: 2,
       );
       await tester.pumpWidget(tree);
@@ -287,8 +299,9 @@ void main() {
       expect(ring.border!.width, 3);
     });
 
-    testWidgets('radio selected outer ring border defaults to fill color',
-        (tester) async {
+    testWidgets('radio selected outer ring border defaults to fill color', (
+      tester,
+    ) async {
       // Given — resolveSide returns null for selected state, falling back to fillColor as border
       final fill = WidgetStateProperty.all<Color?>(Colors.blue);
       final tree = captureRadio(
@@ -316,8 +329,11 @@ void main() {
       'radio produces a single capture node',
       [
         () => captureRadio(recorder, Radio<int>(value: 1), groupValue: 1),
-        () => captureRadio(recorder, CupertinoRadio<int>(value: 1),
-            groupValue: 1),
+        () => captureRadio(
+          recorder,
+          CupertinoRadio<int>(value: 1),
+          groupValue: 1,
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -361,8 +377,11 @@ void main() {
       'maskAllInputs shows selected radio as unselected',
       [
         () => captureRadio(recorder, Radio<int>(value: 1), groupValue: 1),
-        () => captureRadio(recorder, CupertinoRadio<int>(value: 1),
-            groupValue: 1),
+        () => captureRadio(
+          recorder,
+          CupertinoRadio<int>(value: 1),
+          groupValue: 1,
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -378,8 +397,11 @@ void main() {
       'maskAll shows selected radio as unselected',
       [
         () => captureRadio(recorder, Radio<int>(value: 1), groupValue: 1),
-        () => captureRadio(recorder, CupertinoRadio<int>(value: 1),
-            groupValue: 1),
+        () => captureRadio(
+          recorder,
+          CupertinoRadio<int>(value: 1),
+          groupValue: 1,
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -395,8 +417,11 @@ void main() {
       'maskSensitiveInputs does not mask selected radio',
       [
         () => captureRadio(recorder, Radio<int>(value: 1), groupValue: 1),
-        () => captureRadio(recorder, CupertinoRadio<int>(value: 1),
-            groupValue: 1),
+        () => captureRadio(
+          recorder,
+          CupertinoRadio<int>(value: 1),
+          groupValue: 1,
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);

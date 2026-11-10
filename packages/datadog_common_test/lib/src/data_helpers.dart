@@ -11,10 +11,12 @@ const _numerics = '0123456789';
 const _alphaNumerics = _alphas + _numerics;
 
 String randomString({int length = 10}) {
-  final result = String.fromCharCodes(Iterable.generate(
-    length,
-    (_) => _alphaNumerics.codeUnitAt(_random.nextInt(_alphaNumerics.length)),
-  ));
+  final result = String.fromCharCodes(
+    Iterable.generate(
+      length,
+      (_) => _alphaNumerics.codeUnitAt(_random.nextInt(_alphaNumerics.length)),
+    ),
+  );
 
   return result;
 }
@@ -50,12 +52,15 @@ extension DurationHelpers on Duration {
 
 Map<String, String> getDdTraceState(String header) {
   final list = header.split(',');
-  final ddTraceState =
-      list.firstWhereOrNull((e) => e.startsWith('dd='))?.substring(3);
+  final ddTraceState = list
+      .firstWhereOrNull((e) => e.startsWith('dd='))
+      ?.substring(3);
   if (ddTraceState == null) return {};
 
-  return ddTraceState.split(';').fold<Map<String, String>>({},
-      (Map<String, String> value, element) {
+  return ddTraceState.split(';').fold<Map<String, String>>({}, (
+    Map<String, String> value,
+    element,
+  ) {
     final split = element.split(':');
     value[split[0]] = split[1];
     return value;

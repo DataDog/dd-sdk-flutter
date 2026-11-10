@@ -6,14 +6,17 @@ This is a more realistic example of how you use the Datadog Flutter Plugin in a 
     * Automatic network tracing with `datadog_tracking_http_client`
     * User interaction tracking with RumUserActionDetector
     * Error/Crash handling with manually reported errors
-    * Basic feature flag initialization and typed evaluation with `datadog_flags_flutter`
+    * OpenFeature initialization and typed evaluation with the Datadog provider
+    * WebView tracking with `datadog_webview_tracking`, including Session Replay of the web content on iOS
 
 ## Setup
 
 Generate the local `.env` file before running this example:
 
 ```bash
-../../generate_env.sh
+# From the repository root:
+dart run melos generate_env
+cd examples/simple_example
 flutter run
 ```
 
@@ -23,9 +26,17 @@ names, org names, or customer-owned flag keys.
 
 ## Feature Flags
 
-The `Flags` screen initializes the `datadog_flags_flutter` package, refreshes
-assignments for one evaluation context, and evaluates boolean, string, integer,
-double, and JSON flags with programmatic defaults.
+The `Flags` screen uses `openfeature_dart_client_sdk` with the
+`DatadogOpenFeatureProvider` from `datadog_flags`. This is the recommended
+integration for new Dart and Flutter applications. The app sets an OpenFeature
+evaluation context, registers the Datadog provider, and evaluates typed flags
+with programmatic defaults.
+
+The Datadog Flutter SDK initializes separately for RUM and Logs.
+RUM controls distributed tracing for supported network requests. The
+OpenFeature provider owns the Flags runtime and its assignment lifecycle.
+`DatadogRumHook` associates successful evaluations with the active RUM view.
+The Refresh button calls `DatadogOpenFeatureProvider.refresh()`.
 
 To test feature flags in your own organization, customize the generated `.env`
 file:
@@ -40,3 +51,27 @@ FLAGS_INTEGER_KEYS=checkout.limit
 FLAGS_DOUBLE_KEYS=checkout.ratio
 FLAGS_OBJECT_KEYS=checkout.config
 ```
+
+## WebView
+
+The `WebView` screen (iOS and Android) loads a page running the Datadog Browser
+SDK in a WebView tracked with `trackDatadogEvents`. The page's RUM events join
+the app's RUM session and, on iOS, its replay records join the app's Session
+Replay, played back inside the WebView's area.
+
+The bar above the page shows what the native bridge advertises. For the web
+content to be recorded, `capabilities` must be `["records"]`. `privacy` is the
+web privacy level matching the Session Replay privacy levels: this app uses the
+defaults, so web content is masked. The Browser SDK doesn't own the session in
+bridge mode, so the `session` and `replay link` it shows are placeholders: find
+the replay from the app's RUM session instead.
+
+Whether the Browser SDK sends replay records is decided when
+`trackDatadogEvents` runs, so Session Replay must be enabled before a WebView
+is tracked. If the page reports `capabilities: []`, check that Session Replay
+is enabled.
+
+## Integration tests
+
+OpenFeature integration tests run in the Flags package's dedicated integration test app.
+See the [validation guide](../../packages/datadog_flags/OPENFEATURE_VALIDATION.md).

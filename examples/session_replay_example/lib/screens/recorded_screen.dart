@@ -55,7 +55,8 @@ class _RecordedScreenState extends State<RecordedScreen> {
       child: Column(
         children: [
           RecordingStatus(
-            notRecordingHint: 'The current RUM session was not selected by '
+            notRecordingHint:
+                'The current RUM session was not selected by '
                 'replaySampleRate (${_formatRate(widget.replaySampleRate)}%). '
                 'Recording starts when a sampled session begins.',
           ),

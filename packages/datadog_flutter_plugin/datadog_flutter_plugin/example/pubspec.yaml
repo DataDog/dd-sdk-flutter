@@ -1,0 +1,32 @@
+name: datadog_flutter_plugin_example
+description: Demonstrates how to use the datadog_flutter_plugin package.
+publish_to: "none"
+version: "1.0.0"
+
+environment:
+  sdk: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.0"
+  
+dependencies:
+  flutter:
+    sdk: flutter
+
+  datadog_flutter_plugin:
+    path: ../
+
+  cupertino_icons: ^1.0.2
+  flutter_dotenv: ^5.0.2
+
+  fluro: ^2.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: "^6.0.0"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env

@@ -7,6 +7,7 @@ import 'package:datadog_session_replay/datadog_session_replay.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import 'flags/flags_example_config.dart';
 import 'main_screen.dart';
@@ -14,15 +15,20 @@ import 'screens/crash_screen.dart';
 import 'screens/flags_screen.dart';
 import 'screens/graph_ql_screen.dart';
 import 'screens/network_screen.dart';
+import 'screens/webview_screen.dart';
 
 class MyApp extends StatefulWidget {
   final GraphQLClient graphQLClient;
   final FlagsExampleConfig flagsConfig;
+  final OpenFeatureClient flagsClient;
+  final Future<void> Function() refreshFlags;
 
   const MyApp({
     super.key,
     required this.graphQLClient,
     required this.flagsConfig,
+    required this.flagsClient,
+    required this.refreshFlags,
   });
 
   @override
@@ -60,6 +66,12 @@ class _MyAppState extends State<MyApp> {
         },
       ),
       GoRoute(
+        path: '/webview',
+        builder: (context, state) {
+          return const WebViewScreen();
+        },
+      ),
+      GoRoute(
         path: '/crash',
         builder: (context, state) {
           return const CrashTestScreen();
@@ -68,7 +80,11 @@ class _MyAppState extends State<MyApp> {
       GoRoute(
         path: '/flags',
         builder: (context, state) {
-          return FlagsScreen(config: widget.flagsConfig);
+          return FlagsScreen(
+            config: widget.flagsConfig,
+            client: widget.flagsClient,
+            refresh: widget.refreshFlags,
+          );
         },
       ),
     ],

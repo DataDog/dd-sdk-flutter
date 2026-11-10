@@ -1,96 +1,122 @@
 import 'dart:io';
 
-import 'package:collection/collection.dart';
 import 'package:logging/logging.dart';
-import 'package:path/path.dart' as path;
 
-import 'command.dart';
 import 'helpers.dart';
-import 'package_list.dart';
+import 'native_sdk.dart';
 
-final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
-final overridesEndPattern = RegExp(r'\s+# End Datadog Pod Overrides');
-final specDependencyPattern = RegExp(
-  r"\s+s\.dependency\s+'(?<dependency>Datadog.+)', '.+",
+/// Matches a podspec's `s.dependency 'Datadog...', '<constraint>'` line --
+/// mirrors `native_sdk.dart`'s private matcher of the same shape, kept
+/// separate deliberately: a matcher wants to be permissive, a rewriter has
+/// to reproduce exactly what it matched.
+final _iosPodspecDependencyRewritePattern = RegExp(
+  r"(?<prefix>\s+s\.dependency\s+'(?<pod>Datadog\w*)'\s*,\s*')(?<constraint>[^']+)(?<suffix>'.*)",
 );
 
-class PinCocoapodsVersionCommand extends Command {
-  @override
-  Future<bool> run(CommandArguments args, Logger logger) async {
-    if (!await _removePodfileOverrides(args, logger)) {
-      return false;
-    }
+typedef CocoaPodsVersionLookup =
+    Future<bool> Function(String pod, String version);
 
-    // Other packages can keep looser version constraints
-    final pinedPackage = args.packages
-        .firstWhereOrNull((e) => e.name == 'datadog_flutter_plugin');
-    if (pinedPackage != null) {
-      if (!await _pinPodspecVersion(args, pinedPackage, logger)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  Future<bool> _removePodfileOverrides(
-    CommandArguments args,
-    Logger logger,
-  ) async {
-    logger.info('ℹ️ Removing overrides from Podfiles.');
-    for (var filePath in podfileList) {
-      final file = File(path.join(args.gitDir.path, filePath));
-      if (!file.existsSync()) {
-        logger.shout('❌ Could not find file $filePath');
-        return false;
-      }
-
-      bool removingLines = false;
-      logger.fine('-- ℹ️ Removing overrides from $filePath');
-      await transformFile(file, logger, args.dryRun, (element) {
-        if (removingLines && element.startsWith(overridesEndPattern)) {
-          removingLines = false;
-          // Remove the end pattern line
-          return null;
-        } else if (element.startsWith(overridesStartPattern)) {
-          removingLines = true;
-        }
-
-        return removingLines ? null : element;
-      });
-    }
-
-    return true;
-  }
-
-  Future<bool> _pinPodspecVersion(
-      CommandArguments args, PackageRelease package, Logger logger) async {
-    final podspecLocation = 'ios/${package.name}.podspec';
-
-    final file = File(
-      path.join(
-        getPackageRoot(args, package),
-        podspecLocation,
-      ),
+/// Checks the public CocoaPods registry for a specific pod version.
+Future<bool> cocoaPodVersionExists(
+  String pod,
+  String version, {
+  HttpClient? client,
+}) async {
+  final http = client ?? HttpClient();
+  try {
+    final request = await http
+        .getUrl(
+          Uri.https('trunk.cocoapods.org', '/api/v1/pods/$pod/specs/$version'),
+        )
+        .timeout(const Duration(seconds: 30));
+    final response = await request.close().timeout(const Duration(seconds: 30));
+    await response.drain<void>().timeout(const Duration(seconds: 30));
+    if (response.statusCode == HttpStatus.ok) return true;
+    if (response.statusCode == HttpStatus.notFound) return false;
+    throw StateError(
+      'CocoaPods returned ${response.statusCode} for $pod $version. '
+      'Release preparation requires a successful registry check.',
     );
-
-    if (!file.existsSync()) {
-      logger.warning(
-        '⚠️ Could not find file $file. This is expected for non-core packages',
-      );
-      return true;
-    }
-
-    logger.info('ℹ️ Setting the iOS Pod Dependency to ${args.iOSRelease}');
-    await transformFile(file, logger, args.dryRun, (element) {
-      final match = specDependencyPattern.firstMatch(element);
-      if (match != null) {
-        element =
-            "  s.dependency '${match.namedGroup('dependency')}', '${args.iOSRelease}'";
-      }
-      return element;
-    });
-
-    return true;
+  } finally {
+    if (client == null) http.close(force: true);
   }
+}
+
+/// Validates every CocoaPods dependency that release preparation will pin.
+Future<void> validateIosPodAvailability(
+  Iterable<NativeSdkDelta> deltas, {
+  CocoaPodsVersionLookup lookup = cocoaPodVersionExists,
+}) async {
+  final checked = <(String, String)>{};
+  for (final delta in deltas) {
+    final version = delta.targetVersion;
+    if (delta.sdk != NativeSdk.ios || version == null) continue;
+    for (final file in delta.files.where((f) => f.path.endsWith('.podspec'))) {
+      final content = await file.readAsString();
+      for (final match in _iosPodspecDependencyRewritePattern.allMatches(
+        content,
+      )) {
+        final pod = match.namedGroup('pod')!;
+        if (!checked.add((pod, version))) continue;
+        if (!await lookup(pod, version)) {
+          throw StateError(
+            'CocoaPods does not contain $pod $version. Select a published '
+            'version with --ios-sdk-version, or wait for native publication.',
+          );
+        }
+      }
+    }
+  }
+}
+
+/// Also used by `bin/pinner.dart` to strip its own Podfile overrides block.
+final overridesStartPattern = RegExp(r'\s+# Datadog Pod Overrides');
+final overridesEndPattern = RegExp(r'\s+# End Datadog Pod Overrides');
+
+/// Rewrites [podspecFile]'s `s.dependency 'Datadog...', '<constraint>'`
+/// line to pin at [targetVersion] -- usable directly against any package's
+/// podspec rather than only `datadog_flutter_plugin`'s.
+Future<void> pinIosPodspecVersion(
+  File podspecFile,
+  String targetVersion,
+  Logger logger,
+  bool dryRun,
+) async {
+  logger.info('ℹ️ Pinning dd-sdk-ios to $targetVersion in ${podspecFile.path}');
+
+  await transformFile(podspecFile, logger, dryRun, (line) {
+    final match = _iosPodspecDependencyRewritePattern.firstMatch(line);
+    if (match == null) return line;
+    return '${match.namedGroup('prefix')}$targetVersion'
+        '${match.namedGroup('suffix')}';
+  });
+}
+
+/// Strips the `# Datadog Pod Overrides` ... `# End Datadog Pod Overrides`
+/// block from [podfileFile] in place, if present -- unlike the Dart-side
+/// `dependency_overrides`, these `:git => ..., :branch => 'develop'` pod
+/// entries are still a real, committed thing example apps use to float on
+/// dd-sdk-ios's `develop` branch, so they do need removing before a
+/// release-prep build is expected to resolve to a pinned, released
+/// version. No-op if the file has no such block.
+Future<void> removePodfileOverrides(
+  File podfileFile,
+  Logger logger,
+  bool dryRun,
+) async {
+  logger.info('🔀 Removing Datadog Pod Overrides from ${podfileFile.path}');
+
+  var removingLines = false;
+  await transformFile(podfileFile, logger, dryRun, (line) {
+    if (removingLines) {
+      if (line.startsWith(overridesEndPattern)) {
+        removingLines = false;
+      }
+      return null;
+    } else if (line.startsWith(overridesStartPattern)) {
+      removingLines = true;
+      return null;
+    }
+    return line;
+  });
 }
