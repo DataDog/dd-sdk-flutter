@@ -514,11 +514,9 @@ scripts:
   # would leave CocoaPods state installed before Flutter's own SPM integration runs, which breaks
   # resolution of local SPM packages (e.g. FlutterFramework) declared by some plugins.
   remove_podfile_lock:
-    run: cd example/ios && rm -f Podfile.lock
+    run: rm -f example/ios/Podfile.lock integration_test_app/ios/Podfile.lock
     exec:
       concurrency: 1
-    packageFilters:
-      dirExists: 'example/ios'
   
   build_runner:
     exec:
