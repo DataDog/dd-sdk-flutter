@@ -3,15 +3,21 @@
 // Copyright 2023-Present Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ci_helpers/shell_helpers.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as path;
 
-// Assume tag and abi for now
 const avdTag = 'google_apis';
-const avdAbi = 'arm64-v8a';
+
+/// The system image ABI that matches the host, so the emulator can use
+/// hardware acceleration.
+final avdAbi = switch (Abi.current()) {
+  Abi.macosArm64 || Abi.linuxArm64 || Abi.windowsArm64 => 'arm64-v8a',
+  _ => 'x86_64',
+};
 
 final yesList = List.filled(10, 'yes\n');
 final noList = List.filled(10, 'no\n');
@@ -189,6 +195,7 @@ Future<bool> _startEmulator(String emulatorName) async {
         '-verbose',
         '-show-kernel',
         '-no-audio',
+        '-no-window',
         '-netdelay',
         'none',
         '-no-snapshot',
