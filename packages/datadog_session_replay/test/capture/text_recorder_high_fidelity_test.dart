@@ -408,6 +408,37 @@ void main() {
       expect(savedResourceKeys().toSet().length, 2);
     });
 
+    testWidgets('rasterizes again when the available fonts change', (
+      tester,
+    ) async {
+      final recorder = createRecorder();
+      // A fixed-size box keeps the same key whatever font the text uses.
+      await tester.pumpWidget(
+        wrap(
+          recorder,
+          const SizedBox(
+            width: 200,
+            height: 30,
+            child: Text('Hello', style: style),
+          ),
+        ),
+      );
+      await capture(tester, recorder);
+
+      // The message Flutter receives when a font loads at runtime.
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        SystemChannels.system.name,
+        SystemChannels.system.codec.encodeMessage(<String, Object?>{
+          'type': 'fontsChange',
+        }),
+        (_) {},
+      );
+      await tester.pump();
+      await capture(tester, recorder);
+
+      expect(savedResourceKeys().toSet().length, 2);
+    });
+
     testWidgets('rasterizes again when the selection changes', (tester) async {
       final recorder = createRecorder();
       await tester.pumpWidget(

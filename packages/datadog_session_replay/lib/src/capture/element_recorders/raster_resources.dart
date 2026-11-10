@@ -14,7 +14,7 @@ import '../../sr_data_models.dart';
 import '../capture_node.dart';
 import '../view_tree_snapshot.dart';
 
-// ~800x800 decoded pixels; raw RGBA ~2 MB.
+// ~800x800 decoded pixels; raw RGBA ~2.5 MB.
 const int defaultMaxImagePixelBudget = 640000;
 
 const int defaultMaxCachedRasters = 1024;
@@ -53,23 +53,32 @@ final class RasterResourceCache<K extends Object> {
   Future<int?> rasterizeOnce(K key, Future<int?> Function() rasterize) {
     final cached = lookup(key);
     if (cached != null) return Future.value(cached);
+    if (_inFlight[key] case final pending?) return pending;
 
-    return _inFlight.putIfAbsent(
-      key,
-      () => rasterize()
-          .then((resourceKey) {
-            if (resourceKey != null) {
-              _resourceKeys[key] = resourceKey;
-              while (_resourceKeys.length > maxEntries) {
-                _resourceKeys.remove(_resourceKeys.keys.first);
-              }
+    late final Future<int?> pending;
+    pending = rasterize()
+        .then((resourceKey) {
+          if (resourceKey != null && identical(_inFlight[key], pending)) {
+            _resourceKeys[key] = resourceKey;
+            while (_resourceKeys.length > maxEntries) {
+              _resourceKeys.remove(_resourceKeys.keys.first);
             }
-            return resourceKey;
-          })
-          .whenComplete(() {
-            _inFlight.remove(key);
-          }),
-    );
+          }
+          return resourceKey;
+        })
+        .whenComplete(() {
+          // After a clear, a newer rasterization may own this key.
+          if (identical(_inFlight[key], pending)) _inFlight.remove(key);
+        });
+    _inFlight[key] = pending;
+    return pending;
+  }
+
+  /// Forgets every resource key, including those of rasterizations still in
+  /// progress, so all content is rasterized again.
+  void clear() {
+    _resourceKeys.clear();
+    _inFlight.clear();
   }
 }
 
@@ -139,10 +148,11 @@ double rasterScale(double scale) {
   if (pixels <= maxPixels) return (width: width, height: height);
 
   final factor = math.sqrt(maxPixels / pixels);
-  return (
-    width: math.max(1, (width * factor).floor()),
-    height: math.max(1, (height * factor).floor()),
-  );
+  var fittedWidth = math.max(1, (width * factor).floor());
+  var fittedHeight = math.max(1, (height * factor).floor());
+  fittedWidth = math.min(fittedWidth, math.max(1, maxPixels ~/ fittedHeight));
+  fittedHeight = math.min(fittedHeight, math.max(1, maxPixels ~/ fittedWidth));
+  return (width: fittedWidth, height: fittedHeight);
 }
 
 /// The device pixel ratio of the view showing [element].

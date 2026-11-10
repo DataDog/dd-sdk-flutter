@@ -51,6 +51,7 @@ class TextElementRecorder implements ElementRecorder {
   final int maxImagePixelBudget;
 
   final RasterResourceCache<TextRasterKey> _rasterCache;
+  bool _listeningToFontChanges = false;
 
   TextElementRecorder(
     this.keyGenerator, {
@@ -180,6 +181,7 @@ class TextElementRecorder implements ElementRecorder {
       subtreeStrategy: subtreeStrategy,
     );
 
+    _listenToFontChanges();
     final cachedKey = _rasterCache.lookup(rasterKey);
     if (cachedKey != null) return resourceSemantics(cachedKey);
 
@@ -290,6 +292,14 @@ class TextElementRecorder implements ElementRecorder {
       scaleX: attributes.scaleX,
       scaleY: attributes.scaleY,
     );
+  }
+
+  /// Clears the raster cache whenever the available fonts change, such as
+  /// when a font loads at runtime.
+  void _listenToFontChanges() {
+    if (_listeningToFontChanges) return;
+    _listeningToFontChanges = true;
+    PaintingBinding.instance.systemFonts.addListener(_rasterCache.clear);
   }
 
   /// Paints the [bounds] area of [paragraph] into a new layer tree scaled to

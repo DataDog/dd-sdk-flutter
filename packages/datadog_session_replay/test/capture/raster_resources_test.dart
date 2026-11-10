@@ -80,9 +80,20 @@ void main() {
       expect(fitPixelBudget(600, 600, 10000), (width: 100, height: 100));
     });
 
-    test('never shrinks a side below one pixel', () {
-      expect(fitPixelBudget(10000, 1, 100), (width: 1000, height: 1));
-    });
+    for (final (width, height, maxPixels, expected) in [
+      (10000, 1, 100, (width: 100, height: 1)),
+      (1, 10000, 100, (width: 1, height: 100)),
+      (1000, 20, 10, (width: 10, height: 1)),
+      (40, 20, 1, (width: 1, height: 1)),
+    ]) {
+      test('keeps $width times $height within $maxPixels pixels '
+          'at the one-pixel minimum', () {
+        final fitted = fitPixelBudget(width, height, maxPixels);
+
+        expect(fitted, expected);
+        expect(fitted.width * fitted.height, lessThanOrEqualTo(maxPixels));
+      });
+    }
   });
 
   group('RasterResourceCache', () {
@@ -128,6 +139,30 @@ void main() {
 
       expect(cache.hasResourceKey('a'), isFalse);
       expect(cache.hasResourceKey('b'), isTrue);
+    });
+
+    test('clear forgets stored keys', () async {
+      final cache = RasterResourceCache<String>();
+      await cache.rasterizeOnce('a', () async => 1);
+
+      cache.clear();
+
+      expect(cache.lookup('a'), isNull);
+      expect(await cache.rasterizeOnce('a', () async => 2), 2);
+    });
+
+    test('clear discards rasterizations still in progress', () async {
+      final cache = RasterResourceCache<String>();
+      final stale = Completer<int?>();
+      final pending = cache.rasterizeOnce('a', () => stale.future);
+
+      cache.clear();
+      final fresh = cache.rasterizeOnce('a', () async => 2);
+      stale.complete(1);
+
+      expect(await pending, 1);
+      expect(await fresh, 2);
+      expect(cache.lookup('a'), 2);
     });
 
     test('evicts least recently used keys', () async {

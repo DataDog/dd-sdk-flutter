@@ -53,6 +53,7 @@ void main() {
 
   Widget createFixture(String title) {
     return MaterialApp(
+      theme: ThemeData(fontFamily: test_fonts.openSans),
       home: Scaffold(
         appBar: AppBar(title: Text(title)),
         body: Padding(
