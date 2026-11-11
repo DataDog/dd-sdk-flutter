@@ -87,12 +87,22 @@ A missing targeting key and an empty key identify the same subject.
 If reconciliation fails, OpenFeature retains the previous active context.
 The provider discards late results from that failed reconciliation.
 
-`refresh()` reloads the active context and emits `configurationChanged` after
-success. Refresh failure emits an error followed by `stale` and retains usable
-active assignments. Before the first successful load, `refresh()` retries
-initialization and replaces any pending initial request. Avoid calling `refresh()`
-from every error event: repeated retries can prevent a slow request from completing.
-Retry a failed targeting-key change through OpenFeature before refreshing.
+Set the boolean context attribute `dd_strict_evaluation_context_switching: true`
+to require matching targeting attributes as well as the targeting key.
+Strict mode returns defaults during an attribute change and after a failed fetch.
+An unchanged-context refresh keeps assignments while pending, then returns defaults
+if loading fails. Retries keep withheld assignments unavailable until a successful
+fetch. The control attribute stays local and is excluded from targeting and telemetry.
+Only the boolean value `true` enables strict mode.
+
+`refresh()` reloads the committed context and emits `configurationChanged` after
+success. By default, failure emits error followed by `stale` and retains usable
+assignments. Strict failure emits error and returns defaults until recovery.
+Before the first successful load, `refresh()` retries initialization and replaces
+any pending initial request. Avoid calling `refresh()` from every error event:
+repeated retries can prevent a slow request from completing.
+Retry failed context reconciliation through `setEvaluationContextAndWait` before
+refreshing. This lets OpenFeature commit the requested context after success.
 Each `setEvaluationContextAndWait` call reloads assignments, even when the context
 is unchanged. The provider does not poll automatically.
 

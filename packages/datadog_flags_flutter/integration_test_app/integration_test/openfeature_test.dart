@@ -3,6 +3,9 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// The integration matrix covers the supported legacy client API.
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -14,6 +17,7 @@ import 'package:http/testing.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
+import 'package:datadog_flags/datadog_flags.dart' show DatadogFlags;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -156,4 +160,130 @@ void main() {
       );
     },
   );
+  for (final direct in [false, true]) {
+    for (final strict in [false, true]) {
+      testWidgets(
+        '${direct ? 'Dart' : 'OpenFeature'} context policy strict=$strict',
+        (tester) async {
+          final requests = <http.Request>[];
+          Completer<http.Response>? response;
+          Completer<void>? started;
+          final transport = MockClient((request) async {
+            requests.add(request);
+            if (request.url.path != '/precompute-assignments') {
+              return http.Response('{}', 202);
+            }
+            if (response != null) {
+              final gate = started;
+              if (gate != null && !gate.isCompleted) gate.complete();
+              return response.future;
+            }
+            final subject =
+                (jsonDecode(request.body)
+                    as Map<String, dynamic>)['data']['attributes']['subject'];
+            return http.Response(
+              jsonEncode({
+                'data': {
+                  'attributes': {
+                    'flags': {
+                      'identity': {
+                        'allocationKey': 'integration',
+                        'variationKey': 'subject',
+                        'variationType': 'string',
+                        'variationValue': subject['targeting_key'],
+                        'reason': 'TARGETING_MATCH',
+                        'doLog': true,
+                      },
+                    },
+                  },
+                },
+              }),
+              200,
+            );
+          });
+          addTearDown(transport.close);
+          final api = OpenFeatureAPI.instance;
+          addTearDown(api.shutdown);
+          final owner = DatadogFlags();
+          addTearDown(owner.disable);
+          final configuration = DatadogFlagsConfiguration(
+            datadogConfig: const DatadogFlagsConfig(
+              clientToken: 'synthetic',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+            httpClient: transport,
+          );
+          late Future<void> Function(String, String) change;
+          late String Function() read;
+          final policy = {'dd_strict_evaluation_context_switching': strict};
+          if (direct) {
+            await owner.enable(configuration: configuration);
+            final client = owner.sharedClient();
+            change = (key, plan) => client.initialize(
+              FlagsEvaluationContext(
+                targetingKey: key,
+                attributes: {...policy, 'plan': plan},
+              ),
+            );
+            read = () => client
+                .getStringDetails(key: 'identity', defaultValue: 'default')
+                .value;
+            await change('A', 'free');
+          } else {
+            change = (key, plan) => api.setEvaluationContextAndWait(
+              EvaluationContext(
+                targetingKey: key,
+                attributes: {...policy, 'plan': plan},
+              ),
+            );
+            await change('A', 'free');
+            await api.setProviderAndWait(
+              DatadogProvider.fromConfiguration(configuration),
+            );
+            read = () => api.getClient().getStringValue('identity', 'default');
+          }
+          expect(read(), 'A');
+          for (final key in ['A', 'B', '']) {
+            response = Completer<http.Response>();
+            started = Completer<void>();
+            final operation = change(key, 'pro');
+            final completion = direct
+                ? operation
+                : expectLater(operation, throwsA(isA<OpenFeatureException>()));
+            await started.future;
+            expect(read(), !strict && key == 'A' ? 'A' : 'default');
+            response.complete(http.Response('offline', 503));
+            await completion;
+            expect(read(), !strict && key == 'A' ? 'A' : 'default');
+          }
+          response = null;
+          await change('C', 'pro');
+          expect(read(), 'C');
+          await api.shutdown();
+          await owner.disable();
+          for (final request in requests) {
+            expect(
+              request.body,
+              isNot(contains('dd_strict_evaluation_context_switching')),
+            );
+          }
+          final exposures = requests
+              .where((request) => request.url.path == '/api/v2/exposures')
+              .expand((request) => const LineSplitter().convert(request.body))
+              .map((line) => jsonDecode(line) as Map<String, dynamic>)
+              .toList();
+          expect(exposures, isNotEmpty);
+          expect(exposures.last['subject'], {
+            'id': 'C',
+            'attributes': {'plan': 'pro'},
+          });
+          expect(exposures.first['subject'], {
+            'id': 'A',
+            'attributes': {'plan': 'free'},
+          });
+        },
+      );
+    }
+  }
 }

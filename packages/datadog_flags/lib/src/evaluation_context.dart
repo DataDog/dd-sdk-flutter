@@ -35,3 +35,72 @@ final class FlagsEvaluationContext {
   /// Converts this context to a JSON map.
   Map<String, Object?> toJson() => _$FlagsEvaluationContextToJson(this);
 }
+
+// Local context controls are excluded from assignment and telemetry attributes.
+extension ContextSwitchingPolicy on FlagsEvaluationContext {
+  bool get strictContextSwitching =>
+      identical(attributes['dd_strict_evaluation_context_switching'], true);
+
+  FlagsEvaluationContext get targetingContext =>
+      !attributes.containsKey('dd_strict_evaluation_context_switching')
+      ? this
+      : FlagsEvaluationContext(
+          targetingKey: targetingKey,
+          attributes: {
+            for (final entry in attributes.entries)
+              if (entry.key != 'dd_strict_evaluation_context_switching')
+                entry.key: entry.value,
+          },
+        );
+}
+
+bool targetingContextsMatch(
+  FlagsEvaluationContext left,
+  FlagsEvaluationContext right,
+) {
+  if ((left.targetingKey ?? '') != (right.targetingKey ?? '')) {
+    return false;
+  }
+
+  try {
+    return _jsonValuesMatch(
+      sanitizeJsonValue(left.targetingContext.attributes),
+      sanitizeJsonValue(right.targetingContext.attributes),
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+bool _jsonValuesMatch(Object? left, Object? right) {
+  if (left is Map<Object?, Object?> && right is Map<Object?, Object?>) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      if (!right.containsKey(entry.key) ||
+          !_jsonValuesMatch(entry.value, right[entry.key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (left is Iterable<Object?> && right is Iterable<Object?>) {
+    final leftIterator = left.iterator;
+    final rightIterator = right.iterator;
+    while (true) {
+      final hasLeft = leftIterator.moveNext();
+      final hasRight = rightIterator.moveNext();
+      if (hasLeft != hasRight) {
+        return false;
+      }
+      if (!hasLeft) {
+        return true;
+      }
+      if (!_jsonValuesMatch(leftIterator.current, rightIterator.current)) {
+        return false;
+      }
+    }
+  }
+  return left == right;
+}

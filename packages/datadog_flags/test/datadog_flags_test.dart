@@ -1605,35 +1605,40 @@ void main() {
     },
   );
 
-  test('unsupported context attributes miss cache without throwing', () async {
-    final store = InMemoryDatadogFlagsStore();
-    final requests = <http.Request>[];
-    final client = await _createClient(
-      requests: requests,
-      response: _assignmentsResponse(),
-      trackExposures: false,
-      trackEvaluations: false,
-      store: store,
-    );
-    await client.initialize(
-      const FlagsEvaluationContext(targetingKey: 'user-123'),
-    );
+  test(
+    'unsupported same-key attributes retain assignments without throwing',
+    () async {
+      final store = InMemoryDatadogFlagsStore();
+      final requests = <http.Request>[];
+      final client = await _createClient(
+        requests: requests,
+        response: _assignmentsResponse(),
+        trackExposures: false,
+        trackEvaluations: false,
+        store: store,
+      );
+      await client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
 
-    await expectLater(
-      client.initialize(
-        FlagsEvaluationContext(
-          targetingKey: 'user-123',
-          attributes: {'unsupported': Object()},
+      await expectLater(
+        client.initialize(
+          FlagsEvaluationContext(
+            targetingKey: 'user-123',
+            attributes: {'unsupported': Object()},
+          ),
         ),
-      ),
-      completes,
-    );
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).error,
-      FlagEvaluationError.providerNotReady,
-    );
-    expect(requests, hasLength(1));
-  });
+        completes,
+      );
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .value,
+        isTrue,
+      );
+      expect(requests, hasLength(1));
+    },
+  );
 }
 
 Future<DatadogFlagsClient> _createClient({

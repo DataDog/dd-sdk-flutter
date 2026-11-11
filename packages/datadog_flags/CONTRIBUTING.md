@@ -122,7 +122,8 @@ flutter test integration_test/openfeature_test.dart -d <DEVICE_ID>
 ```
 
 The Flags package owns the dedicated integration app. It covers typed values, defaults, refresh, identity
-changes, telemetry requests, and shutdown. It uses synthetic credentials and
+changes, strict/default context switching, direct Dart callers, telemetry requests,
+and shutdown. It uses synthetic credentials and
 controlled HTTP responses. Tracking consent is disabled for the native SDK.
 The test does not verify live Datadog connectivity or RUM delivery.
 The standard Android, iOS, desktop, and web integration jobs discover this app.

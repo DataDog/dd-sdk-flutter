@@ -25,6 +25,8 @@ import 'flags_store.dart';
 /// assignments for the new context are available. Attribute-only changes retain
 /// assignments while loading or after failure. Targeting-key changes return
 /// application defaults until assignments for the new key are available.
+/// The boolean context attribute `dd_strict_evaluation_context_switching`
+/// also requires matching targeting attributes. It is a local control field.
 final class DatadogProvider
     implements
         openfeature.FeatureProvider,
@@ -60,6 +62,9 @@ final class DatadogProvider
   _ProviderRuntime? _activeRuntime;
   _ProviderRuntime? _telemetrySource;
   _ProviderRuntime? _pendingRuntime;
+  bool _requiresContextRetry = false;
+  bool _hasCommittedContext = false;
+  bool _requiresFreshAssignments = false;
   var _contextRevision = 0;
   var _shutdownGeneration = 0;
   Future<void>? _contextOperation;
@@ -127,6 +132,7 @@ final class DatadogProvider
     String? domain,
   }) async {
     _requestedContext = context;
+    _requiresContextRetry = false;
     _resolvedClientName = domain ?? DatadogFlags.defaultClientName;
     await _runContextOperation(context, isInitialization: true);
   }
@@ -136,16 +142,21 @@ final class DatadogProvider
     openfeature.EvaluationContext previousContext,
     openfeature.EvaluationContext newContext,
   ) async {
-    // Only initialization can recover through refresh before an active context
-    // exists. Failed reconciliation must be retried through OpenFeature.
-    _requestedContext = null;
+    // OpenFeature commits its context only after successful reconciliation.
+    _requestedContext = newContext;
+    _requiresContextRetry = true;
     final active = _activeRuntime;
     final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
-    if (active != null && (newContext.targetingKey ?? '') != activeKey) {
-      _activeRuntime = null;
-      _telemetrySource = active;
-      unawaited(active.statusSubscription?.cancel());
-      active.statusSubscription = null;
+    final requested = newContext.datadogContext;
+    if (active != null &&
+        ((newContext.targetingKey ?? '') != activeKey ||
+            (requested.strictContextSwitching &&
+                !targetingContextsMatch(
+                  active.client.evaluationContext ??
+                      FlagsEvaluationContext.empty,
+                  requested,
+                )))) {
+      _withholdActiveAssignments();
     }
     _events.add(
       openfeature.ProviderEvent(
@@ -158,15 +169,17 @@ final class DatadogProvider
   /// Refreshes assignments for the active context.
   ///
   /// Waits for pending initialization or context reconciliation. After failed
-  /// sign-out, retry the context change through OpenFeature before refreshing.
+  /// reconciliation, retry the context change through OpenFeature before refreshing.
   ///
   /// Before the first successful load, retries the requested initial context.
   /// A retry replaces the pending request. Avoid retrying from every error event.
   ///
   /// A successful refresh emits a configuration-changed event. A failed
-  /// refresh emits an error followed by stale and preserves active assignments.
-  /// Throws [StateError] before initialization, after shutdown, or after a failed
-  /// targeting-key change leaves no active assignments.
+  /// refresh preserves active assignments by default and emits error then stale.
+  /// In strict mode, failure emits error and withholds assignments until a
+  /// successful fetch. A retry keeps those assignments withheld.
+  /// Throws [StateError] before initialization, after shutdown, or after failed
+  /// context reconciliation.
   Future<void> refresh() async {
     final generation = _shutdownGeneration;
     while (_contextOperation != null) {
@@ -176,22 +189,16 @@ final class DatadogProvider
     if (generation != _shutdownGeneration) {
       throw StateError('The provider shut down while refresh was waiting.');
     }
-    final activeContext = _activeRuntime?.client.evaluationContext;
-    final context = activeContext == null
-        ? _requestedContext
-        : openfeature.EvaluationContext(
-            targetingKey: activeContext.targetingKey,
-            attributes: activeContext.attributes,
-          );
-    if (context == null) {
+    final context = _requestedContext;
+    if (context == null || _requiresContextRetry) {
       throw StateError(
         'Initialize or reconcile the provider before refreshing assignments.',
       );
     }
     await _loadContext(
       context,
-      isInitialization: activeContext == null,
-      isRefresh: activeContext != null,
+      isInitialization: !_hasCommittedContext,
+      isRefresh: _hasCommittedContext,
     );
   }
 
@@ -206,6 +213,9 @@ final class DatadogProvider
     _pendingRuntime = null;
     _resolvedClientName = null;
     _requestedContext = null;
+    _requiresContextRetry = false;
+    _hasCommittedContext = false;
+    _requiresFreshAssignments = false;
     _telemetrySource = null;
     await Future.wait([
       ..._retiring,
@@ -444,20 +454,25 @@ final class DatadogProvider
       return;
     }
 
-    if (isRefresh &&
-        _activeRuntime != null &&
+    if ((isRefresh || _requiresFreshAssignments) &&
         status != DatadogFlagsClientStatus.ready) {
       _pendingRuntime = null;
       _retire(runtime);
+      if (_requestedContext?.datadogContext.strictContextSwitching ?? false) {
+        _requiresFreshAssignments = true;
+        _withholdActiveAssignments();
+      }
       _emitLoadError(
         _loadMessage(runtime, 'Datadog assignment refresh failed.'),
       );
-      _events.add(
-        openfeature.ProviderEvent(
-          type: openfeature.ProviderEventType.stale,
-          message: 'Using existing Datadog assignments.',
-        ),
-      );
+      if (_activeRuntime != null) {
+        _events.add(
+          openfeature.ProviderEvent(
+            type: openfeature.ProviderEventType.stale,
+            message: 'Using existing Datadog assignments.',
+          ),
+        );
+      }
       return;
     }
 
@@ -483,6 +498,10 @@ final class DatadogProvider
           'deadline.',
         );
       case DatadogFlagsClientStatus.error:
+        if (_requestedContext?.datadogContext.strictContextSwitching ?? false) {
+          _requiresFreshAssignments = true;
+          _withholdActiveAssignments();
+        }
         _pendingRuntime = null;
         await _disableQuietly(runtime);
         if (revision == _contextRevision) {
@@ -564,6 +583,11 @@ final class DatadogProvider
       runtime.client.inheritTelemetry(telemetrySource.client);
     }
     _activeRuntime = runtime;
+    _hasCommittedContext = true;
+    if (status == DatadogFlagsClientStatus.ready) {
+      _requiresFreshAssignments = false;
+    }
+    if (!isRefresh) _requiresContextRetry = false;
     if (identical(_pendingRuntime, runtime)) {
       _pendingRuntime = null;
     }
@@ -597,6 +621,15 @@ final class DatadogProvider
     if (telemetrySource != null && !identical(telemetrySource, runtime)) {
       _retire(telemetrySource);
     }
+  }
+
+  void _withholdActiveAssignments() {
+    final active = _activeRuntime;
+    if (active == null) return;
+    _activeRuntime = null;
+    _telemetrySource = active;
+    unawaited(active.statusSubscription?.cancel());
+    active.statusSubscription = null;
   }
 
   bool _isCurrent(_ProviderRuntime runtime, int revision) {
