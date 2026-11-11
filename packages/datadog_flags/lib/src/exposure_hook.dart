@@ -14,15 +14,36 @@ const doLogMetadata = '__dd_do_log';
 const splitSerialIdMetadata = '__dd_split_serial_id';
 const datadogProviderName = 'Datadog';
 
+enum _ExposureVerdict {
+  none(isExposure: false, isCacheHit: false),
+  newExposure(isExposure: true, isCacheHit: false),
+  cacheHit(isExposure: true, isCacheHit: true);
+
+  final bool isExposure;
+  final bool isCacheHit;
+
+  const _ExposureVerdict({required this.isExposure, required this.isCacheHit});
+}
+
 // OpenFeature passes the same details instance to every finally hook of one
-// evaluation, so the provider's verdict is attached to that instance.
-final Expando<bool> _exposureCacheHits = Expando('datadog exposure verdicts');
+// evaluation. The provider hook marks that instance before any other finally
+// hook runs, so the mark shows that the evaluation ran the provider hooks.
+final Expando<_ExposureVerdict> _exposureVerdicts = Expando(
+  'datadog exposure verdicts',
+);
+
+/// Marks [details] as an evaluation that ran the Datadog provider hooks.
+void markDatadogEvaluation(FlagEvaluationDetails<Object> details) {
+  _exposureVerdicts[details] = _ExposureVerdict.none;
+}
 
 void recordExposureDecision(
   FlagEvaluationDetails<Object> details, {
   required bool isCacheHit,
 }) {
-  _exposureCacheHits[details] = isCacheHit;
+  _exposureVerdicts[details] = isCacheHit
+      ? _ExposureVerdict.cacheHit
+      : _ExposureVerdict.newExposure;
 }
 
 /// Receives each completed evaluation of [ExposureHook].
@@ -87,20 +108,28 @@ final class ExposureEvaluation {
 /// from the callback are caught and logged; they never change the evaluation.
 ///
 /// The provider decides the exposure in its own `finallyAfter` hook, which
-/// OpenFeature runs before this one. Evaluations from other providers,
-/// including providers that wrap the Datadog provider, are skipped.
+/// OpenFeature runs before this one. Exposures need the
+/// `DatadogOpenFeatureProvider` as the OpenFeature provider, or a provider that
+/// wraps it and returns its `hooks` and its `metadata`. The provider records
+/// exposures in its `hooks`, and this hook recognizes its evaluations by its
+/// `metadata`. Evaluations from a provider with other metadata are skipped.
+/// Evaluations through a wrapper that returns only the `metadata` reach the
+/// callback with [ExposureEvaluation.isExposure] false, and the hook logs a
+/// warning.
 final class ExposureHook extends HookAdapter {
+  static const _maxWarnedProviders = 8;
+
   final ExposureCallback _callback;
   final FlagsLogger _logger;
   bool _callbackFailed = false;
-  bool _warnedOtherProvider = false;
+  bool _warnedMissingHooks = false;
+  final Set<String> _warnedProviders = {};
 
   /// Creates a hook that passes each completed evaluation to [callback].
   ExposureHook(ExposureCallback callback)
-    : this.withLogger(callback, const FlagsLogger());
+    : this._(callback, const FlagsLogger());
 
-  @visibleForTesting
-  ExposureHook.withLogger(this._callback, this._logger);
+  ExposureHook._(this._callback, this._logger);
 
   @override
   void finallyAfter(
@@ -109,17 +138,25 @@ final class ExposureHook extends HookAdapter {
     HookHints hints,
   ) {
     try {
-      if (context.providerMetadata.name != datadogProviderName) {
-        if (!_warnedOtherProvider) {
-          _warnedOtherProvider = true;
+      final name = context.providerMetadata.name;
+      if (name != datadogProviderName) {
+        if (_warnedProviders.length < _maxWarnedProviders &&
+            _warnedProviders.add(name)) {
           _logger.warning(
-            'ExposureHook skips evaluations from provider '
-            '"${context.providerMetadata.name}".',
+            'ExposureHook skips evaluations from provider "$name".',
           );
         }
         return;
       }
-      final isCacheHit = _exposureCacheHits[details];
+      final marked = _exposureVerdicts[details];
+      final verdict = marked ?? _ExposureVerdict.none;
+      if (marked == null && !_warnedMissingHooks) {
+        _warnedMissingHooks = true;
+        _logger.warning(
+          'ExposureHook received an evaluation that skipped the '
+          'DatadogOpenFeatureProvider hooks, so no exposure was recorded.',
+        );
+      }
       final metadata = details.flagMetadata;
       final allocationKey = metadata[datadogAllocationKeyMetadata];
       _callback(
@@ -133,8 +170,8 @@ final class ExposureHook extends HookAdapter {
             metadata,
             SplitFeatureDestination.hook,
           ),
-          isExposure: isCacheHit != null,
-          isCacheHit: isCacheHit ?? false,
+          isExposure: verdict.isExposure,
+          isCacheHit: verdict.isCacheHit,
         ),
       );
     } catch (error) {
@@ -154,3 +191,10 @@ final class ExposureHook extends HookAdapter {
     } catch (_) {}
   }
 }
+
+/// Creates an [ExposureHook] that writes its diagnostics to [logger].
+@visibleForTesting
+ExposureHook exposureHookWithLogger(
+  ExposureCallback callback,
+  FlagsLogger logger,
+) => ExposureHook._(callback, logger);

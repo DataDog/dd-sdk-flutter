@@ -47,9 +47,6 @@ final class DatadogOpenFeatureProvider
 
   final Set<Future<void>> _retiring = {};
   final List<_ExposureFrame> _exposureFrames = [];
-
-  @visibleForTesting
-  int get openExposureFrames => _exposureFrames.length;
   openfeature.EvaluationContext? _requestedContext;
 
   /// Datadog runtime configuration used by each context revision.
@@ -727,6 +724,7 @@ final class _ExposureAdmissionHook extends openfeature.HookAdapter {
     openfeature.FlagEvaluationDetails<Object> details,
     openfeature.HookHints hints,
   ) {
+    markDatadogEvaluation(details);
     final frame = context.hookData.remove(_frameKey);
     if (frame is! _ExposureFrame) return;
     _frames.remove(frame);
@@ -759,4 +757,10 @@ extension _OpenFeatureError on FlagEvaluationError {
   };
 
   String get message => 'Datadog flag evaluation failed with $code.';
+}
+
+/// Test access to the exposure frames of a [DatadogOpenFeatureProvider].
+@visibleForTesting
+extension DatadogOpenFeatureProviderTesting on DatadogOpenFeatureProvider {
+  int get openExposureFrames => _exposureFrames.length;
 }

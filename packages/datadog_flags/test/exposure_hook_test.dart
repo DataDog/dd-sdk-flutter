@@ -7,6 +7,10 @@ import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
+import 'package:datadog_flags/src/datadog_openfeature_provider.dart'
+    show DatadogOpenFeatureProviderTesting;
+import 'package:datadog_flags/src/exposure_hook.dart'
+    show exposureHookWithLogger;
 import 'package:datadog_flags/src/exposure_logger.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flags_log.dart';
@@ -32,8 +36,12 @@ final class _ThrowingAfterHook extends HookAdapter {
 }
 
 final class _OtherProvider implements FeatureProvider {
+  final String _name;
+
+  _OtherProvider([this._name = 'Other']);
+
   @override
-  ProviderMetadata get metadata => const ProviderMetadata(name: 'Other');
+  ProviderMetadata get metadata => ProviderMetadata(name: _name);
 
   @override
   ResolutionDetails<bool> resolveBooleanValue(
@@ -439,7 +447,7 @@ void main() {
   test('a failing callback does not affect the evaluation', () async {
     final logger = _MockLogger();
     final (client, _) = await start(
-      hook: ExposureHook.withLogger((_) => throw StateError('boom'), logger),
+      hook: exposureHookWithLogger((_) => throw StateError('boom'), logger),
     );
 
     expect(client.getBooleanValue('flag', false), isTrue);
@@ -459,7 +467,7 @@ void main() {
       () => logger.warning(any(), error: any(named: 'error')),
     ).thenThrow(StateError('logger failed'));
     final (client, _) = await start(
-      hook: ExposureHook.withLogger((_) => throw StateError('boom'), logger),
+      hook: exposureHookWithLogger((_) => throw StateError('boom'), logger),
     );
 
     expect(client.getBooleanDetails('flag', false).errorCode, isNull);
@@ -470,7 +478,7 @@ void main() {
     when(
       () => logger.warning(any(), error: any(named: 'error')),
     ).thenThrow(StateError('logger failed'));
-    final hook = ExposureHook.withLogger(
+    final hook = exposureHookWithLogger(
       (_) => throw StateError('boom'),
       logger,
     );
@@ -492,10 +500,74 @@ void main() {
     );
   });
 
+  test(
+    'reports a non-exposure and warns for a wrapper without the Datadog hooks',
+    () async {
+      final logger = _MockLogger();
+      final (_, provider) = await start();
+      await api.setProviderForDomainAndWait(
+        'wrapped',
+        _WrappingProvider(provider, forwardHooks: false, forwardMetadata: true),
+      );
+      final wrapped = <ExposureEvaluation>[];
+      api.addHooks([exposureHookWithLogger(wrapped.add, logger)]);
+
+      api.getClient('wrapped').getBooleanValue('plain', false);
+      api.getClient('wrapped').getBooleanValue('plain', false);
+      await api.shutdown();
+
+      expect([for (final e in wrapped) e.isExposure], [false, false]);
+      verify(() => logger.warning(any())).called(1);
+      expect(exposureEvents(), isEmpty);
+    },
+  );
+
+  test('logs nothing for Datadog evaluations without an exposure', () async {
+    final logger = _MockLogger();
+    final (client, _) = await start(
+      hook: exposureHookWithLogger(evaluations.add, logger),
+    );
+
+    client.getBooleanValue('silent', false);
+    client.getStringValue('plain', 'default');
+
+    expect([for (final e in evaluations) e.isExposure], [false, false]);
+    verifyNever(() => logger.warning(any()));
+  });
+
+  test('skips the callback for a wrapper with its own metadata', () async {
+    final (_, provider) = await start();
+    await api.setProviderForDomainAndWait(
+      'wrapped',
+      _WrappingProvider(provider, forwardHooks: true, forwardMetadata: false),
+    );
+
+    api.getClient('wrapped').getBooleanValue('plain', false);
+    await api.shutdown();
+
+    expect(evaluations, isEmpty);
+    expect(exposureEvents(), hasLength(1));
+  });
+
+  test('warns once for each other provider, up to eight', () async {
+    final logger = _MockLogger();
+    api.addHooks([exposureHookWithLogger(evaluations.add, logger)]);
+    for (var i = 0; i < 9; i++) {
+      await api.setProviderForDomainAndWait(
+        'other-$i',
+        _OtherProvider('Other $i'),
+      );
+      api.getClient('other-$i').getBooleanValue('flag', false);
+      api.getClient('other-$i').getBooleanValue('flag', false);
+    }
+
+    verify(() => logger.warning(any())).called(8);
+  });
+
   test('skips evaluations from other providers', () async {
     final logger = _MockLogger();
     await api.setProviderForDomainAndWait('other', _OtherProvider());
-    api.addHooks([ExposureHook.withLogger(evaluations.add, logger)]);
+    api.addHooks([exposureHookWithLogger(evaluations.add, logger)]);
 
     api.getClient('other').getBooleanValue('flag', false);
     api.getClient('other').getBooleanValue('flag', false);
@@ -682,4 +754,60 @@ final class _DirectResolveHook extends HookAdapter {
   ) {
     _provider.resolveBooleanValue('plain', false, EvaluationContext.empty);
   }
+}
+
+final class _WrappingProvider implements FeatureProvider, ProviderHooks {
+  final DatadogOpenFeatureProvider _delegate;
+  final bool _forwardHooks;
+  final bool _forwardMetadata;
+
+  _WrappingProvider(
+    this._delegate, {
+    required bool forwardHooks,
+    required bool forwardMetadata,
+  }) : _forwardHooks = forwardHooks,
+       _forwardMetadata = forwardMetadata;
+
+  @override
+  ProviderMetadata get metadata => _forwardMetadata
+      ? _delegate.metadata
+      : const ProviderMetadata(name: 'Wrapper');
+
+  @override
+  List<Hook> get hooks => _forwardHooks ? _delegate.hooks : const [];
+
+  @override
+  ResolutionDetails<bool> resolveBooleanValue(
+    String flagKey,
+    bool defaultValue,
+    EvaluationContext context,
+  ) => _delegate.resolveBooleanValue(flagKey, defaultValue, context);
+
+  @override
+  ResolutionDetails<double> resolveDoubleValue(
+    String flagKey,
+    double defaultValue,
+    EvaluationContext context,
+  ) => _delegate.resolveDoubleValue(flagKey, defaultValue, context);
+
+  @override
+  ResolutionDetails<int> resolveIntegerValue(
+    String flagKey,
+    int defaultValue,
+    EvaluationContext context,
+  ) => _delegate.resolveIntegerValue(flagKey, defaultValue, context);
+
+  @override
+  ResolutionDetails<String> resolveStringValue(
+    String flagKey,
+    String defaultValue,
+    EvaluationContext context,
+  ) => _delegate.resolveStringValue(flagKey, defaultValue, context);
+
+  @override
+  ResolutionDetails<Map<String, Object?>> resolveStructureValue(
+    String flagKey,
+    Map<String, Object?> defaultValue,
+    EvaluationContext context,
+  ) => _delegate.resolveStructureValue(flagKey, defaultValue, context);
 }
