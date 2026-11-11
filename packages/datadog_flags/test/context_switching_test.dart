@@ -305,6 +305,177 @@ void main() {
       expect(api.getClient().getBooleanValue('flag', false), isTrue);
     },
   );
+  test(
+    'late strict cached failure emits error and permits fresh recovery',
+    () async {
+      final api = createIsolatedOpenFeatureAPI();
+      addTearDown(api.shutdown);
+      final store = InMemoryDatadogFlagsStore();
+      await store.write(
+        DatadogFlags.defaultClientName,
+        FlagsData.fromJson({
+          'flags':
+              (jsonDecode(_response(true).body)
+                  as Map<String, dynamic>)['data']['attributes']['flags'],
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': '2026-01-01T00:00:00.000Z',
+        }),
+      );
+      final response = Completer<http.Response>();
+      final errorObserved = Completer<void>();
+      var count = 0;
+      final provider = DatadogProvider.fromConfiguration(
+        DatadogFlagsConfiguration(
+          datadogConfig: const DatadogFlagsConfig(
+            clientToken: 'test',
+            env: 'test',
+            site: DatadogFlagsSite.us1,
+          ),
+          initializationTimeout: const Duration(milliseconds: 30),
+          store: store,
+          httpClient: MockClient((request) {
+            if (request.url.path != '/precompute-assignments')
+              return Future.value(http.Response('{}', 202));
+            return ++count == 1
+                ? response.future
+                : Future.value(_response(true));
+          }),
+        ),
+      );
+      provider.events.listen((event) {
+        if (event.type == ProviderEventType.error && !errorObserved.isCompleted)
+          errorObserved.complete();
+      });
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(
+          targetingKey: 'A',
+          attributes: {'dd_strict_evaluation_context_switching': true},
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('flag', false), isTrue);
+      response.complete(http.Response('offline', 503));
+      await errorObserved.future.timeout(const Duration(seconds: 1));
+      expect(api.getClient().providerStatus, ProviderStatus.error);
+      expect(api.getClient().getBooleanValue('flag', false), isFalse);
+      await provider.refresh();
+      expect(api.getClient().getBooleanValue('flag', false), isTrue);
+    },
+  );
+
+  test('strict initial retry can recover from a late fresh success', () async {
+    final api = createIsolatedOpenFeatureAPI();
+    addTearDown(api.shutdown);
+    var count = 0;
+    final response = Completer<http.Response>();
+    final ready = Completer<void>();
+    final provider = DatadogProvider.fromConfiguration(
+      DatadogFlagsConfiguration(
+        datadogConfig: const DatadogFlagsConfig(
+          clientToken: 'test',
+          env: 'test',
+          site: DatadogFlagsSite.us1,
+        ),
+        initializationTimeout: const Duration(milliseconds: 30),
+        httpClient: MockClient((request) {
+          if (request.url.path != '/precompute-assignments')
+            return Future.value(http.Response('{}', 202));
+          return ++count == 1
+              ? Future.value(http.Response('offline', 503))
+              : response.future;
+        }),
+      ),
+    );
+    provider.events.listen((event) {
+      if (event.type == ProviderEventType.ready && !ready.isCompleted)
+        ready.complete();
+    });
+    await api.setEvaluationContextAndWait(
+      EvaluationContext(
+        targetingKey: 'A',
+        attributes: {'dd_strict_evaluation_context_switching': true},
+      ),
+    );
+    await expectLater(
+      api.setProviderAndWait(provider),
+      throwsA(isA<OpenFeatureException>()),
+    );
+    await provider.refresh();
+    expect(api.getClient().getBooleanValue('flag', false), isFalse);
+    response.complete(_response(true));
+    await ready.future.timeout(const Duration(seconds: 1));
+    expect(api.getClient().getBooleanValue('flag', false), isTrue);
+  });
+
+  for (final direct in [false, true]) {
+    test(
+      'default mode restores retained A after failed B, direct=$direct',
+      () async {
+        final api = createIsolatedOpenFeatureAPI();
+        final owner = DatadogFlags();
+        addTearDown(api.shutdown);
+        addTearDown(owner.disable);
+        var count = 0;
+        final response = Completer<http.Response>();
+        final started = Completer<void>();
+        final config = DatadogFlagsConfiguration(
+          datadogConfig: const DatadogFlagsConfig(
+            clientToken: 'test',
+            env: 'test',
+            site: DatadogFlagsSite.us1,
+          ),
+          httpClient: MockClient((request) {
+            if (request.url.path != '/precompute-assignments')
+              return Future.value(http.Response('{}', 202));
+            switch (++count) {
+              case 1:
+                return Future.value(_response(true));
+              case 2:
+                return Future.value(http.Response('offline', 503));
+              default:
+                started.complete();
+                return response.future;
+            }
+          }),
+        );
+        late Future<void> Function(String) change;
+        late bool Function() read;
+        if (direct) {
+          await owner.enable(configuration: config);
+          final client = owner.sharedClient();
+          change = (key) =>
+              client.initialize(FlagsEvaluationContext(targetingKey: key));
+          read = () =>
+              client.getBooleanDetails(key: 'flag', defaultValue: false).value;
+          await change('A');
+        } else {
+          change = (key) => api.setEvaluationContextAndWait(
+            EvaluationContext(targetingKey: key),
+          );
+          await change('A');
+          await api.setProviderAndWait(
+            DatadogProvider.fromConfiguration(config),
+          );
+          read = () => api.getClient().getBooleanValue('flag', false);
+        }
+        if (direct) {
+          await change('B');
+        } else {
+          await expectLater(change('B'), throwsA(isA<OpenFeatureException>()));
+        }
+        expect(read(), isFalse);
+        final returning = change('A');
+        final completion = direct
+            ? returning
+            : expectLater(returning, throwsA(isA<OpenFeatureException>()));
+        await started.future;
+        expect(read(), isTrue);
+        response.complete(http.Response('offline', 503));
+        await completion;
+        expect(read(), isTrue);
+      },
+    );
+  }
 }
 
 http.Response _response(bool value) => http.Response(

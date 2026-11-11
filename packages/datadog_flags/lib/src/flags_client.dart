@@ -54,8 +54,13 @@ abstract interface class DatadogFlagsClient {
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
-  /// Evaluations made before initialization completes return their provided
+  /// Before the first usable assignments, evaluations return their provided
   /// default value with a `providerNotReady` error.
+  /// A targeting-key change immediately withholds the installed assignments.
+  /// Same-key attribute changes retain assignments while pending or failed.
+  /// The boolean attribute `dd_strict_evaluation_context_switching` also requires
+  /// matching targeting attributes and withholds assignments after failure.
+  /// Strict retries require a successful fetch before evaluations recover.
   /// Throws [StateError] if this client has been shut down.
   Future<void> initialize(FlagsEvaluationContext context);
 
@@ -111,6 +116,9 @@ abstract interface class DatadogFlagsClientLifecycle {
   Stream<DatadogFlagsClientStatus> get statusChanges;
 
   /// Context associated with the assignments currently used for evaluation.
+  ///
+  /// Returns null while assignments are withheld. Local control attributes are
+  /// excluded from this context.
   FlagsEvaluationContext? get evaluationContext;
 }
 

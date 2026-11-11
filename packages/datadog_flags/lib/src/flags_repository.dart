@@ -77,13 +77,18 @@ class FlagsRepository {
 
   Future<void> initialize(FlagsEvaluationContext context) {
     _currentToken?.cancel();
-    final installed = _state?.data.context;
-    if (installed != null && !_eligible(installed, context)) {
-      _assignmentsWithheld = true;
-      _setStatus(DatadogFlagsClientStatus.notReady);
-    }
     final token = _CancelToken();
     _currentToken = token;
+    final installed = _state?.data.context;
+    if (installed != null) {
+      if (!_eligible(installed, context)) {
+        _assignmentsWithheld = true;
+        _setStatus(DatadogFlagsClientStatus.notReady);
+      } else if (!_requiresFreshAssignments && _assignmentsWithheld) {
+        _assignmentsWithheld = false;
+        _setStatus(DatadogFlagsClientStatus.stale);
+      }
+    }
 
     final timeout = _takeInitializationTimeout();
     if (timeout == null) {
@@ -166,7 +171,7 @@ class FlagsRepository {
           (matchingCached == null && !_hasCurrentStateForContext(context))) {
         _assignmentsWithheld = true;
         _setStatus(DatadogFlagsClientStatus.error);
-      } else if (!token.isCanceled) {
+      } else {
         _setStatus(DatadogFlagsClientStatus.stale);
       }
     }

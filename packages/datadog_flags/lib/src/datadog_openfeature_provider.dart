@@ -145,9 +145,22 @@ final class DatadogProvider
     // OpenFeature commits its context only after successful reconciliation.
     _requestedContext = newContext;
     _requiresContextRetry = true;
+    final requested = newContext.datadogContext;
+    final retained = _telemetrySource;
+    final retainedContext = retained?.client.evaluationContext;
+    if (_activeRuntime == null &&
+        retained != null &&
+        retainedContext != null &&
+        !_requiresFreshAssignments &&
+        (retainedContext.targetingKey ?? '') ==
+            (requested.targetingKey ?? '') &&
+        (!requested.strictContextSwitching ||
+            targetingContextsMatch(retainedContext, requested))) {
+      _activeRuntime = retained;
+      _telemetrySource = null;
+    }
     final active = _activeRuntime;
     final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
-    final requested = newContext.datadogContext;
     if (active != null &&
         ((newContext.targetingKey ?? '') != activeKey ||
             (requested.strictContextSwitching &&
@@ -454,6 +467,16 @@ final class DatadogProvider
       return;
     }
 
+    if (isInitialization &&
+        _requiresFreshAssignments &&
+        (status == DatadogFlagsClientStatus.notReady ||
+            status == DatadogFlagsClientStatus.stale)) {
+      _emitLoadError(
+        'Fresh Datadog assignments are not available before the initialization deadline.',
+      );
+      return;
+    }
+
     if ((isRefresh || _requiresFreshAssignments) &&
         status != DatadogFlagsClientStatus.ready) {
       _pendingRuntime = null;
@@ -463,7 +486,12 @@ final class DatadogProvider
         _withholdActiveAssignments();
       }
       _emitLoadError(
-        _loadMessage(runtime, 'Datadog assignment refresh failed.'),
+        _loadMessage(
+          runtime,
+          isRefresh
+              ? 'Datadog assignment refresh failed.'
+              : 'Datadog context reconciliation failed.',
+        ),
       );
       if (_activeRuntime != null) {
         _events.add(
@@ -530,8 +558,15 @@ final class DatadogProvider
 
     if (identical(_activeRuntime, runtime)) {
       if (status == DatadogFlagsClientStatus.ready) {
+        _requiresFreshAssignments = false;
         _events.add(
           openfeature.ProviderEvent(type: openfeature.ProviderEventType.ready),
+        );
+      } else if (status == DatadogFlagsClientStatus.error) {
+        _requiresFreshAssignments = true;
+        _withholdActiveAssignments();
+        _emitLoadError(
+          _loadMessage(runtime, 'Datadog assignment loading failed.'),
         );
       }
       return;
