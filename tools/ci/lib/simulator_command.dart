@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:ci_helpers/android_helpers.dart';
@@ -59,6 +61,8 @@ class SimulatorCommand extends Command {
     }
     print(
         'Launching Android Emulator: API Target: $sdk, Emulator Name $device');
-    await launchAndroidEmulator(apiLevel: sdk, emulatorName: device);
+    if (!await launchAndroidEmulator(apiLevel: sdk, emulatorName: device)) {
+      exit(1);
+    }
   }
 }
