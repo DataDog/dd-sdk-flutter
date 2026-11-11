@@ -302,21 +302,120 @@ void main() {
     expect(exposureEvents(), hasLength(1));
   });
 
-  test('closes every exposure frame', () async {
-    final (client, provider) = await start();
+  final frameCases =
+      <String, void Function(OpenFeatureClient, DatadogOpenFeatureProvider)>{
+        'a success': (client, _) => client.getBooleanValue('flag', false),
+        'a type mismatch': (client, _) =>
+            client.getStringValue('flag', 'default'),
+        'a failing after hook with a nested evaluation': (client, _) =>
+            client.getBooleanValue(
+              'plain',
+              false,
+              options: EvaluationOptions(
+                hooks: [_ThrowingAfterHook(), _NestedEvaluationHook(client)],
+              ),
+            ),
+        'a direct provider call': (_, provider) => provider.resolveBooleanValue(
+          'plain',
+          false,
+          EvaluationContext.empty,
+        ),
+      };
+  for (final MapEntry(key: name, value: evaluate) in frameCases.entries) {
+    test('closes the exposure frame after $name', () async {
+      final (client, provider) = await start();
 
-    client.getBooleanValue('flag', false);
+      evaluate(client, provider);
+
+      expect(provider.openExposureFrames, 0);
+    });
+  }
+
+  test(
+    'passes HOOK features of an allocation with exposure logging turned off',
+    () async {
+      flags = {'silent': assignment(doLog: false, features: holdoutFeatures)};
+      final (client, _) = await start();
+
+      client.getBooleanValue('silent', false);
+      await api.shutdown();
+
+      expect(evaluations.single.isExposure, isFalse);
+      expect(evaluations.single.features, {
+        'holdout.key': 'holdout-1',
+        'holdout.assignment_group': 'status_quo',
+        'holdout.should_include_in_holdout_analysis': false,
+      });
+      expect(exposureEvents(), isEmpty);
+    },
+  );
+
+  final typedCases =
+      <String, (String, Object, void Function(OpenFeatureClient))>{
+        'boolean': (
+          'boolean',
+          true,
+          (client) => client.getBooleanValue('typed', false),
+        ),
+        'string': (
+          'string',
+          'value',
+          (client) => client.getStringValue('typed', 'default'),
+        ),
+        'integer': (
+          'integer',
+          42,
+          (client) => client.getIntegerValue('typed', 0),
+        ),
+        'double': ('float', 4.2, (client) => client.getDoubleValue('typed', 0)),
+        'structure': (
+          'object',
+          {'value': true},
+          (client) => client.getStructureValue('typed', <String, Object?>{}),
+        ),
+      };
+  for (final MapEntry(key: name, value: (type, value, evaluate))
+      in typedCases.entries) {
+    test('records one exposure for a $name flag', () async {
+      flags = {
+        'typed': assignment(
+          variationType: type,
+          variationValue: value,
+          features: holdoutFeatures,
+        ),
+      };
+      final (client, provider) = await start();
+
+      evaluate(client);
+      evaluate(client);
+      await api.shutdown();
+
+      expect([for (final e in evaluations) e.isCacheHit], [false, true]);
+      expect([for (final e in evaluations) e.shouldSend], [true, false]);
+      expect(evaluations.first.features['holdout.key'], 'holdout-1');
+      expect(exposureEvents(), hasLength(1));
+      expect(provider.openExposureFrames, 0);
+    });
+  }
+
+  test('error rows omit EVALUATION features', () async {
+    final (client, _) = await start();
+
     client.getStringValue('flag', 'default');
-    client.getBooleanValue(
-      'plain',
-      false,
-      options: EvaluationOptions(
-        hooks: [_ThrowingAfterHook(), _NestedEvaluationHook(client)],
-      ),
-    );
-    provider.resolveBooleanValue('plain', false, EvaluationContext.empty);
+    client.getBooleanValue('flag', false);
+    await api.shutdown();
 
-    expect(provider.openExposureFrames, 0);
+    final events = evaluationEvents();
+    expect(events, hasLength(2));
+    expect(
+      events
+          .singleWhere((event) => event['error'] != null)
+          .containsKey('features'),
+      isFalse,
+    );
+    expect(events.singleWhere((event) => event['error'] == null)['features'], {
+      'evaluation.only': 3.0,
+    });
   });
 
   test('does not report an allocation without exposure logging', () async {

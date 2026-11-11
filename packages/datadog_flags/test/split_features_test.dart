@@ -90,6 +90,8 @@ void main() {
       'non-list destinations': feature('k', 'v', 'HOOK'),
       'empty destinations': feature('k', 'v', <Object?>[]),
       'only invalid destinations': feature('k', 'v', [1, '', null]),
+      'infinite value': feature('k', double.infinity),
+      'NaN value': feature('k', double.nan),
     };
     for (final MapEntry(key: name, value: entry) in invalidEntries.entries) {
       test('skips a feature with $name and keeps the others', () {
