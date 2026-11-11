@@ -153,6 +153,8 @@ void main() {
 
   Future<(OpenFeatureClient, DatadogOpenFeatureProvider)> start({
     bool trackExposures = true,
+    bool trackEvaluations = true,
+    DateTime Function() dateProvider = DateTime.now,
     ExposureHook? hook,
   }) async {
     final provider = DatadogOpenFeatureProvider(
@@ -160,6 +162,8 @@ void main() {
         datadogConfig: datadogConfig,
         httpClient: httpClient(),
         trackExposures: trackExposures,
+        trackEvaluations: trackEvaluations,
+        dateProvider: dateProvider,
       ),
     );
     await api.setEvaluationContextAndWait(
@@ -220,7 +224,6 @@ void main() {
       'datadog.serial_id': 1,
       '__dd_do_log': true,
       '__dd_split_serial_id': 1,
-      '__dd_exposure_cache_hit': false,
     });
     expect(evaluations.single.features, isEmpty);
   });
@@ -412,6 +415,27 @@ void main() {
     },
   );
 
+  test('keeps the verdict when recording the exposure throws', () async {
+    var throwOnce = false;
+    final (client, _) = await start(
+      trackEvaluations: false,
+      dateProvider: () {
+        if (throwOnce) {
+          throwOnce = false;
+          throw StateError('clock failed');
+        }
+        return DateTime.now();
+      },
+    );
+
+    throwOnce = true;
+    expect(client.getBooleanValue('plain', false), isTrue);
+    client.getBooleanValue('plain', false);
+
+    expect([for (final e in evaluations) e.shouldSend], [true, false]);
+    expect([for (final e in evaluations) e.isCacheHit], [false, true]);
+  });
+
   test('a failing callback does not affect the evaluation', () async {
     final logger = _MockLogger();
     final (client, _) = await start(
@@ -597,31 +621,6 @@ void main() {
         expect(exposureEvents(), hasLength(trackExposures ? 1 : 0));
       });
     }
-
-    test('checks the cache without recording', () {
-      final logger = ExposureLogger(
-        FlagsRuntime(
-          configuration: const DatadogFlagsConfiguration(),
-          datadogConfig: datadogConfig,
-          httpClient: httpClient(),
-        ),
-      );
-
-      bool isCached() => logger.isCached(
-        flagKey: 'plain',
-        assignment: flagAssignment,
-        evaluationContext: subject,
-      );
-
-      expect(isCached(), isFalse);
-      expect(isCached(), isFalse);
-      logger.logExposure(
-        flagKey: 'plain',
-        assignment: flagAssignment,
-        evaluationContext: subject,
-      );
-      expect(isCached(), isTrue);
-    });
   });
 
   test('the fetcher warns once for each unknown destination', () async {

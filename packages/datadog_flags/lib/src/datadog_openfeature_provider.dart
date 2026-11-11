@@ -641,7 +641,6 @@ final class DatadogOpenFeatureProvider
         ...details.flagMetadata,
         doLogMetadata: true,
         splitSerialIdMetadata: ?exposure.assignment.serialId,
-        exposureCacheHitMetadata: exposure.isCacheHit,
       },
     );
   }
@@ -733,7 +732,14 @@ final class _ExposureAdmissionHook extends openfeature.HookAdapter {
     _frames.remove(frame);
     final exposure = frame.exposure;
     if (exposure == null || details.errorCode != null) return;
-    recordExposureDecision(details, isCacheHit: exposure.record());
+    // record() returns before any code that can throw, so a throw means a
+    // new exposure.
+    var isCacheHit = false;
+    try {
+      isCacheHit = exposure.record();
+    } finally {
+      recordExposureDecision(details, isCacheHit: isCacheHit);
+    }
   }
 }
 

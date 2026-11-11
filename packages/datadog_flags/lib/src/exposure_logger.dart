@@ -57,19 +57,6 @@ class ExposureLogger {
     unawaited(settled.whenComplete(() => _inheritedUploads.remove(settled)));
   }
 
-  /// Whether [assignment] was already exposed to this subject.
-  bool isCached({
-    required String flagKey,
-    required FlagAssignment assignment,
-    required FlagsEvaluationContext evaluationContext,
-  }) {
-    return _loggedAssignments[_ExposureCacheKey(
-          targetingKey: evaluationContext.targetingKey,
-          flagKey: flagKey,
-        )] ==
-        _ExposureCacheValue.of(assignment);
-  }
-
   /// Records an exposure of [assignment] in the exposure cache and, when
   /// exposure tracking is on, queues it for Datadog.
   ///

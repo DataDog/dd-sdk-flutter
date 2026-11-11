@@ -306,13 +306,6 @@ final class PendingExposure {
     this.evaluationContext,
   );
 
-  /// Whether the subject was already exposed to this assignment.
-  bool get isCacheHit => _logger.isCached(
-    flagKey: flagKey,
-    assignment: assignment,
-    evaluationContext: evaluationContext,
-  );
-
   /// Records the exposure and returns whether it was already recorded.
   bool record() => _logger.logExposure(
     flagKey: flagKey,

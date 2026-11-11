@@ -10,7 +10,6 @@ import 'flags_client.dart';
 import 'flags_log.dart';
 import 'split_features.dart';
 
-const exposureCacheHitMetadata = '__dd_exposure_cache_hit';
 const doLogMetadata = '__dd_do_log';
 const splitSerialIdMetadata = '__dd_split_serial_id';
 const datadogProviderName = 'Datadog';

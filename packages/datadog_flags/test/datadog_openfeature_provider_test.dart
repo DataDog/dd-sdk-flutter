@@ -471,7 +471,6 @@ void main() {
       DatadogOpenFeatureProvider.serialIdMetadata: 42,
       '__dd_do_log': true,
       '__dd_split_serial_id': 42,
-      '__dd_exposure_cache_hit': false,
     });
     expect(api.getClient().providerStatus, ProviderStatus.ready);
 
@@ -607,7 +606,6 @@ void main() {
       DatadogOpenFeatureProvider.serialIdMetadata: 42,
       '__dd_do_log': true,
       '__dd_split_serial_id': 42,
-      '__dd_exposure_cache_hit': false,
     });
     expect(client.getStringValue('theme', 'light'), 'dark');
     expect(client.getIntegerValue('max-items', 1), 3);
