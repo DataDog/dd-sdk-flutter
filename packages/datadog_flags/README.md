@@ -166,7 +166,7 @@ api.addHooks([
         'variant': evaluation.variant,
         'allocation': evaluation.allocationKey,
         'subject': evaluation.targetingKey,
-        ...evaluation.features,
+        'features': evaluation.features,
       });
     }
   }),
@@ -177,8 +177,8 @@ The callback receives every completed evaluation from `DatadogOpenFeatureProvide
 
 - `isExposure` is true for a successful evaluation of an allocation that logs
   exposures, repeats included.
-- `isCacheHit` is true when the subject was already exposed to the same flag,
-  allocation, variant, and assignment serial ID.
+- `isCacheHit` is true when the subject's most recent exposure to the flag had
+  the same allocation, variant, and assignment serial ID.
 - `shouldSend` is true for a new exposure. These are the exposures that the SDK
   sends to Datadog when `trackExposures` is on.
 - `features` contains the features of the assignment's split that are
@@ -188,8 +188,9 @@ The callback receives every completed evaluation from `DatadogOpenFeatureProvide
   `evaluationContext` describe the evaluation.
 
 The callback runs synchronously during the evaluation. Keep it fast and do not
-do I/O in it; queue the work instead. The SDK catches and logs exceptions from
-the callback, and they do not change the evaluation result.
+do I/O in it; queue the work instead. The SDK catches exceptions from the
+callback and writes them to the Dart developer log under the name
+`datadog_flags`. The evaluation result stays the same.
 
 The exposure deduplication cache is in memory. After a restart, the first
 evaluation of each assignment is a new exposure.
@@ -198,8 +199,7 @@ The same features are also available in flag metadata under keys that start with
 `__dd_feature.`, for example `__dd_feature.holdout.key`. Other keys that start
 with `__dd_` are internal and can change.
 
-An evaluation counts as an exposure only if the whole evaluation succeeds. If
-another hook fails, there is no exposure.
+An evaluation counts as an exposure only if the whole evaluation succeeds.
 
 ## Migrate the legacy API
 

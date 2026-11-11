@@ -90,7 +90,8 @@ final class ExposureEvaluation {
   /// exposures, repeats included.
   bool get isExposure => _isExposure;
 
-  /// Whether the subject was already exposed to this assignment.
+  /// Whether the subject's most recent exposure to this flag had the same
+  /// allocation, variant, and serial ID.
   bool get isCacheHit => _isCacheHit;
 
   /// Whether this is a new exposure: the evaluations that the SDK sends to

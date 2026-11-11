@@ -74,11 +74,12 @@ final class DatadogOpenFeatureProvider
   @override
   Stream<openfeature.ProviderEvent> get events => _events.stream;
 
-  /// Records exposures in `finallyAfter`, only when the whole evaluation
-  /// succeeded, so a failing hook prevents the exposure.
+  /// Records exposures in `finallyAfter` when evaluation and all `before` and
+  /// `after` hooks succeeded. An exposure stands when a later `finallyAfter`
+  /// hook fails.
   ///
-  /// A direct call to a `resolve...Value` method, or a provider that wraps
-  /// this provider without running these hooks, records no exposure.
+  /// Exposures need these hooks to run. Direct `resolve...Value` calls, and
+  /// wrappers that skip these hooks, leave the exposure unrecorded.
   @override
   late final List<openfeature.Hook> hooks = List.unmodifiable([
     _ExposureAdmissionHook(_exposureFrames),

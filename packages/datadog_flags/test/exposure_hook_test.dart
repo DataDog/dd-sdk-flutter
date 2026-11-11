@@ -35,6 +35,15 @@ final class _ThrowingAfterHook extends HookAdapter {
   ) => throw StateError('after hook failed');
 }
 
+final class _ThrowingFinallyHook extends HookAdapter {
+  @override
+  void finallyAfter(
+    HookContext context,
+    FlagEvaluationDetails<Object> details,
+    HookHints hints,
+  ) => throw StateError('finally hook failed');
+}
+
 final class _OtherProvider implements FeatureProvider {
   final String _name;
 
@@ -416,6 +425,40 @@ void main() {
     expect(events.singleWhere((event) => event['error'] == null)['features'], {
       'evaluation.only': 3.0,
     });
+  });
+
+  test('a failing finallyAfter hook keeps the exposure', () async {
+    final (client, _) = await start();
+
+    expect(
+      client.getBooleanValue(
+        'plain',
+        false,
+        options: EvaluationOptions(hooks: [_ThrowingFinallyHook()]),
+      ),
+      isTrue,
+    );
+    await api.shutdown();
+
+    expect(evaluations.single.shouldSend, isTrue);
+    expect(exposureEvents(), hasLength(1));
+  });
+
+  test('compares with the most recent exposure only', () async {
+    final (client, provider) = await start();
+    final on = flags['plain'];
+
+    client.getBooleanValue('plain', false);
+    flags = {'plain': assignment(variationKey: 'off', variationValue: false)};
+    await provider.refresh();
+    client.getBooleanValue('plain', false);
+    flags = {'plain': on};
+    await provider.refresh();
+    client.getBooleanValue('plain', false);
+    await api.shutdown();
+
+    expect([for (final e in evaluations) e.isCacheHit], [false, false, false]);
+    expect(exposureEvents(), hasLength(3));
   });
 
   test('does not report an allocation without exposure logging', () async {
