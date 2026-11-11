@@ -334,8 +334,9 @@ void main() {
           initializationTimeout: const Duration(milliseconds: 30),
           store: store,
           httpClient: MockClient((request) {
-            if (request.url.path != '/precompute-assignments')
+            if (request.url.path != '/precompute-assignments') {
               return Future.value(http.Response('{}', 202));
+            }
             return ++count == 1
                 ? response.future
                 : Future.value(_response(true));
@@ -343,8 +344,10 @@ void main() {
         ),
       );
       provider.events.listen((event) {
-        if (event.type == ProviderEventType.error && !errorObserved.isCompleted)
+        if (event.type == ProviderEventType.error &&
+            !errorObserved.isCompleted) {
           errorObserved.complete();
+        }
       });
       await api.setEvaluationContextAndWait(
         EvaluationContext(
@@ -378,8 +381,9 @@ void main() {
         ),
         initializationTimeout: const Duration(milliseconds: 30),
         httpClient: MockClient((request) {
-          if (request.url.path != '/precompute-assignments')
+          if (request.url.path != '/precompute-assignments') {
             return Future.value(http.Response('{}', 202));
+          }
           return ++count == 1
               ? Future.value(http.Response('offline', 503))
               : response.future;
@@ -387,8 +391,9 @@ void main() {
       ),
     );
     provider.events.listen((event) {
-      if (event.type == ProviderEventType.ready && !ready.isCompleted)
+      if (event.type == ProviderEventType.ready && !ready.isCompleted) {
         ready.complete();
+      }
     });
     await api.setEvaluationContextAndWait(
       EvaluationContext(
@@ -425,8 +430,9 @@ void main() {
             site: DatadogFlagsSite.us1,
           ),
           httpClient: MockClient((request) {
-            if (request.url.path != '/precompute-assignments')
+            if (request.url.path != '/precompute-assignments') {
               return Future.value(http.Response('{}', 202));
+            }
             switch (++count) {
               case 1:
                 return Future.value(_response(true));
