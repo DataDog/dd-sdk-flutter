@@ -89,8 +89,9 @@ RUN \
 RUN mkdir /root/.android \
   && touch /root/.android/repositories.cfg
 
-# Lets the Android emulator use /dev/kvm on KVM runners.
-RUN usermod -aG kvm dog
+# /dev/kvm on the kvm:amd64 runners keeps the host's group (GID 995), which
+# differs from this image's kvm group. Match the host GID so `dog` can open it.
+RUN (getent group 995 || groupadd -g 995 kvm-host) && usermod -aG "$(getent group 995 | cut -d: -f1)" dog
 
 # That should be everything needed for root. Switch users for the rest
 USER dog
