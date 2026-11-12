@@ -36,19 +36,23 @@ final class FlagsEvaluationContext {
   Map<String, Object?> toJson() => _$FlagsEvaluationContextToJson(this);
 }
 
+/// Reserved boolean attribute enabling strict context matching.
+const strictContextSwitchingAttribute =
+    'dd_strict_evaluation_context_switching';
+
 // Local context controls are excluded from assignment and telemetry attributes.
 extension ContextSwitchingPolicy on FlagsEvaluationContext {
   bool get strictContextSwitching =>
-      identical(attributes['dd_strict_evaluation_context_switching'], true);
+      identical(attributes[strictContextSwitchingAttribute], true);
 
   FlagsEvaluationContext get targetingContext =>
-      !attributes.containsKey('dd_strict_evaluation_context_switching')
+      !attributes.containsKey(strictContextSwitchingAttribute)
       ? this
       : FlagsEvaluationContext(
           targetingKey: targetingKey,
           attributes: {
             for (final entry in attributes.entries)
-              if (entry.key != 'dd_strict_evaluation_context_switching')
+              if (entry.key != strictContextSwitchingAttribute)
                 entry.key: entry.value,
           },
         );

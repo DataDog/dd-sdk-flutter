@@ -25,6 +25,366 @@ void main() {
   });
 
   tearDown(() => api.shutdown());
+
+  test(
+    'DateTime attributes preserve available precision and normalize to UTC',
+    () async {
+      final date = DateTime.parse('2026-01-02T05:30:00.000123+05:30').toLocal();
+      final subjects = <Map<String, Object?>>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            subjects.add(
+              _subject(jsonDecode(request.body) as Map<String, Object?>),
+            );
+            return _responseFor(request, _assignmentsResponse());
+          }),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(attributes: {'date': date}),
+      );
+      await api.setProviderAndWait(provider);
+      final expected = date.microsecond == 0
+          ? '2026-01-02T00:00:00.000Z'
+          : '2026-01-02T00:00:00.000123Z';
+      expect(
+        (subjects.single['targeting_attributes'] as Map)['date'],
+        expected,
+      );
+    },
+  );
+
+  test(
+    'strict initial retry ignores a late cache until a fresh success',
+    () async {
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      final response = Completer<http.Response>();
+      final started = Completer<void>();
+      var attempts = 0;
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((_) {
+            if (++attempts == 1) {
+              return Future.value(http.Response('offline', 503));
+            }
+            started.complete();
+            return response.future;
+          }),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 30),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(
+          targetingKey: 'A',
+          attributes: {'dd_strict_evaluation_context_switching': true},
+        ),
+      );
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      store.readDelay = const Duration(milliseconds: 60);
+      await provider.refresh();
+      await started.future;
+      expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      response.complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
+      await _waitUntil(
+        () => api.getClient().providerStatus == ProviderStatus.ready,
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    },
+  );
+
+  test(
+    'fatal configuration remains fatal across context changes and refresh',
+    () async {
+      final provider = DatadogProvider.fromConfiguration(
+        const DatadogFlagsConfiguration(),
+      );
+      addTearDown(provider.shutdown);
+      final events = <ProviderEvent>[];
+      provider.events.listen(events.add);
+      await provider.initialize(EvaluationContext.empty);
+      await provider.onContextChanged(
+        EvaluationContext.empty,
+        EvaluationContext(targetingKey: 'B'),
+      );
+      await provider.refresh();
+      final details = [
+        provider.resolveBooleanValue('flag', false, EvaluationContext.empty),
+        provider.resolveStringValue(
+          'flag',
+          'fallback',
+          EvaluationContext.empty,
+        ),
+        provider.resolveIntegerValue('flag', 17, EvaluationContext.empty),
+        provider.resolveDoubleValue('flag', 1.5, EvaluationContext.empty),
+        provider.resolveStructureValue('flag', {
+          'fallback': true,
+        }, EvaluationContext.empty),
+      ];
+      expect(details.map((d) => d.value), [
+        false,
+        'fallback',
+        17,
+        1.5,
+        {'fallback': true},
+      ]);
+      expect(
+        details.every((d) => d.errorCode == ErrorCode.providerFatal),
+        isTrue,
+      );
+      expect(
+        events.every(
+          (e) =>
+              e.type == ProviderEventType.error &&
+              e.errorCode == ErrorCode.providerFatal,
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'load errors report the failure type without response content',
+    () async {
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient(
+            (_) async => http.Response('private-response-content', 200),
+          ),
+        ),
+      );
+      final events = <ProviderEvent>[];
+      provider.events.listen(events.add);
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(events.last.message, endsWith('invalidResponse.'));
+      expect(events.last.message, isNot(contains('private-response-content')));
+    },
+  );
+
+  test('stores assignments under the OpenFeature domain name', () async {
+    final store = _MemoryStore();
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
+        MockClient((r) async => _responseFor(r, _assignmentsResponse())),
+        store: store,
+      ),
+    );
+    await api.setProviderForDomainAndWait('checkout', provider);
+    expect(await store.read('checkout'), isNotNull);
+    expect(await store.read('default'), isNull);
+  });
+
+  for (final strict in [false, true]) {
+    test('late cached failure reports an error, strict=$strict', () async {
+      final response = Completer<http.Response>();
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((_) => response.future),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 30),
+        ),
+      );
+      final events = <ProviderEvent>[];
+      provider.events.listen(events.add);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(
+          targetingKey: 'A',
+          attributes: {'dd_strict_evaluation_context_switching': strict},
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      events.clear();
+      response.complete(http.Response('offline', 503));
+      await _waitUntil(
+        () => events.any((e) => e.type == ProviderEventType.error),
+      );
+      expect(events.map((e) => e.type), [
+        ProviderEventType.error,
+        if (!strict) ProviderEventType.stale,
+      ]);
+      expect(api.getClient().getBooleanValue('show-paywall', false), !strict);
+    });
+
+    test(
+      'late previous-key response cannot recreate deleted cache, strict=$strict',
+      () async {
+        final response = Completer<http.Response>();
+        final store = _MemoryStore();
+        await store.write(
+          'default',
+          FlagsData.fromJson({
+            'scope': flagsDataScope(
+              const DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
+            'flags': {'show-paywall': _assignment(variationValue: true)},
+            'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+            'date': DateTime.utc(2026).toIso8601String(),
+          }),
+        );
+        var attempts = 0;
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient(
+              (_) => ++attempts == 1
+                  ? response.future
+                  : Future.value(http.Response('offline', 503)),
+            ),
+            store: store,
+            initializationTimeout: const Duration(milliseconds: 30),
+          ),
+        );
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(
+            targetingKey: 'A',
+            attributes: {'dd_strict_evaluation_context_switching': strict},
+          ),
+        );
+        await api.setProviderAndWait(provider);
+        await expectLater(
+          api.setEvaluationContextAndWait(
+            EvaluationContext(
+              targetingKey: 'B',
+              attributes: {'dd_strict_evaluation_context_switching': strict},
+            ),
+          ),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        await store.delete('default');
+        expect(await store.read('default'), isNull);
+        response.complete(
+          http.Response(jsonEncode(_assignmentsResponse()), 200),
+        );
+        await pumpEventQueue();
+        expect(await store.read('default'), isNull);
+        expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      },
+    );
+  }
+
+  for (final initiallyStrict in [false, true]) {
+    test(
+      'strict same-context timeout withholds assignments, initiallyStrict=$initiallyStrict',
+      () async {
+        var attempts = 0;
+        final response = Completer<http.Response>();
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient(
+              (_) => ++attempts == 1
+                  ? Future.value(
+                      http.Response(jsonEncode(_assignmentsResponse()), 200),
+                    )
+                  : response.future,
+            ),
+            initializationTimeout: const Duration(milliseconds: 30),
+          ),
+        );
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(
+            targetingKey: 'A',
+            attributes: {
+              'dd_strict_evaluation_context_switching': initiallyStrict,
+            },
+          ),
+        );
+        await api.setProviderAndWait(provider);
+        expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+        await expectLater(
+          api.setEvaluationContextAndWait(
+            EvaluationContext(
+              targetingKey: 'A',
+              attributes: {'dd_strict_evaluation_context_switching': true},
+            ),
+          ),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+        response.complete(
+          http.Response(jsonEncode(_assignmentsResponse()), 200),
+        );
+        await pumpEventQueue();
+        expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      },
+    );
+  }
+
+  for (final endpoint in ['/api/v2/exposures', '/api/v2/flagevaluation']) {
+    test(
+      'shutdown drains retained telemetry after a failed key change: $endpoint',
+      () async {
+        final requests = <http.Request>[];
+        var attempts = 0;
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient((r) async {
+              requests.add(r);
+              if (r.url.path == '/precompute-assignments' && ++attempts > 1) {
+                return http.Response('offline', 503);
+              }
+              return _responseFor(r, _assignmentsResponse());
+            }),
+            trackTelemetry: true,
+          ),
+        );
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: 'A'),
+        );
+        await api.setProviderAndWait(provider);
+        api.getClient().getBooleanValue('show-paywall', false);
+        await expectLater(
+          api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(requests.where((r) => r.url.path == endpoint), isEmpty);
+        await api.shutdown();
+        expect(requests.where((r) => r.url.path == endpoint), hasLength(1));
+      },
+    );
+  }
+
   test(
     'failed identity change keeps outgoing telemetry retries alive',
     () async {
@@ -1863,6 +2223,7 @@ Future<void> _waitUntil(bool Function() condition) async {
 
 final class _MemoryStore implements DatadogFlagsStore {
   final Map<String, FlagsData> _values = {};
+  Duration readDelay = Duration.zero;
 
   @override
   Future<void> delete(String clientName) async {
@@ -1870,7 +2231,10 @@ final class _MemoryStore implements DatadogFlagsStore {
   }
 
   @override
-  Future<FlagsData?> read(String clientName) async => _values[clientName];
+  Future<FlagsData?> read(String clientName) async {
+    if (readDelay > Duration.zero) await Future<void>.delayed(readDelay);
+    return _values[clientName];
+  }
 
   @override
   Future<void> write(String clientName, FlagsData data) async {

@@ -31,10 +31,12 @@ class ExposureLogger {
   bool _shutdownDrainActive = false;
   ExposureLogger? _successor;
   final Set<Future<void>> _inheritedUploads = {};
+  UploadBackoff _backoff = UploadBackoff();
 
   ExposureLogger(this.runtime);
 
   void inheritHistory(ExposureLogger previous) {
+    _backoff = previous._backoff;
     final remaining = previous._flushTimer == null
         ? null
         : previous._flushDelay - previous._flushClock.elapsed;
@@ -142,7 +144,11 @@ class ExposureLogger {
   Future<void> _flushPendingExposures({
     required bool rescheduleOnFailure,
   }) async {
-    if (_uploadInFlight != null) {
+    if (_backoff.remaining > Duration.zero) {
+      _scheduleFlushAfter(_backoff.remaining);
+      return;
+    }
+    if (_uploadInFlight != null || _inheritedUploads.isNotEmpty) {
       _scheduleRetryFlush();
       return;
     }
@@ -195,13 +201,17 @@ class ExposureLogger {
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
+          _backoff.failed();
           _restore(exposures, reschedule: rescheduleOnFailure);
           return false;
         }
+        _backoff.reset();
         return true;
       }
+      _backoff.reset();
       return true;
     } catch (_) {
+      _backoff.failed();
       _restore(exposures, reschedule: rescheduleOnFailure);
       return false;
     }
@@ -249,7 +259,11 @@ class ExposureLogger {
   }
 
   void _scheduleRetryFlush() {
-    _scheduleFlushAfter(_exposureFlushRetryDelay);
+    _scheduleFlushAfter(
+      _backoff.remaining > Duration.zero
+          ? _backoff.remaining
+          : _exposureFlushRetryDelay,
+    );
   }
 
   void _scheduleFlushAfter(Duration delay) {

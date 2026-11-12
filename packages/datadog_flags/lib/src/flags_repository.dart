@@ -179,7 +179,7 @@ class FlagsRepository {
         _assignmentsWithheld = true;
         _setStatus(DatadogFlagsClientStatus.error);
       } else {
-        _setStatus(DatadogFlagsClientStatus.stale);
+        _setStatus(DatadogFlagsClientStatus.stale, notifyUnchanged: true);
       }
     }
   }
@@ -228,9 +228,14 @@ class FlagsRepository {
       (!requested.strictContextSwitching ||
           targetingContextsMatch(installed, requested));
 
-  Future<void> clearMemory() async {
+  /// Cancels an obsolete load while preserving installed assignments.
+  void cancelPendingLoad() {
     _currentToken?.cancel();
     _currentToken = null;
+  }
+
+  Future<void> clearMemory() async {
+    cancelPendingLoad();
     _state = null;
     _assignmentsWithheld = false;
     _requiresFreshAssignments = false;
@@ -250,8 +255,11 @@ class FlagsRepository {
     await _deleteCached();
   }
 
-  void _setStatus(DatadogFlagsClientStatus status) {
-    if (_status == status) {
+  void _setStatus(
+    DatadogFlagsClientStatus status, {
+    bool notifyUnchanged = false,
+  }) {
+    if (_status == status && !notifyUnchanged) {
       return;
     }
     _status = status;

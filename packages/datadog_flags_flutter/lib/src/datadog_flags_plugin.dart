@@ -211,7 +211,7 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
-    final delegate = await _delegateOrResolve();
+    final delegate = _resolvedDelegate ?? await _delegateOrResolve();
     if (!_isShutdown) await delegate.initialize(context);
   }
 
@@ -287,7 +287,7 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
 
   @override
   Future<void> reset() async {
-    final delegate = await _delegateOrResolve();
+    final delegate = _resolvedDelegate ?? await _delegateOrResolve();
     if (!_isShutdown) await delegate.reset();
   }
 
@@ -300,6 +300,10 @@ class DatadogFlutterFlagsClient implements DatadogFlagsClient {
     _delegate = null;
     await delegate?.shutdown();
   }
+
+  // Preserve call order while initial delegate resolution is still pending.
+  DatadogFlagsClient? get _resolvedDelegate =>
+      _pendingResolve == null ? _delegate : null;
 
   Future<DatadogFlagsClient> _delegateOrResolve() {
     if (_isShutdown) {

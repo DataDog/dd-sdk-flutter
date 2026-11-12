@@ -37,6 +37,7 @@ class EvaluationAggregator {
   bool _shutdownDrainActive = false;
   EvaluationAggregator? _successor;
   final Set<Future<void>> _inheritedUploads = {};
+  UploadBackoff _backoff = UploadBackoff();
 
   EvaluationAggregator(this.runtime) {
     if (runtime.configuration.trackEvaluations) {
@@ -65,6 +66,7 @@ class EvaluationAggregator {
   }
 
   void inheritPendingEvaluations(EvaluationAggregator previous) {
+    _backoff = previous._backoff;
     if (runtime.configuration.trackEvaluations &&
         previous._periodicFlushTimer != null) {
       final remaining =
@@ -205,7 +207,11 @@ class EvaluationAggregator {
   Future<void> _flushPendingEvaluations({
     required bool rescheduleOnFailure,
   }) async {
-    if (_uploadInFlight != null) {
+    if (_backoff.remaining > Duration.zero) {
+      _scheduleRetryFlush(_backoff.remaining);
+      return;
+    }
+    if (_uploadInFlight != null || _inheritedUploads.isNotEmpty) {
       if (rescheduleOnFailure) {
         _scheduleRetryFlush();
       }
@@ -259,13 +265,17 @@ class EvaluationAggregator {
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
+          _backoff.failed();
           _restore(evaluations, reschedule: rescheduleOnFailure);
           return false;
         }
+        _backoff.reset();
         return true;
       }
+      _backoff.reset();
       return true;
     } catch (_) {
+      _backoff.failed();
       _restore(evaluations, reschedule: rescheduleOnFailure);
       return false;
     }
@@ -347,7 +357,12 @@ class EvaluationAggregator {
     });
   }
 
-  void _scheduleRetryFlush([Duration delay = _evaluationFlushRetryDelay]) {
+  void _scheduleRetryFlush([Duration? remaining]) {
+    final delay =
+        remaining ??
+        (_backoff.remaining > Duration.zero
+            ? _backoff.remaining
+            : _evaluationFlushRetryDelay);
     if (_retryFlushTimer != null) {
       return;
     }

@@ -21,12 +21,15 @@ String get _targetingKey => dotenv.env['FLAGS_TARGETING_KEY'] ?? 'example-user';
 String get _flagKey =>
     (dotenv.env['FLAGS_BOOLEAN_KEYS'] ?? 'checkout.enabled').split(',').first;
 
+const _service = 'com.datadoghq.flags.example';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
 
   final isConfigured = _clientToken.isNotEmpty;
   final flagsConfiguration = flagsExampleConfiguration(
+    service: _service,
     site: _datadogSiteFor(_site),
     clientToken: _clientToken,
     env: _env,
@@ -34,7 +37,7 @@ Future<void> main() async {
   );
   if (isConfigured) {
     final configuration = DatadogConfiguration(
-      service: 'com.datadoghq.flags.example',
+      service: _service,
       clientToken: _clientToken,
       env: _env,
       site: _datadogSiteFor(_site),

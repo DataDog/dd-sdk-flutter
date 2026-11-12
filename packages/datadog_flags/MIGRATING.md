@@ -32,3 +32,10 @@ Snapshots from earlier versions without this scope are treated as cache misses.
 After upgrading, evaluations use caller defaults until fresh assignments arrive.
 Custom stores must preserve `scope`, for example by using `FlagsData.toJson()`
 and `FlagsData.fromJson()`.
+
+`DatadogFlagsClient.initialize` follows the provider context-switching rules.
+A targeting-key change returns defaults until the new key loads. By default,
+a failed same-key attribute change keeps the previous assignments. Returning
+to the previous key after a failed change can reuse its retained assignments.
+Strict mode also requires matching targeting attributes and a successful fetch
+after failure for that context.

@@ -84,21 +84,24 @@ with `setProviderForDomainAndWait(domain, provider)` and use `getClient(domain)`
 The provider uses the domain name as its Datadog client name, or `default` for
 the default domain.
 
-When only targeting attributes change, evaluations retain the previous assignments
+By default, when only targeting attributes change, evaluations retain the previous assignments
 while loading or after failure. When the targeting key changes, including sign-out,
 evaluations return application defaults until assignments for the new key load.
+A targeting-key change cancels the previous key's pending load.
 A missing targeting key and an empty key identify the same subject.
 If reconciliation fails, OpenFeature retains the previous active context.
 The provider discards late results from that failed reconciliation.
 
 Set the boolean context attribute `dd_strict_evaluation_context_switching: true`
-to require matching targeting attributes as well as the targeting key.
+to use downloaded assignments only while both the targeting key and targeting
+attributes match.
 Strict mode returns defaults during an attribute change and after a failed fetch.
 An unchanged-context refresh keeps assignments while pending, then returns defaults
 if loading fails. Retries keep assignments withheld after a failure for their
 context until a successful fetch. Returning to an exact retained context can reuse
-its assignments when only a different context failed. The control attribute stays
-local and is excluded from targeting and telemetry.
+its assignments when only a different context failed. The SDK removes this attribute, whatever its value,
+from assignment requests, stored assignments, and telemetry. Other OpenFeature
+hooks and providers still receive it.
 Only the boolean value `true` enables strict mode.
 
 `refresh()` reloads assignments for the current context. It waits for pending
@@ -136,6 +139,9 @@ HTTP client remains owned by the caller. The provider closes its own client.
 The provider requires a positive value of at most 20 seconds. This leaves time
 before the default OpenFeature lifecycle deadline of 30 seconds. Applications
 using an isolated API with a shorter deadline must choose a smaller budget.
+Missing configuration or an invalid budget produces `PROVIDER_FATAL`. Evaluations
+return caller defaults with that error. Recovery requires a new provider with
+corrected configuration. A valid budget expiring remains a recoverable error.
 
 The provider applies this budget to initialization, each context change, and
 each refresh. The core budget covers cache loading, the request, decoding, state publication,

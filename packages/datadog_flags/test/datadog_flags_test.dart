@@ -75,37 +75,43 @@ void main() {
     },
   );
 
-  test('matching cache and failed refresh emit stale only once', () async {
-    final store = InMemoryDatadogFlagsStore();
-    final owner = DatadogFlags();
-    addTearDown(owner.disable);
-    var fail = false;
-    await owner.enable(
-      configuration: DatadogFlagsConfiguration(
-        datadogConfig: _datadogConfig(),
-        store: store,
-        httpClient: MockClient(
-          (_) async => fail
-              ? http.Response('', 503)
-              : http.Response(jsonEncode(_assignmentsResponse()), 200),
+  test(
+    'matching cache and failed refresh report both availability and failure',
+    () async {
+      final store = InMemoryDatadogFlagsStore();
+      final owner = DatadogFlags();
+      addTearDown(owner.disable);
+      var fail = false;
+      await owner.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: _datadogConfig(),
+          store: store,
+          httpClient: MockClient(
+            (_) async => fail
+                ? http.Response('', 503)
+                : http.Response(jsonEncode(_assignmentsResponse()), 200),
+          ),
+          trackExposures: false,
+          trackEvaluations: false,
         ),
-        trackExposures: false,
-        trackEvaluations: false,
-      ),
-    );
-    await owner.sharedClient().initialize(
-      const FlagsEvaluationContext(targetingKey: 'a'),
-    );
-    await owner.sharedClient().shutdown();
-    fail = true;
-    final client = owner.sharedClient();
-    final statuses = <DatadogFlagsClientStatus>[];
-    final subscription = (client as DatadogFlagsClientLifecycle).statusChanges
-        .listen(statuses.add);
-    addTearDown(subscription.cancel);
-    await client.initialize(const FlagsEvaluationContext(targetingKey: 'a'));
-    expect(statuses, [DatadogFlagsClientStatus.stale]);
-  });
+      );
+      await owner.sharedClient().initialize(
+        const FlagsEvaluationContext(targetingKey: 'a'),
+      );
+      await owner.sharedClient().shutdown();
+      fail = true;
+      final client = owner.sharedClient();
+      final statuses = <DatadogFlagsClientStatus>[];
+      final subscription = (client as DatadogFlagsClientLifecycle).statusChanges
+          .listen(statuses.add);
+      addTearDown(subscription.cancel);
+      await client.initialize(const FlagsEvaluationContext(targetingKey: 'a'));
+      expect(statuses, [
+        DatadogFlagsClientStatus.stale,
+        DatadogFlagsClientStatus.stale,
+      ]);
+    },
+  );
 
   test('enable creates the default shared client', () async {
     final requests = <http.Request>[];

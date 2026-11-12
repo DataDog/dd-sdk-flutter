@@ -43,6 +43,8 @@ class DefaultDatadogFlagsClient
     );
   }
 
+  void cancelPendingLoad() => _repository.cancelPendingLoad();
+
   @override
   DatadogFlagsClientStatus get status => _repository.status;
 

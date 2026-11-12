@@ -19,11 +19,12 @@ import 'flags_error.dart';
 ///
 /// One provider instance owns one OpenFeature domain. Context reconciliation
 /// creates a candidate Datadog runtime and swaps it into use only after
-/// assignments for the new context are available. Attribute-only changes retain
+/// assignments for the new context are available. By default, attribute-only changes retain
 /// assignments while loading or after failure. Targeting-key changes return
 /// application defaults until assignments for the new key are available.
 /// The boolean context attribute `dd_strict_evaluation_context_switching`
-/// also requires matching targeting attributes. It is a local control field.
+/// also withholds assignments during attribute changes and failed loads.
+/// The provider removes it from assignment requests and telemetry.
 final class DatadogProvider
     implements
         openfeature.FeatureProvider,
@@ -51,7 +52,8 @@ final class DatadogProvider
   openfeature.EvaluationContext? _requestedContext;
 
   /// Datadog runtime configuration used by each context revision.
-  final DatadogFlagsConfiguration configuration;
+  final DatadogFlagsConfiguration _configuration;
+  String? _fatalMessage;
 
   final StreamController<openfeature.ProviderEvent> _events =
       StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
@@ -71,7 +73,8 @@ final class DatadogProvider
   ///
   /// The domain name identifies stored snapshots. The default domain uses
   /// [DatadogFlags.defaultClientName].
-  DatadogProvider.fromConfiguration(this.configuration);
+  DatadogProvider.fromConfiguration(DatadogFlagsConfiguration configuration)
+    : _configuration = configuration;
 
   @override
   Stream<openfeature.ProviderEvent> get events => _events.stream;
@@ -96,7 +99,13 @@ final class DatadogProvider
     openfeature.EvaluationContext previousContext,
     openfeature.EvaluationContext newContext,
   ) async {
-    // OpenFeature commits its context only after successful reconciliation.
+    if (_fatalMessage case final message?) {
+      _emitLoadError(message, fatal: true);
+      return;
+    }
+    // A successful reconciliation installs assignments for the requested context.
+    // Retained assignments remain eligible only for the same key and, in strict
+    // mode, the same targeting attributes, without a failure for that context.
     _requestedContext = newContext;
     _requiresContextRetry = true;
     final requested = newContext.datadogContext;
@@ -124,6 +133,11 @@ final class DatadogProvider
                   requested,
                 )))) {
       _withholdActiveAssignments();
+    }
+    if (_activeRuntime ?? _telemetrySource case final previous?
+        when (previous.client.evaluationContext?.targetingKey ?? '') !=
+            (requested.targetingKey ?? '')) {
+      previous.client.cancelPendingLoad();
     }
     _events.add(
       openfeature.ProviderEvent(
@@ -160,6 +174,10 @@ final class DatadogProvider
     if (generation != _shutdownGeneration) {
       throw StateError('The provider shut down while refresh was waiting.');
     }
+    if (_fatalMessage case final message?) {
+      _emitLoadError(message, fatal: true);
+      return;
+    }
     final context = _requestedContext;
     if (context == null || _requiresContextRetry) {
       throw StateError(
@@ -175,6 +193,7 @@ final class DatadogProvider
 
   @override
   Future<void> shutdown() async {
+    _fatalMessage = null;
     _shutdownGeneration += 1;
     _contextRevision += 1;
     final activeRuntime = _activeRuntime;
@@ -324,12 +343,12 @@ final class DatadogProvider
       return;
     }
 
-    if (configuration.datadogConfig == null) {
+    if (_configuration.datadogConfig == null) {
       _emitLoadError('Datadog Flags configuration is required.', fatal: true);
       return;
     }
 
-    final budget = configuration.initializationTimeout;
+    final budget = _configuration.initializationTimeout;
     if (budget == null ||
         budget <= Duration.zero ||
         budget > maxInitializationTimeout) {
@@ -346,7 +365,7 @@ final class DatadogProvider
     _ProviderRuntime? runtime;
     var initializationReturned = false;
     try {
-      await owner.enable(configuration: configuration);
+      await owner.enable(configuration: _configuration);
       if (revision != _contextRevision) {
         await _disableOwnerQuietly(owner);
         return;
@@ -406,7 +425,20 @@ final class DatadogProvider
         await _disableOwnerQuietly(owner);
       }
       if (revision == _contextRevision) {
+        if ((_requestedContext?.datadogContext.strictContextSwitching ??
+                false) &&
+            (_activeRuntime != null || !_hasCommittedContext)) {
+          _requiresFreshAssignments = true;
+          _withholdActiveAssignments();
+        }
         _emitLoadError('Datadog provider initialization failed: $error');
+        if (_activeRuntime != null) {
+          _events.add(
+            openfeature.ProviderEvent(
+              type: openfeature.ProviderEventType.stale,
+            ),
+          );
+        }
       }
     }
   }
@@ -478,6 +510,12 @@ final class DatadogProvider
           // A late candidate cannot silently change that context afterwards.
           _pendingRuntime = null;
           _retire(runtime);
+          if (_activeRuntime != null &&
+              (_requestedContext?.datadogContext.strictContextSwitching ??
+                  false)) {
+            _requiresFreshAssignments = true;
+            _withholdActiveAssignments();
+          }
         }
         _emitLoadError(
           'Datadog assignments are not available before the initialization '
@@ -521,6 +559,14 @@ final class DatadogProvider
         _requiresFreshAssignments = false;
         _events.add(
           openfeature.ProviderEvent(type: openfeature.ProviderEventType.ready),
+        );
+      } else if (status == DatadogFlagsClientStatus.stale &&
+          runtime.client.lastLoadError != null) {
+        _emitLoadError(
+          _loadMessage(runtime, 'Datadog assignment loading failed.'),
+        );
+        _events.add(
+          openfeature.ProviderEvent(type: openfeature.ProviderEventType.stale),
         );
       } else if (status == DatadogFlagsClientStatus.error) {
         _requiresFreshAssignments = true;
@@ -571,6 +617,9 @@ final class DatadogProvider
       return;
     }
 
+    if (_requiresFreshAssignments && status != DatadogFlagsClientStatus.ready) {
+      return;
+    }
     final previous = _activeRuntime;
     final telemetrySource = previous ?? _telemetrySource;
     _telemetrySource = null;
@@ -667,6 +716,7 @@ final class DatadogProvider
   }
 
   void _emitLoadError(String message, {bool fatal = false}) {
+    if (fatal) _fatalMessage = message;
     _events.add(
       openfeature.ProviderEvent(
         type: openfeature.ProviderEventType.error,
@@ -693,13 +743,14 @@ final class DatadogProvider
     );
   }
 
-  static openfeature.ResolutionDetails<T> _notReady<T extends Object>(
-    T defaultValue,
-  ) {
+  openfeature.ResolutionDetails<T> _notReady<T extends Object>(T defaultValue) {
     return openfeature.ResolutionDetails(
       value: defaultValue,
-      errorCode: openfeature.ErrorCode.providerNotReady,
-      errorMessage: 'The Datadog provider has not loaded assignments.',
+      errorCode: _fatalMessage == null
+          ? openfeature.ErrorCode.providerNotReady
+          : openfeature.ErrorCode.providerFatal,
+      errorMessage:
+          _fatalMessage ?? 'The Datadog provider has not loaded assignments.',
       reason: 'ERROR',
     );
   }

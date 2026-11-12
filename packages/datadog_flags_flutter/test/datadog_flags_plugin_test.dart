@@ -20,6 +20,94 @@ class MockDatadogFlags extends Mock implements DatadogFlags {}
 class MockDatadogFlagsClient extends Mock implements DatadogFlagsClient {}
 
 void main() {
+  test('initialize reaches a resolved delegate before returning', () async {
+    final delegate = MockDatadogFlagsClient();
+    when(() => delegate.initialize(any())).thenAnswer((_) async {});
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+    await client.initialize(const FlagsEvaluationContext(targetingKey: 'A'));
+    final changing = client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'B'),
+    );
+    verify(
+      () => delegate.initialize(
+        any(
+          that: isA<FlagsEvaluationContext>().having(
+            (context) => context.targetingKey,
+            'targetingKey',
+            'B',
+          ),
+        ),
+      ),
+    ).called(1);
+    await changing;
+  });
+
+  test('reset and initialize reach the delegate in call order', () async {
+    final delegate = MockDatadogFlagsClient();
+    when(() => delegate.initialize(any())).thenAnswer((_) async {});
+    when(() => delegate.reset()).thenAnswer((_) async {});
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+    await client.initialize(const FlagsEvaluationContext(targetingKey: 'A'));
+    final resetting = client.reset();
+    final changing = client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'B'),
+    );
+    await Future.wait([resetting, changing]);
+    verifyInOrder([
+      () => delegate.reset(),
+      () => delegate.initialize(
+        any(
+          that: isA<FlagsEvaluationContext>().having(
+            (context) => context.targetingKey,
+            'targetingKey',
+            'B',
+          ),
+        ),
+      ),
+    ]);
+  });
+
+  for (final hops in [0, 1, 2, 3, 4]) {
+    test('a later initialize stays last after $hops microtasks', () async {
+      final delegate = MockDatadogFlagsClient();
+      final keys = <String?>[];
+      when(() => delegate.initialize(any())).thenAnswer((invocation) async {
+        final context =
+            invocation.positionalArguments.single as FlagsEvaluationContext;
+        keys.add(context.targetingKey);
+      });
+      final ready = Completer<void>();
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async {
+          await ready.future;
+          return delegate;
+        },
+        addRumFeatureFlagEvaluation: null,
+      );
+      final first = client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'A'),
+      );
+      ready.complete();
+      for (var i = 0; i < hops; i++) {
+        await Future<void>.value();
+      }
+      final second = client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'B'),
+      );
+      await Future.wait([first, second]);
+      expect(keys, ['A', 'B']);
+    });
+  }
+
   test('overlapping lifecycle calls resolve the delegate once', () async {
     const context = FlagsEvaluationContext(targetingKey: 'a');
     final delegate = MockDatadogFlagsClient();

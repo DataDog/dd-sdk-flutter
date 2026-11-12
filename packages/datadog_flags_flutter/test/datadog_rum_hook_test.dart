@@ -48,6 +48,17 @@ void main() {
           variant: 'on',
           reason: 'TARGETING_MATCH',
         ),
+        'error-with-variant' => ResolutionDetails(
+          value: false,
+          variant: 'on',
+          errorCode: ErrorCode.general,
+          reason: 'ERROR',
+        ),
+        'error-reason' => ResolutionDetails(
+          value: false,
+          variant: 'on',
+          reason: 'ERROR',
+        ),
         'static' => ResolutionDetails(value: true, reason: 'STATIC'),
         _ => ResolutionDetails(
           value: invocation.positionalArguments[1] as bool,
@@ -71,6 +82,8 @@ void main() {
 
   for (final (name, flagKey, expected) in [
     ('an error result', 'missing', false),
+    ('an error with a variant', 'error-with-variant', false),
+    ('an ERROR reason with a variant', 'error-reason', false),
     ('a result without a variant', 'static', true),
   ]) {
     test('does not tag $name', () {

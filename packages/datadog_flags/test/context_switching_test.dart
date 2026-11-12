@@ -5,6 +5,9 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:datadog_flags/src/default_flags_client.dart';
+import 'package:datadog_flags/src/flags_client.dart';
+import 'package:datadog_flags/src/evaluation_context.dart';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/flags_store.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +18,331 @@ import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk_experime
 import 'package:test/test.dart';
 
 void main() {
+  group('context switching guards', () {
+    const datadogConfig = DatadogFlagsConfig(
+      clientToken: 'test',
+      env: 'test',
+      site: DatadogFlagsSite.us1,
+    );
+    const strictA = FlagsEvaluationContext(
+      targetingKey: 'A',
+      attributes: {'plan': 'free', strictContextSwitchingAttribute: true},
+    );
+    final strictOpenFeatureA = EvaluationContext(
+      targetingKey: strictA.targetingKey,
+      attributes: strictA.attributes,
+    );
+
+    // Answers assignment requests in order; telemetry requests succeed.
+    MockClient assignments(List<Future<http.Response> Function()> responses) {
+      var count = 0;
+      return MockClient((request) {
+        if (request.url.path != '/precompute-assignments') {
+          return Future.value(http.Response('{}', 202));
+        }
+        final index = count < responses.length ? count : responses.length - 1;
+        count++;
+        return responses[index]();
+      });
+    }
+
+    FlagsData snapshot(FlagsEvaluationContext context) {
+      final body = jsonDecode(_response(true).body) as Map<String, dynamic>;
+      return FlagsData.fromJson({
+        'scope': flagsDataScope(datadogConfig),
+        'flags': body['data']['attributes']['flags'],
+        'context': context.toJson(),
+        'date': '2026-01-01T00:00:00.000Z',
+      });
+    }
+
+    test('a strict retry keeps assignments withheld while pending', () async {
+      final api = createIsolatedOpenFeatureAPI();
+      addTearDown(api.shutdown);
+      final retry = Completer<http.Response>();
+      final started = Completer<void>();
+      await api.setEvaluationContextAndWait(strictOpenFeatureA);
+      await api.setProviderAndWait(
+        DatadogProvider.fromConfiguration(
+          DatadogFlagsConfiguration(
+            datadogConfig: datadogConfig,
+            httpClient: assignments([
+              () => Future.value(_response(true)),
+              () => Future.value(http.Response('offline', 503)),
+              () {
+                started.complete();
+                return retry.future;
+              },
+            ]),
+          ),
+        ),
+      );
+      bool read() => api.getClient().getBooleanValue('flag', false);
+      await expectLater(
+        api.setEvaluationContextAndWait(strictOpenFeatureA),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(read(), isFalse);
+      final retrying = api.setEvaluationContextAndWait(strictOpenFeatureA);
+      await started.future;
+      expect(read(), isFalse);
+      retry.complete(_response(true));
+      await retrying;
+      expect(read(), isTrue);
+    });
+
+    for (final withStore in [false, true]) {
+      test('a strict retry keeps assignments withheld for Dart callers, '
+          'store=$withStore', () async {
+        final retry = Completer<http.Response>();
+        final started = Completer<void>();
+        final owner = DatadogFlags();
+        addTearDown(owner.disable);
+        await owner.enable(
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: datadogConfig,
+            store: withStore ? InMemoryDatadogFlagsStore() : null,
+            httpClient: assignments([
+              () => Future.value(_response(true)),
+              () => Future.value(http.Response('offline', 503)),
+              () {
+                started.complete();
+                return retry.future;
+              },
+            ]),
+          ),
+        );
+        final client = owner.sharedClient();
+        final lifecycle = client as DefaultDatadogFlagsClient;
+        bool read() =>
+            client.getBooleanDetails(key: 'flag', defaultValue: false).value;
+        await client.initialize(strictA);
+        expect(read(), isTrue);
+        expect(lifecycle.evaluationContext?.attributes, {'plan': 'free'});
+        await client.initialize(strictA);
+        expect(read(), isFalse);
+        expect(lifecycle.evaluationContext, isNull);
+        final retrying = client.initialize(strictA);
+        expect(read(), isFalse);
+        await started.future;
+        expect(read(), isFalse);
+        retry.complete(_response(true));
+        await retrying;
+        expect(read(), isTrue);
+      });
+    }
+
+    test(
+      'a missing and an empty key share assignments for Dart callers',
+      () async {
+        final pending = Completer<http.Response>();
+        final started = Completer<void>();
+        final owner = DatadogFlags();
+        addTearDown(owner.disable);
+        await owner.enable(
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: datadogConfig,
+            httpClient: assignments([
+              () => Future.value(_response(true)),
+              () {
+                started.complete();
+                return pending.future;
+              },
+            ]),
+          ),
+        );
+        final client = owner.sharedClient();
+        await client.initialize(const FlagsEvaluationContext());
+        final changing = client.initialize(
+          const FlagsEvaluationContext(targetingKey: ''),
+        );
+        await started.future;
+        expect(
+          client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+          isTrue,
+        );
+        pending.complete(_response(true));
+        await changing;
+      },
+    );
+
+    test(
+      'an empty key after a failed change uses missing-key assignments',
+      () async {
+        final api = createIsolatedOpenFeatureAPI();
+        addTearDown(api.shutdown);
+        final pending = Completer<http.Response>();
+        final started = Completer<void>();
+        await api.setProviderAndWait(
+          DatadogProvider.fromConfiguration(
+            DatadogFlagsConfiguration(
+              datadogConfig: datadogConfig,
+              httpClient: assignments([
+                () => Future.value(_response(true)),
+                () => Future.value(http.Response('offline', 503)),
+                () {
+                  started.complete();
+                  return pending.future;
+                },
+              ]),
+            ),
+          ),
+        );
+        bool read() => api.getClient().getBooleanValue('flag', false);
+        expect(read(), isTrue);
+        await expectLater(
+          api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(read(), isFalse);
+        final changing = api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: ''),
+        );
+        await started.future;
+        expect(read(), isTrue);
+        pending.complete(_response(true));
+        await changing;
+      },
+    );
+
+    test('a targeting-key change reports not ready for Dart callers', () async {
+      final pending = Completer<http.Response>();
+      final started = Completer<void>();
+      final owner = DatadogFlags();
+      addTearDown(owner.disable);
+      await owner.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: datadogConfig,
+          httpClient: assignments([
+            () => Future.value(_response(true)),
+            () {
+              started.complete();
+              return pending.future;
+            },
+          ]),
+        ),
+      );
+      final client = owner.sharedClient();
+      final lifecycle = client as DefaultDatadogFlagsClient;
+      await client.initialize(const FlagsEvaluationContext(targetingKey: 'A'));
+      final changing = client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'B'),
+      );
+      expect(lifecycle.status, DatadogFlagsClientStatus.notReady);
+      await started.future;
+      pending.complete(_response(true));
+      await changing;
+      expect(lifecycle.status, DatadogFlagsClientStatus.ready);
+    });
+
+    test(
+      'a strict retry after a late failure ignores stored assignments',
+      () async {
+        final api = createIsolatedOpenFeatureAPI();
+        addTearDown(api.shutdown);
+        final store = InMemoryDatadogFlagsStore();
+        await store.write(
+          DatadogFlags.defaultClientName,
+          snapshot(
+            const FlagsEvaluationContext(
+              targetingKey: 'A',
+              attributes: {'plan': 'free'},
+            ),
+          ),
+        );
+        final first = Completer<http.Response>();
+        final retry = Completer<http.Response>();
+        await api.setEvaluationContextAndWait(strictOpenFeatureA);
+        await api.setProviderAndWait(
+          DatadogProvider.fromConfiguration(
+            DatadogFlagsConfiguration(
+              datadogConfig: datadogConfig,
+              store: store,
+              initializationTimeout: const Duration(milliseconds: 30),
+              httpClient: assignments([() => first.future, () => retry.future]),
+            ),
+          ),
+        );
+        bool read() => api.getClient().getBooleanValue('flag', false);
+        expect(read(), isTrue);
+        first.complete(http.Response('offline', 503));
+        await pumpEventQueue();
+        expect(read(), isFalse);
+        await expectLater(
+          api.setEvaluationContextAndWait(strictOpenFeatureA),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(read(), isFalse);
+        retry.complete(_response(true));
+      },
+    );
+
+    test('a strict initial retry recovers from a late fresh success after '
+        'stored assignments load', () async {
+      final api = createIsolatedOpenFeatureAPI();
+      addTearDown(api.shutdown);
+      final store = InMemoryDatadogFlagsStore();
+      await store.write(
+        DatadogFlags.defaultClientName,
+        snapshot(
+          const FlagsEvaluationContext(
+            targetingKey: 'A',
+            attributes: {'plan': 'free'},
+          ),
+        ),
+      );
+      final retry = Completer<http.Response>();
+      final provider = DatadogProvider.fromConfiguration(
+        DatadogFlagsConfiguration(
+          datadogConfig: datadogConfig,
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 30),
+          httpClient: assignments([
+            () => Future.value(http.Response('offline', 503)),
+            () => retry.future,
+          ]),
+        ),
+      );
+      await api.setEvaluationContextAndWait(strictOpenFeatureA);
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      bool read() => api.getClient().getBooleanValue('flag', false);
+      await provider.refresh();
+      expect(read(), isFalse);
+      retry.complete(_response(true));
+      await pumpEventQueue();
+      expect(read(), isTrue);
+    });
+
+    test('restored snapshots exclude the strict attribute', () async {
+      final store = InMemoryDatadogFlagsStore();
+      await store.write(DatadogFlags.defaultClientName, snapshot(strictA));
+      final pending = Completer<http.Response>();
+      final owner = DatadogFlags();
+      addTearDown(owner.disable);
+      await owner.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: datadogConfig,
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 30),
+          httpClient: assignments([() => pending.future]),
+        ),
+      );
+      final client = owner.sharedClient();
+      await expectLater(
+        client.initialize(strictA),
+        throwsA(isA<FlagsInitializationTimeoutException>()),
+      );
+      expect(
+        (client as DefaultDatadogFlagsClient).evaluationContext?.attributes,
+        {'plan': 'free'},
+      );
+      pending.complete(_response(true));
+    });
+  });
+
   for (final useProvider in [false, true]) {
     for (final failedA in [false, true]) {
       test(
