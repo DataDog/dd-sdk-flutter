@@ -9,7 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app.dart';
 
 void main() async {
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
