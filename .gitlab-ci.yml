@@ -256,17 +256,14 @@ build-ios-spm:
 # dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
 # macOS can only build via Swift Package Manager until that's fixed upstream.
 build-macos-spm:
-  extends: [.infra-retry, .xcode-test-artifacts]
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   interruptible: true
   except: [ schedules ]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -412,7 +409,7 @@ ios-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 macos-integration-test:
-  extends: .infra-retry
+  extends: .tart-runner
   stage: integration-test
   interruptible: true
   except: [ schedules ]
@@ -421,11 +418,8 @@ macos-integration-test:
       artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
