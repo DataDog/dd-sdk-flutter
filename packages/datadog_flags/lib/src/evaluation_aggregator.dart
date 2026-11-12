@@ -29,21 +29,58 @@ class EvaluationAggregator {
   Future<bool>? _uploadInFlight;
   Future<void>? _shutdownInFlight;
   Timer? _periodicFlushTimer;
+  final Stopwatch _periodicFlushClock = Stopwatch();
+  Duration _periodicFlushDelay = Duration.zero;
   Timer? _retryFlushTimer;
+  final Stopwatch _retryFlushClock = Stopwatch();
+  Duration _retryFlushDelay = Duration.zero;
   bool _shutdownDrainActive = false;
   EvaluationAggregator? _successor;
   final Set<Future<void>> _inheritedUploads = {};
 
   EvaluationAggregator(this.runtime) {
     if (runtime.configuration.trackEvaluations) {
-      _periodicFlushTimer = Timer.periodic(
-        runtime.configuration.evaluationFlushInterval,
-        (_) => unawaited(flush()),
-      );
+      _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
+    }
+  }
+
+  void _schedulePeriodicFlush(Duration delay) {
+    _periodicFlushTimer?.cancel();
+    _periodicFlushDelay = delay;
+    _periodicFlushClock
+      ..reset()
+      ..start();
+    final interval = runtime.configuration.evaluationFlushInterval;
+    if (delay == interval) {
+      _periodicFlushTimer = Timer.periodic(interval, (_) {
+        _periodicFlushClock.reset();
+        unawaited(flush());
+      });
+    } else {
+      _periodicFlushTimer = Timer(delay, () {
+        _schedulePeriodicFlush(interval);
+        unawaited(flush());
+      });
     }
   }
 
   void inheritPendingEvaluations(EvaluationAggregator previous) {
+    if (runtime.configuration.trackEvaluations &&
+        previous._periodicFlushTimer != null) {
+      final remaining =
+          previous._periodicFlushDelay - previous._periodicFlushClock.elapsed;
+      final interval = runtime.configuration.evaluationFlushInterval;
+      _schedulePeriodicFlush(
+        remaining.isNegative
+            ? Duration.zero
+            : (remaining > interval ? interval : remaining),
+      );
+    }
+    final retryRemaining = previous._retryFlushTimer == null
+        ? null
+        : previous._retryFlushDelay - previous._retryFlushClock.elapsed;
+    previous._periodicFlushClock.stop();
+    previous._retryFlushClock.stop();
     previous._successor = this;
     previous._periodicFlushTimer?.cancel();
     previous._periodicFlushTimer = null;
@@ -51,6 +88,13 @@ class EvaluationAggregator {
     previous._retryFlushTimer = null;
     _restore(previous._aggregations.values.toList(), reschedule: false);
     previous._aggregations.clear();
+    if (runtime.configuration.trackEvaluations &&
+        retryRemaining != null &&
+        _aggregations.isNotEmpty) {
+      _scheduleRetryFlush(
+        retryRemaining.isNegative ? Duration.zero : retryRemaining,
+      );
+    }
     for (final upload in previous._inheritedUploads) {
       _inheritUpload(upload);
     }
@@ -119,6 +163,8 @@ class EvaluationAggregator {
   }
 
   Future<void> shutdown() {
+    _periodicFlushClock.stop();
+    _retryFlushClock.stop();
     _periodicFlushTimer?.cancel();
     _periodicFlushTimer = null;
     _retryFlushTimer?.cancel();
@@ -301,12 +347,17 @@ class EvaluationAggregator {
     });
   }
 
-  void _scheduleRetryFlush() {
+  void _scheduleRetryFlush([Duration delay = _evaluationFlushRetryDelay]) {
     if (_retryFlushTimer != null) {
       return;
     }
 
-    _retryFlushTimer = Timer(_evaluationFlushRetryDelay, () {
+    _retryFlushDelay = delay;
+    _retryFlushClock
+      ..reset()
+      ..start();
+    _retryFlushTimer = Timer(delay, () {
+      _retryFlushClock.stop();
       _retryFlushTimer = null;
       unawaited(_flushPendingEvaluations(rescheduleOnFailure: true));
     });
@@ -324,7 +375,7 @@ String _aggregationKey({
     'flagKey': flagKey,
     'variantKey': variantKey,
     'allocationKey': allocationKey,
-    'targetingKey': evaluationContext.targetingKey,
+    'targetingKey': evaluationContext.targetingKey ?? '',
     'error': error,
     'context': _sortedJson(evaluationContext.attributes),
   });

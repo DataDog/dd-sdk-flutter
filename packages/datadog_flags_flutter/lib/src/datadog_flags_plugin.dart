@@ -187,41 +187,17 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 @Deprecated(
   'Use OpenFeatureClient. Removal is planned for the next major version.',
 )
-class DatadogFlutterFlagsClient
-    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
+class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
-  final StreamController<DatadogFlagsClientStatus> _statusChanges =
-      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
 
   DatadogFlagsClient? _delegate;
-  StreamSubscription<DatadogFlagsClientStatus>? _statusSubscription;
   Future<DatadogFlagsClient>? _pendingResolve;
   bool _isShutdown = false;
   Future<void>? _shutdownOperation;
 
   @override
   final String name;
-
-  @override
-  FlagsEvaluationContext? get evaluationContext {
-    return switch (_delegate) {
-      final DatadogFlagsClientLifecycle lifecycle =>
-        lifecycle.evaluationContext,
-      _ => null,
-    };
-  }
-
-  @override
-  DatadogFlagsClientStatus get status {
-    return switch (_delegate) {
-      final DatadogFlagsClientLifecycle lifecycle => lifecycle.status,
-      _ => DatadogFlagsClientStatus.notReady,
-    };
-  }
-
-  @override
-  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   /// Creates a Flutter-integrated feature flag client.
   @visibleForTesting
@@ -322,8 +298,6 @@ class DatadogFlutterFlagsClient
     _isShutdown = true;
     final delegate = _delegate;
     _delegate = null;
-    await _statusSubscription?.cancel();
-    _statusSubscription = null;
     await delegate?.shutdown();
   }
 
@@ -336,14 +310,9 @@ class DatadogFlutterFlagsClient
     return _pendingResolve ??= _resolveDelegate()
         .then((resolved) async {
           if (_isShutdown) {
-            // Release late delegates without subscribing or initializing them.
+            // Release late delegates before initialization.
             await resolved.shutdown();
             return resolved;
-          }
-          if (resolved case final DatadogFlagsClientLifecycle lifecycle) {
-            _statusSubscription = lifecycle.statusChanges.listen((status) {
-              if (!_isShutdown) _statusChanges.add(status);
-            });
           }
           _delegate = resolved;
           return resolved;

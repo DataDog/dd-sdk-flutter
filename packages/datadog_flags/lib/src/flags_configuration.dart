@@ -14,7 +14,7 @@ import 'flags_store.dart';
 /// Runtime configuration for Datadog feature flag clients.
 @immutable
 final class DatadogFlagsConfiguration {
-  /// Default wall-clock budget for the first evaluation context.
+  /// Default wall-clock budget for loading assignments.
   static const defaultInitializationTimeout = Duration(seconds: 5);
 
   /// Default interval for aggregating and sending flag evaluation telemetry.
@@ -36,7 +36,7 @@ final class DatadogFlagsConfiguration {
   /// Additional headers sent with precompute assignment requests.
   final Map<String, String>? customFlagsHeaders;
 
-  /// Wall-clock budget for the first evaluation context.
+  /// Wall-clock budget for loading assignments.
   ///
   /// If initialization is still active, the SDK stops waiting when Dart runs
   /// the timeout timer. Synchronous work can block the Dart isolate, so the
@@ -52,14 +52,13 @@ final class DatadogFlagsConfiguration {
   /// assignment operation continues after this timeout and can make assignments
   /// available when it completes.
   ///
-  /// Legacy clients do not limit how large this value can be.
   /// The OpenFeature provider requires a positive timeout of at most 20 seconds.
   /// It applies this budget to initialization, each context change, and each refresh.
   ///
-  /// The timeout applies only to the first
-  /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or
-  /// negative value disables the timeout. If a later call supersedes the first
-  /// call, only the first call remains bounded by this timeout.
+  /// For legacy clients, the timeout applies only to the first
+  /// [DatadogFlagsClient.initialize] call for each client, and its size is not
+  /// limited. A `null`, zero, or negative value disables it. If a later call
+  /// supersedes the first call, only the first call remains bounded by this timeout.
   final Duration? initializationTimeout;
 
   /// Overrides the exposure intake endpoint.

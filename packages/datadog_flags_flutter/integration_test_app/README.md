@@ -11,4 +11,4 @@ flutter test integration_test/openfeature_test.dart -d <DEVICE_ID>
 ```
 
 The repository's integration-test targets discover this app on Android, iOS,
-macOS, Windows, Linux, and web. See the [validation guide](../../datadog_flags/CONTRIBUTING.md).
+macOS, Windows, Linux, and web. See the [validation guide](../../datadog_flags/CONTRIBUTING.md#openfeature-validation).

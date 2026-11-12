@@ -30,10 +30,14 @@ await api.setEvaluationContextAndWait(
     attributes: {'plan': 'pro'},
   ),
 );
-final provider = DatadogProvider(
-  clientToken: '<CLIENT_TOKEN>',
-  env: 'production',
-  site: DatadogFlagsSite.us1,
+final provider = DatadogProvider.fromConfiguration(
+  DatadogFlagsConfiguration(
+    datadogConfig: DatadogFlagsConfig(
+      clientToken: '<CLIENT_TOKEN>',
+      env: 'production',
+      site: DatadogFlagsSite.us1,
+    ),
+  ),
 );
 final client = api.getClient();
 client.addHandler(ProviderEventType.ready, (_) {
@@ -95,14 +99,28 @@ if loading fails. Retries keep withheld assignments unavailable until a successf
 fetch. The control attribute stays local and is excluded from targeting and telemetry.
 Only the boolean value `true` enables strict mode.
 
-`refresh()` reloads the committed context and emits `configurationChanged` after
-success. By default, failure emits error followed by `stale` and retains usable
-assignments. Strict failure emits error and returns defaults until recovery.
-Before the first successful load, `refresh()` retries initialization and replaces
-any pending initial request. Avoid calling `refresh()` from every error event:
-repeated retries can prevent a slow request from completing.
-Retry failed context reconciliation through `setEvaluationContextAndWait` before
-refreshing. This lets OpenFeature commit the requested context after success.
+`refresh()` reloads assignments for the current context. It waits for pending
+initialization or context reconciliation before starting.
+
+- After assignments have been activated, including stored assignments, a successful
+  refresh emits `ready` followed by `configurationChanged`.
+- By default, a failed refresh emits `error` followed by `stale` when previous
+  assignments remain usable. Evaluations continue to use those assignments.
+- In strict mode, a failed refresh emits `error` and evaluations return defaults
+  until a successful fetch.
+- Before any assignments have been activated, `refresh()` retries the initial
+  context. Activation emits `ready`, followed by `stale` when using stored
+  assignments. It does not emit `configurationChanged`. Failure without usable
+  assignments emits `error`.
+
+After a failed context change, `refresh()` throws `StateError` until a later
+`setEvaluationContextAndWait` succeeds. This also applies to same-key attribute
+changes when previous assignments remain usable. Calling `refresh()` before
+initialization or after shutdown also throws `StateError`.
+
+An initialization retry replaces any pending initial assignment request. Avoid
+calling `refresh()` from every error event: repeated retries can prevent a slow
+request from completing.
 Each `setEvaluationContextAndWait` call reloads assignments, even when the context
 is unchanged. The provider does not poll automatically.
 
@@ -166,6 +184,8 @@ name, or `default` for the default domain.
 
 OpenFeature `DateTime` attributes become UTC ISO-8601 strings. Non-finite numbers
 become `null`. These conversions also apply inside structures and lists.
+Assignment requests send structures and lists in targeting attributes as
+JSON-encoded strings. Telemetry and stored snapshots keep them structured.
 
 Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
 records successes, defaults, and errors when assignments are active. Evaluations

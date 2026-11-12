@@ -35,14 +35,20 @@ final api = OpenFeatureAPI.instance;
 api.addHooks([DatadogRumHook()]);
 await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'user-123'));
 try {
-  await api.setProviderAndWait(DatadogProvider(
-    clientToken: configuration.clientToken,
-    env: configuration.env,
-    site: DatadogFlagsSite.us1,
-    applicationId: configuration.rumConfiguration?.applicationId,
-    service: configuration.service,
-    version: configuration.versionTag,
-  ));
+  await api.setProviderAndWait(
+    DatadogProvider.fromConfiguration(
+      DatadogFlagsConfiguration(
+        datadogConfig: DatadogFlagsConfig(
+          clientToken: configuration.clientToken,
+          env: configuration.env,
+          site: DatadogFlagsSite.us1,
+          applicationId: configuration.rumConfiguration?.applicationId,
+          service: configuration.service,
+          version: configuration.versionTag,
+        ),
+      ),
+    ),
+  );
 } on OpenFeatureException {
   // Evaluations return defaults until initial assignments become available.
 }
@@ -50,7 +56,8 @@ final enabled = api.getClient().getBooleanValue('checkout.enabled', false);
 ```
 
 The hook adds the variant from a successful evaluation to the active RUM view.
-It runs after other evaluation hooks and skips errors and results without a variant.
+It runs in the OpenFeature `finally` stage and tags only the final result.
+It skips errors and results without a variant.
 Register it with `OpenFeatureAPI.addHooks`, and register it again after shutdown.
 A hook registered on a client applies only to that client object.
 Each `getClient()` call returns a new client.
@@ -75,7 +82,7 @@ Replace plugin registration with `DatadogProvider`. Replace
 initialization with `setEvaluationContextAndWait()`. Add `DatadogRumHook` to
 preserve RUM association. Do not run both integrations for the same evaluations.
 The provider does not read the Datadog SDK configuration. Pass `applicationId`,
-`service`, and `version` as shown above to retain these fields in flag telemetry.
+`service`, and `version` as shown above to retain these fields in evaluation telemetry.
 
 Legacy client shutdown is terminal. Obtain another client from `sharedClient()`
 to restart. Shutdown does not wait indefinitely for plugin readiness. A delegate
@@ -96,5 +103,5 @@ network response replaces those assignments, details report the response reason.
 ## Contributing
 
 See the [contributing guide](../../CONTRIBUTING.md) and
-[OpenFeature validation instructions](../datadog_flags/CONTRIBUTING.md).
+[OpenFeature validation instructions](../datadog_flags/CONTRIBUTING.md#openfeature-validation).
 Licensed under [Apache 2.0](LICENSE).

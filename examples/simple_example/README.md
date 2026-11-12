@@ -74,4 +74,4 @@ is enabled.
 ## Integration tests
 
 OpenFeature integration tests run in the Flags package's dedicated integration test app.
-See the [validation guide](../../packages/datadog_flags/CONTRIBUTING.md).
+See the [validation guide](../../packages/datadog_flags/CONTRIBUTING.md#openfeature-validation).

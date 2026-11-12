@@ -90,11 +90,15 @@ void main() {
           attributes: {'signupDate': DateTime.utc(2026, 1, 2)},
         ),
       );
-      final provider = DatadogProvider(
-        clientToken: 'simulator-test-token',
-        env: 'integration-test',
-        site: DatadogFlagsSite.us1,
-        httpClient: transport,
+      final provider = DatadogProvider.fromConfiguration(
+        DatadogFlagsConfiguration(
+          datadogConfig: DatadogFlagsConfig(
+            clientToken: 'simulator-test-token',
+            env: 'integration-test',
+            site: DatadogFlagsSite.us1,
+          ),
+          httpClient: transport,
+        ),
       );
       api.addHooks([DatadogRumHook()]);
       await api.setProviderAndWait(provider);

@@ -5,18 +5,15 @@
 
 import 'dart:async';
 
-import 'package:http/http.dart' as http;
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
 import 'datadog_flags.dart';
-import 'datadog_flags_config.dart';
 import 'default_flags_client.dart';
 import 'evaluation_context.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
-import 'flags_store.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -70,53 +67,10 @@ final class DatadogProvider
   Future<void>? _contextOperation;
   String? _resolvedClientName;
 
-  /// Creates a provider for a Datadog organization and environment.
+  /// Creates a provider from a Datadog runtime configuration.
   ///
   /// The domain name identifies stored snapshots. The default domain uses
   /// [DatadogFlags.defaultClientName].
-  DatadogProvider({
-    required String clientToken,
-    required String env,
-    required DatadogFlagsSite site,
-    String? applicationId,
-    String? service,
-    String? version,
-    bool trackExposures = true,
-    bool trackEvaluations = true,
-    Duration evaluationFlushInterval =
-        DatadogFlagsConfiguration.defaultEvaluationFlushInterval,
-    Duration initializationTimeout =
-        DatadogFlagsConfiguration.defaultInitializationTimeout,
-    Uri? customFlagsEndpoint,
-    Map<String, String>? customFlagsHeaders,
-    Uri? customExposureEndpoint,
-    Uri? customEvaluationEndpoint,
-    http.Client? httpClient,
-    DatadogFlagsStore? store,
-  }) : this.fromConfiguration(
-         DatadogFlagsConfiguration(
-           datadogConfig: DatadogFlagsConfig(
-             clientToken: clientToken,
-             env: env,
-             site: site,
-             applicationId: applicationId,
-             service: service,
-             version: version,
-           ),
-           trackExposures: trackExposures,
-           trackEvaluations: trackEvaluations,
-           evaluationFlushInterval: evaluationFlushInterval,
-           initializationTimeout: initializationTimeout,
-           customFlagsEndpoint: customFlagsEndpoint,
-           customFlagsHeaders: customFlagsHeaders,
-           customExposureEndpoint: customExposureEndpoint,
-           customEvaluationEndpoint: customEvaluationEndpoint,
-           httpClient: httpClient,
-           store: store,
-         ),
-       );
-
-  /// Creates a provider from an existing Datadog runtime configuration.
   DatadogProvider.fromConfiguration(this.configuration);
 
   @override
@@ -184,13 +138,17 @@ final class DatadogProvider
   /// Waits for pending initialization or context reconciliation. After failed
   /// reconciliation, retry the context change through OpenFeature before refreshing.
   ///
-  /// Before the first successful load, retries the requested initial context.
-  /// A retry replaces the pending request. Avoid retrying from every error event.
+  /// Before assignments have been activated, retries the initial context.
+  /// Activation emits ready, followed by stale when using stored assignments.
+  /// It does not emit configuration-changed. Failure without usable assignments
+  /// emits error. A retry replaces the pending initial assignment request.
+  /// Avoid retrying from every error event.
   ///
-  /// A successful refresh emits a configuration-changed event. A failed
-  /// refresh preserves active assignments by default and emits error then stale.
-  /// In strict mode, failure emits error and withholds assignments until a
-  /// successful fetch. A retry keeps those assignments withheld.
+  /// After assignments have been activated, a successful refresh emits ready
+  /// followed by configuration-changed. A failed refresh preserves usable
+  /// assignments by default and emits error then stale. In strict mode, failure
+  /// emits error and withholds assignments until a successful fetch.
+  /// A retry keeps those assignments withheld.
   /// Throws [StateError] before initialization, after shutdown, or after failed
   /// context reconciliation.
   Future<void> refresh() async {

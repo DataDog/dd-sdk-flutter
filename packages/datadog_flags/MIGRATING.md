@@ -4,7 +4,6 @@
 | --- | --- |
 | `DatadogFlags.enable` and `sharedClient` | `setProviderAndWait` and `getClient` |
 | `DatadogFlagsClient.initialize` | `setEvaluationContextAndWait` |
-
 | `FlagDetails` | `FlagEvaluationDetails` |
 | `FlagEvaluationError` | `ErrorCode` |
 | `getObjectDetails` | `getStructureDetails` for JSON objects |
@@ -23,7 +22,7 @@ Each Dart isolate must create its own OpenFeature API and provider state.
 `FlagsEvaluationContext` remains supported by the storage interface. Application
 evaluations use OpenFeature `EvaluationContext`.
 
-Use `DatadogProvider` with named configuration parameters, or
-`DatadogProvider.fromConfiguration(configuration)` for an existing configuration.
+Use `DatadogProvider.fromConfiguration(configuration)` with a
+`DatadogFlagsConfiguration`.
 The provider requires a positive initialization timeout of at most 20 seconds.
 It applies the budget to initialization, each context change, and each refresh.

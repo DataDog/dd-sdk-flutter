@@ -62,7 +62,7 @@ Run these checks when changing the Datadog provider, its lifecycle behavior,
 or the OpenFeature dependency. Use the repository's Flutter toolchain.
 For the minimum-version run, use FVM with Flutter 3.38.1 and stable Dart 3.10.0.
 
-## Package tests
+### Package tests
 
 From the repository root:
 
@@ -83,7 +83,7 @@ Melos bootstrap links local Datadog packages. Use it before testing Flutter
 packages against unpublished local changes. The VM-only fixture-file tests
 use `@TestOn('vm')`; all other core tests run in browser discovery.
 
-## Upstream provider contract
+### Upstream provider contract
 
 The separate `tools/openfeature_conformance` package runs C01–C13 from the
 upstream client-provider contract. It uses the real Datadog provider with
@@ -111,7 +111,7 @@ JSON test output from `dart test --reporter json` and the dependency list from
 CI retains its normal JUnit reports. Passing controlled-transport tests does
 not establish live-service delivery or upstream maintainer acceptance.
 
-## Native integration
+### Native integration
 
 Boot an Android emulator or an iOS simulator, then run:
 
@@ -131,7 +131,7 @@ The standard Android, iOS, desktop, and web integration jobs discover this app.
 Keep customer examples focused on initialization and evaluation. Integration
 test setup and controlled transports belong in the integration test app.
 
-## Release checks
+### Release checks
 
 Use the normal release process and generated changelogs. Publish `datadog_flags`
 before the Flutter integration package, then validate the Flutter package against

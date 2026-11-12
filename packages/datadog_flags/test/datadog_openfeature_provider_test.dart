@@ -442,6 +442,150 @@ void main() {
     },
   );
 
+  for (final firstKey in <String?>[null, '']) {
+    test('missing and empty keys share telemetry, first: $firstKey', () async {
+      final requests = <http.Request>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            requests.add(request);
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: firstKey),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: firstKey == null ? '' : null),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'another-user'),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await api.shutdown();
+
+      final exposures = requests
+          .where((request) => request.url.path.contains('exposure'))
+          .expand((request) => request.body.trim().split('\n'))
+          .map((line) => jsonDecode(line) as Map<String, dynamic>)
+          .toList();
+      expect(exposures, hasLength(2));
+      expect(exposures.map((event) => event['subject']['id']), [
+        '',
+        'another-user',
+      ]);
+      final evaluations = requests
+          .where((request) => request.url.path == '/api/v2/flagevaluation')
+          .expand(_evaluationEvents)
+          .toList();
+      expect(evaluations, hasLength(2));
+      expect(evaluations.map((event) => event['evaluation_count']), [2, 1]);
+    });
+  }
+
+  for (final stream in ['evaluations', 'exposures']) {
+    test('$stream upload during frequent context changes', () async {
+      final requests = <http.Request>[];
+      var exposureAttempts = 0;
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            requests.add(request);
+            if (stream == 'exposures' &&
+                request.url.path == '/api/v2/exposures' &&
+                ++exposureAttempts == 1) {
+              return http.Response('retry', 503);
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+          evaluationFlushInterval: const Duration(seconds: 1),
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      final duration = stream == 'exposures'
+          ? const Duration(seconds: 12)
+          : const Duration(seconds: 3);
+      final interval = stream == 'exposures'
+          ? const Duration(milliseconds: 200)
+          : const Duration(milliseconds: 20);
+      final elapsed = Stopwatch()..start();
+      var revision = 0;
+      while (elapsed.elapsed < duration) {
+        await Future<void>.delayed(interval);
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(attributes: {'revision': ++revision}),
+        );
+        expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      }
+      elapsed.stop();
+      final path = stream == 'exposures'
+          ? '/api/v2/exposures'
+          : '/api/v2/flagevaluation';
+      // Inspect requests before shutdown can drain the queued telemetry.
+      final uploads = requests.where((request) => request.url.path == path);
+      expect(uploads.length, greaterThanOrEqualTo(2));
+      if (stream == 'exposures') {
+        final event =
+            jsonDecode(uploads.first.body.trim()) as Map<String, dynamic>;
+        expect(event['flag'], {'key': 'show-paywall'});
+        expect(event['subject']['id'], '');
+      } else {
+        expect(_evaluationEvents(uploads.first), isNotEmpty);
+      }
+    });
+  }
+
+  test(
+    'evaluation retries keep their deadline across context changes',
+    () async {
+      var attempts = 0;
+      final delivered = <Map<String, Object?>>[];
+      EvaluationAggregator.maxBatchSize = 1;
+      addTearDown(
+        () => EvaluationAggregator.maxBatchSize =
+            EvaluationAggregator.defaultMaxBatchSize,
+      );
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            if (request.url.path == '/api/v2/flagevaluation') {
+              if (++attempts == 1) {
+                EvaluationAggregator.maxBatchSize =
+                    EvaluationAggregator.defaultMaxBatchSize;
+                return http.Response('retry', 503);
+              }
+              delivered.addAll(_evaluationEvents(request));
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+          evaluationFlushInterval: const Duration(seconds: 30),
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      final elapsed = Stopwatch()..start();
+      var revision = 0;
+      while (elapsed.elapsed < const Duration(seconds: 1)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(attributes: {'revision': ++revision}),
+        );
+      }
+      elapsed.stop();
+      expect(attempts, 2);
+      expect(delivered.single['flag'], {'key': 'show-paywall'});
+      expect(delivered.single['evaluation_count'], 1);
+    },
+  );
+
   test('unchanged refresh preserves exposure deduplication', () async {
     final requests = <http.Request>[];
     final provider = DatadogProvider.fromConfiguration(

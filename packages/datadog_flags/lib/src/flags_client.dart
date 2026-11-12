@@ -5,6 +5,8 @@
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import 'evaluation_context.dart';
 import 'flags_error.dart';
 
@@ -16,7 +18,7 @@ const datadogInternalDoLogMetadata = '__dd_do_log';
 const datadogSerialIdMetadata = '__dd_split_serial_id';
 
 /// Current assignment availability for a Datadog feature flags client.
-@Deprecated('Use OpenFeature provider events and status.')
+@internal
 enum DatadogFlagsClientStatus {
   /// No assignments are available for evaluation.
   notReady,
@@ -105,7 +107,7 @@ abstract interface class DatadogFlagsClient {
 ///
 /// This is separate from [DatadogFlagsClient] so existing custom clients and
 /// test doubles are not required to implement lifecycle reporting.
-@Deprecated('Use OpenFeature provider events and status.')
+@internal
 abstract interface class DatadogFlagsClientLifecycle {
   /// Current assignment availability for this client.
   DatadogFlagsClientStatus get status;

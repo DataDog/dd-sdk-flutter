@@ -26,6 +26,8 @@ class ExposureLogger {
   Future<bool>? _uploadInFlight;
   Future<void>? _shutdownInFlight;
   Timer? _flushTimer;
+  final Stopwatch _flushClock = Stopwatch();
+  Duration _flushDelay = Duration.zero;
   bool _shutdownDrainActive = false;
   ExposureLogger? _successor;
   final Set<Future<void>> _inheritedUploads = {};
@@ -33,6 +35,10 @@ class ExposureLogger {
   ExposureLogger(this.runtime);
 
   void inheritHistory(ExposureLogger previous) {
+    final remaining = previous._flushTimer == null
+        ? null
+        : previous._flushDelay - previous._flushClock.elapsed;
+    previous._flushClock.stop();
     _loggedAssignments.addAll(previous._loggedAssignments);
     previous._successor = this;
     previous._flushTimer?.cancel();
@@ -46,7 +52,13 @@ class ExposureLogger {
     if (activeUpload != null) {
       _inheritUpload(activeUpload.then<void>((_) {}));
     }
-    if (_pendingExposures.isNotEmpty) _scheduleFlush();
+    if (_pendingExposures.isNotEmpty) {
+      if (remaining == null) {
+        _scheduleFlush();
+      } else {
+        _scheduleFlushAfter(remaining.isNegative ? Duration.zero : remaining);
+      }
+    }
   }
 
   void _inheritUpload(Future<void> upload) {
@@ -67,7 +79,7 @@ class ExposureLogger {
     }
 
     final cacheKey = _ExposureCacheKey(
-      targetingKey: evaluationContext.targetingKey,
+      targetingKey: evaluationContext.targetingKey ?? '',
       flagKey: flagKey,
     );
     final cacheValue = _ExposureCacheValue(
@@ -91,6 +103,7 @@ class ExposureLogger {
   }
 
   Future<void> shutdown() {
+    _flushClock.stop();
     _flushTimer?.cancel();
     _flushTimer = null;
 
@@ -199,10 +212,10 @@ class ExposureLogger {
     required FlagAssignment assignment,
     required FlagsEvaluationContext evaluationContext,
   }) {
-    final subject = _removeNullValues({
-      'id': evaluationContext.targetingKey,
+    final subject = {
+      'id': evaluationContext.targetingKey ?? '',
       'attributes': sanitizeJsonValue(evaluationContext.attributes),
-    });
+    };
     final serialId = assignment.serialId;
     return {
       'timestamp': runtime.configuration.dateProvider().millisecondsSinceEpoch,
@@ -244,7 +257,12 @@ class ExposureLogger {
       return;
     }
 
+    _flushDelay = delay;
+    _flushClock
+      ..reset()
+      ..start();
     _flushTimer = Timer(delay, () {
+      _flushClock.stop();
       _flushTimer = null;
       unawaited(_flushPendingExposures(rescheduleOnFailure: true));
     });
@@ -259,7 +277,7 @@ class ExposureLogger {
 
 @immutable
 final class _ExposureCacheKey {
-  final String? targetingKey;
+  final String targetingKey;
   final String flagKey;
 
   const _ExposureCacheKey({required this.targetingKey, required this.flagKey});
@@ -305,7 +323,3 @@ final class _ExposureCacheValue {
 
 const _exposureFlushDelay = Duration(seconds: 10);
 const _exposureFlushRetryDelay = Duration(milliseconds: 500);
-
-Map<String, Object?> _removeNullValues(Map<String, Object?> input) {
-  return Map.fromEntries(input.entries.where((entry) => entry.value != null));
-}
