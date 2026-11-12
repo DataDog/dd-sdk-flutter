@@ -4,6 +4,7 @@
 
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
+import 'package:datadog_session_replay/src/capture/element_recorders/raster_resources.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_noop.dart';
 import 'package:datadog_session_replay/src/rum_context.dart';
@@ -54,6 +55,55 @@ void main() {
       registerFallbackValue(
         DatadogSessionReplayConfiguration(replaySampleRate: 100),
       );
+    });
+
+    group('maxImagePixelBudget', () {
+      for (final budget in [-640000, -1, 0]) {
+        test('$budget is replaced by the default with a warning', () {
+          final logger = MockInternalLogger();
+
+          final result = DatadogSessionReplay.validMaxImagePixelBudget(
+            budget,
+            logger,
+          );
+
+          expect(result, defaultMaxImagePixelBudget);
+          verify(() => logger.warn(any(that: contains('maxImagePixelBudget'))));
+        });
+      }
+
+      for (final budget in [1, 20000, defaultMaxImagePixelBudget]) {
+        test('$budget is kept', () {
+          final logger = MockInternalLogger();
+
+          final result = DatadogSessionReplay.validMaxImagePixelBudget(
+            budget,
+            logger,
+          );
+
+          expect(result, budget);
+          verifyNever(() => logger.warn(any()));
+        });
+      }
+
+      test('.init() warns about an invalid budget', () async {
+        when(
+          () => mockPlatform.enable(any(), any()),
+        ).thenAnswer((_) => Future.value(false));
+        final logger = MockInternalLogger();
+
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            maxImagePixelBudget: -1,
+            textCaptureMode: TextCaptureMode.highFidelity,
+          ),
+          logger,
+        );
+        addTearDown(DatadogSessionReplay.resetInstance);
+
+        verify(() => logger.warn(any(that: contains('maxImagePixelBudget'))));
+      });
     });
 
     test('.init() calls enable on platform', () {
