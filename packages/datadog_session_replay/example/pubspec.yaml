@@ -30,7 +30,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env
+    - dd.env
     - assets/dd_logo_v_rgb.png
 
   fonts:
