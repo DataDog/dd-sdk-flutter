@@ -26,3 +26,9 @@ Use `DatadogProvider.fromConfiguration(configuration)` with a
 `DatadogFlagsConfiguration`.
 The provider requires a positive initialization timeout of at most 20 seconds.
 It applies the budget to initialization, each context change, and each refresh.
+
+Stored snapshots must include the configuration scope written by the SDK.
+Snapshots from earlier versions without this scope are treated as cache misses.
+After upgrading, evaluations use caller defaults until fresh assignments arrive.
+Custom stores must preserve `scope`, for example by using `FlagsData.toJson()`
+and `FlagsData.fromJson()`.

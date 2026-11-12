@@ -3,9 +3,13 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 
 import 'assignment.dart';
+import 'datadog_flags_config.dart';
 import 'evaluation_context.dart';
 import 'flag_key_obfuscation.dart';
 
@@ -40,12 +44,17 @@ class FlagsData {
   @internal
   final FlagKeyObfuscation? obfuscation;
 
+  /// Digest identifying the site, environment, and client token.
+  /// Snapshots without a scope are not eligible for restoration.
+  final String? scope;
+
   /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
     required this.context,
     required this.date,
     this.obfuscation,
+    this.scope,
   });
 
   /// Creates a flag assignment snapshot from persisted JSON.
@@ -67,6 +76,7 @@ class FlagsData {
       ),
       date: DateTime.parse(json['date'] as String),
       obfuscation: obfuscation,
+      scope: json['scope'] as String?,
     );
   }
 
@@ -83,6 +93,7 @@ class FlagsData {
         ),
       'context': context.toJson(),
       'date': date.toIso8601String(),
+      if (scope != null) 'scope': scope,
       if (obfuscation != null) ...{
         'obfuscated': true,
         'obfuscation': obfuscation!.toJson(),
@@ -114,3 +125,17 @@ class InMemoryDatadogFlagsStore implements DatadogFlagsStore {
 FlagsData _cloneFlagsData(FlagsData value) {
   return FlagsData.fromJson(value.toJson());
 }
+
+/// Identifies the assignment configuration without storing the client token.
+@internal
+String flagsDataScope(DatadogFlagsConfig configuration) => sha256
+    .convert(
+      utf8.encode(
+        jsonEncode([
+          configuration.site.name,
+          configuration.env,
+          configuration.clientToken,
+        ]),
+      ),
+    )
+    .toString();

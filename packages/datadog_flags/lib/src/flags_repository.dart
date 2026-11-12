@@ -33,6 +33,7 @@ class FlagsRepository {
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
   final _CacheOperationQueue _cacheOperations;
+  final String _scope;
 
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
@@ -54,7 +55,8 @@ class FlagsRepository {
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  }) : _cacheOperations = _cacheOperationQueue(store, clientName);
+  }) : _cacheOperations = _cacheOperationQueue(store, clientName),
+       _scope = flagsDataScope(fetcher.datadogConfig);
 
   FlagsEvaluationContext? get context =>
       _assignmentsWithheld ? null : _state?.data.context;
@@ -124,6 +126,7 @@ class FlagsRepository {
 
     final matchingCached =
         cached != null &&
+            cached.scope == _scope &&
             !_requiresFreshAssignments &&
             targetingContextsMatch(cached.context, context)
         ? cached
@@ -137,6 +140,7 @@ class FlagsRepository {
           context: matchingCached.context.targetingContext,
           date: matchingCached.date,
           obfuscation: matchingCached.obfuscation,
+          scope: matchingCached.scope,
         ),
         restoredFromStore: true,
       );
@@ -153,6 +157,7 @@ class FlagsRepository {
         context: context.targetingContext,
         date: dateProvider(),
         obfuscation: assignments.obfuscation,
+        scope: _scope,
       );
       lastLoadError = null;
       _assignmentsWithheld = false;
@@ -163,7 +168,9 @@ class FlagsRepository {
     } on Object catch (error) {
       if (!token.isCanceled) lastLoadError = error;
       if (token.isCanceled) return;
-      if (context.strictContextSwitching) {
+      final installed = _state?.data.context;
+      if (context.strictContextSwitching &&
+          (installed == null || _eligible(installed, context))) {
         _assignmentsWithheld = true;
         _requiresFreshAssignments = true;
       }

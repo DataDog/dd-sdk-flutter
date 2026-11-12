@@ -16,6 +16,164 @@ import 'package:test/test.dart';
 
 void main() {
   for (final useProvider in [false, true]) {
+    for (final failedA in [false, true]) {
+      test(
+        'strict return to A, provider=$useProvider failedA=$failedA',
+        () async {
+          final api = createIsolatedOpenFeatureAPI();
+          final owner = DatadogFlags();
+          addTearDown(api.shutdown);
+          addTearDown(owner.disable);
+          final returning = Completer<http.Response>();
+          final started = Completer<void>();
+          var attempts = 0;
+          final configuration = DatadogFlagsConfiguration(
+            datadogConfig: const DatadogFlagsConfig(
+              clientToken: 'test',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+            trackExposures: false,
+            trackEvaluations: false,
+            httpClient: MockClient((_) {
+              attempts++;
+              if (attempts == 1) {
+                return Future.value(_response(true));
+              }
+              if (attempts < (failedA ? 4 : 3)) {
+                return Future.value(http.Response('offline', 503));
+              }
+              started.complete();
+              return returning.future;
+            }),
+          );
+          FlagsEvaluationContext context(String key) => FlagsEvaluationContext(
+            targetingKey: key,
+            attributes: const {
+              'plan': 'free',
+              'dd_strict_evaluation_context_switching': true,
+            },
+          );
+          late Future<void> Function(FlagsEvaluationContext) change;
+          late bool Function() read;
+          if (useProvider) {
+            change = (context) => api.setEvaluationContextAndWait(
+              EvaluationContext(
+                targetingKey: context.targetingKey,
+                attributes: context.attributes,
+              ),
+            );
+            await change(context('A'));
+            await api.setProviderAndWait(
+              DatadogProvider.fromConfiguration(configuration),
+            );
+            read = () => api.getClient().getBooleanValue('flag', false);
+          } else {
+            await owner.enable(configuration: configuration);
+            final client = owner.sharedClient();
+            change = client.initialize;
+            read = () => client
+                .getBooleanDetails(key: 'flag', defaultValue: false)
+                .value;
+            await change(context('A'));
+          }
+          expect(read(), isTrue);
+          for (final key in [if (failedA) 'A', 'B']) {
+            final operation = change(context(key));
+            if (useProvider) {
+              await expectLater(
+                operation,
+                throwsA(isA<OpenFeatureException>()),
+              );
+            } else {
+              await operation;
+            }
+            expect(read(), isFalse);
+          }
+          final recovery = change(context('A'));
+          await started.future;
+          expect(read(), !failedA);
+          returning.complete(_response(true));
+          await recovery;
+          expect(read(), isTrue);
+        },
+      );
+    }
+  }
+  for (final scopeCase in ['same', 'legacy', 'environment', 'token', 'site']) {
+    test('stored configuration scope: $scopeCase', () async {
+      final store = InMemoryDatadogFlagsStore();
+      final first = DatadogFlags();
+      final second = DatadogFlags();
+      addTearDown(first.disable);
+      addTearDown(second.disable);
+      const original = DatadogFlagsConfig(
+        clientToken: 'test',
+        env: 'test',
+        site: DatadogFlagsSite.us1,
+      );
+      await first.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: original,
+          store: store,
+          trackExposures: false,
+          trackEvaluations: false,
+          httpClient: MockClient((_) async => _response(true)),
+        ),
+      );
+      const context = FlagsEvaluationContext(targetingKey: 'A');
+      await first.sharedClient().initialize(context);
+      await first.disable();
+      final persisted = (await store.read(
+        DatadogFlags.defaultClientName,
+      ))!.toJson();
+      expect(persisted['scope'], isNotNull);
+      if (scopeCase == 'legacy') {
+        persisted.remove('scope');
+      }
+      await store.write(
+        DatadogFlags.defaultClientName,
+        FlagsData.fromJson(persisted),
+      );
+      final next = DatadogFlagsConfig(
+        clientToken: scopeCase == 'token'
+            ? 'another-token'
+            : original.clientToken,
+        env: scopeCase == 'environment' ? 'another-env' : original.env,
+        site: scopeCase == 'site' ? DatadogFlagsSite.eu1 : original.site,
+      );
+      var recover = false;
+      await second.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: next,
+          store: store,
+          trackExposures: false,
+          trackEvaluations: false,
+          httpClient: MockClient(
+            (_) async =>
+                recover ? _response(true) : http.Response('offline', 503),
+          ),
+        ),
+      );
+      final client = second.sharedClient();
+      await client.initialize(context);
+      expect(
+        client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+        scopeCase == 'same',
+      );
+      recover = true;
+      await client.initialize(context);
+      expect(
+        client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+        isTrue,
+      );
+      expect(
+        (await store.read(DatadogFlags.defaultClientName))!.scope,
+        flagsDataScope(next),
+      );
+    });
+  }
+  for (final useProvider in [false, true]) {
     for (final strict in [false, true, 'true']) {
       for (final sameKey in [false, true]) {
         for (final withStore in [false, true]) {
@@ -314,6 +472,13 @@ void main() {
       await store.write(
         DatadogFlags.defaultClientName,
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'test',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags':
               (jsonDecode(_response(true).body)
                   as Map<String, dynamic>)['data']['attributes']['flags'],

@@ -1408,6 +1408,7 @@ void main() {
       await store.write(
         DatadogFlags.defaultClientName,
         FlagsData.fromJson({
+          'scope': flagsDataScope(_datadogConfig()),
           'flags': {
             'show-paywall': _assignment(
               allocationKey: 'stale-allocation',

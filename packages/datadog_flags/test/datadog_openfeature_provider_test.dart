@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/flags_store.dart' show flagsDataScope;
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:http/http.dart' as http;
@@ -91,6 +92,13 @@ void main() {
       await store.write(
         'default',
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: true)},
           'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
           'date': DateTime.utc(2026).toIso8601String(),
@@ -314,6 +322,13 @@ void main() {
       await store.write(
         'default',
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: true)},
           'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
           'date': DateTime.utc(2026).toIso8601String(),
@@ -357,6 +372,13 @@ void main() {
       await store.write(
         DatadogFlags.defaultClientName,
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: false)},
           'context': const FlagsEvaluationContext(
             targetingKey: 'second',
@@ -792,6 +814,13 @@ void main() {
         await store.write(
           'default',
           FlagsData.fromJson({
+            'scope': flagsDataScope(
+              const DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
             'flags': {'show-paywall': _assignment(variationValue: true)},
             'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
             'date': DateTime.utc(2026).toIso8601String(),
@@ -1084,6 +1113,13 @@ void main() {
       await store.write(
         'default',
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: false)},
           'context': const FlagsEvaluationContext(
             targetingKey: 'second',
@@ -1275,6 +1311,13 @@ void main() {
     await store.write(
       DatadogFlags.defaultClientName,
       FlagsData.fromJson({
+        'scope': flagsDataScope(
+          const DatadogFlagsConfig(
+            clientToken: 'client-token',
+            env: 'test',
+            site: DatadogFlagsSite.us1,
+          ),
+        ),
         'flags': {
           'show-paywall': _assignment(variationValue: true, serialId: 7),
         },
@@ -1516,6 +1559,13 @@ void main() {
       await store.write(
         'default',
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: true)},
           'context': const FlagsEvaluationContext(
             targetingKey: 'cached',

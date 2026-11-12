@@ -95,8 +95,10 @@ Set the boolean context attribute `dd_strict_evaluation_context_switching: true`
 to require matching targeting attributes as well as the targeting key.
 Strict mode returns defaults during an attribute change and after a failed fetch.
 An unchanged-context refresh keeps assignments while pending, then returns defaults
-if loading fails. Retries keep withheld assignments unavailable until a successful
-fetch. The control attribute stays local and is excluded from targeting and telemetry.
+if loading fails. Retries keep assignments withheld after a failure for their
+context until a successful fetch. Returning to an exact retained context can reuse
+its assignments when only a different context failed. The control attribute stays
+local and is excluded from targeting and telemetry.
 Only the boolean value `true` enables strict mode.
 
 `refresh()` reloads assignments for the current context. It waits for pending
@@ -168,7 +170,10 @@ application ID, service, and version. The environment is sent as `dd_env`.
   The default is 10 seconds.
 - `dateProvider` for application-controlled timestamps.
 
-The store loads a `FlagsData` snapshot only when its context matches the request.
+The store loads a `FlagsData` snapshot only when its context and configuration
+scope match the request. The scope is a digest of the site, environment, and client
+token. Snapshots without a scope are not used. After an upgrade or token rotation,
+evaluations use defaults until fresh assignments arrive if no eligible snapshot exists.
 Cache writes and deletes are serialized per store instance and client name.
 A store operation that never completes can block later persistence operations.
 Implement store operations so they always complete.

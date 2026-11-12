@@ -484,7 +484,9 @@ final class DatadogProvider
           'deadline.',
         );
       case DatadogFlagsClientStatus.error:
-        if (_requestedContext?.datadogContext.strictContextSwitching ?? false) {
+        if ((_requestedContext?.datadogContext.strictContextSwitching ??
+                false) &&
+            (_activeRuntime != null || !_hasCommittedContext)) {
           _requiresFreshAssignments = true;
           _withholdActiveAssignments();
         }

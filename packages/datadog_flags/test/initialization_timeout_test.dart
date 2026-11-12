@@ -611,6 +611,7 @@ FlagsData _storedAssignments(
   required bool value,
 }) {
   return FlagsData.fromJson({
+    'scope': flagsDataScope(_datadogConfig),
     'flags': {'show-paywall': _assignmentJson(value: value)},
     'context': context.toJson(),
     'date': DateTime.utc(2026, 9, 11).toIso8601String(),
