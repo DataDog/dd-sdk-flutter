@@ -20,7 +20,11 @@ import 'flags_error.dart';
 /// One provider instance owns one OpenFeature domain. Context reconciliation
 /// creates a candidate Datadog runtime and swaps it into use only after
 /// assignments for the new context are available. Evaluations therefore keep
-/// using the previous context while reconciliation is in progress or fails.
+/// using the previous context and evaluation telemetry policy while
+/// reconciliation is in progress or fails. Await
+/// [openfeature.OpenFeatureAPI.setEvaluationContextAndWait] before evaluating
+/// with a newly selected policy. Sign-out retires private assignments immediately,
+/// including when anonymous loading fails.
 final class DatadogOpenFeatureProvider
     implements
         openfeature.FeatureProvider,
@@ -29,6 +33,10 @@ final class DatadogOpenFeatureProvider
         openfeature.ShutdownProvider,
         openfeature.ProviderEventSource,
         openfeature.DomainScopedProvider {
+  /// Metadata consumed by telemetry hooks to suppress automatic reporting.
+  static const evaluationTelemetryOptOutMetadata =
+      'datadog.evaluationTelemetryOptedOut';
+
   /// OpenFeature flag metadata key containing the Datadog allocation key.
   static const allocationKeyMetadata = datadogAllocationKeyMetadata;
 
@@ -243,7 +251,11 @@ final class DatadogOpenFeatureProvider
         errorCode: errorCode,
         errorMessage: details.error!.message,
         reason: 'ERROR',
-        flagMetadata: details.flagMetadata,
+        flagMetadata: {
+          ...details.flagMetadata,
+          if (details.evaluationTelemetryOptedOut)
+            evaluationTelemetryOptOutMetadata: true,
+        },
       );
     }
 
@@ -251,7 +263,11 @@ final class DatadogOpenFeatureProvider
       value: _immutableJsonValue(details.value) as Map<String, Object?>,
       reason: details.reason,
       variant: details.variant,
-      flagMetadata: details.flagMetadata,
+      flagMetadata: {
+        ...details.flagMetadata,
+        if (details.evaluationTelemetryOptedOut)
+          evaluationTelemetryOptOutMetadata: true,
+      },
     );
   }
 
@@ -579,7 +595,11 @@ final class DatadogOpenFeatureProvider
       errorMessage: details.error?.message,
       reason: errorCode == null ? details.reason : 'ERROR',
       variant: details.variant,
-      flagMetadata: details.flagMetadata,
+      flagMetadata: {
+        ...details.flagMetadata,
+        if (details.evaluationTelemetryOptedOut)
+          evaluationTelemetryOptOutMetadata: true,
+      },
     );
   }
 

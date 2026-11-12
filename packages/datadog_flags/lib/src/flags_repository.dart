@@ -33,6 +33,7 @@ class FlagsRepository {
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
+  final bool enableEvaluationTelemetryOptOutParameter;
   final _CacheOperationQueue _cacheOperations;
 
   @visibleForTesting
@@ -44,6 +45,13 @@ class FlagsRepository {
       StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
   _CancelToken? _currentToken;
   bool _didStartInitialization = false;
+  bool _evaluationTelemetryOptedOut = false;
+  // Only the installed and requested subjects can be evaluated. Superseded
+  // requests are cancelled and cannot install their assignments.
+  final Map<String?, bool> _subjectTelemetryOptOut = {};
+
+  static const _telemetryControl =
+      FlagsEvaluationContext.evaluationTelemetryOptOutKey;
 
   FlagsRepository({
     required this.clientName,
@@ -51,11 +59,16 @@ class FlagsRepository {
     this.store,
     required this.dateProvider,
     this.initializationTimeout,
+    this.enableEvaluationTelemetryOptOutParameter = false,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
   }) : _cacheOperations = _cacheOperationQueue(store, clientName);
 
   FlagsEvaluationContext? get context => _state?.data.context;
+
+  bool get evaluationTelemetryOptedOut =>
+      _evaluationTelemetryOptedOut ||
+      (_subjectTelemetryOptOut[context?.targetingKey] ?? false);
 
   DatadogFlagsClientStatus get status => _status;
 
@@ -72,6 +85,18 @@ class FlagsRepository {
   bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
 
   Future<void> initialize(FlagsEvaluationContext context) {
+    final control = context.attributes[_telemetryControl];
+    _evaluationTelemetryOptedOut =
+        enableEvaluationTelemetryOptOutParameter && control is bool && control;
+    if (enableEvaluationTelemetryOptOutParameter) {
+      _subjectTelemetryOptOut[context.targetingKey] =
+          _evaluationTelemetryOptedOut;
+      _subjectTelemetryOptOut.removeWhere(
+        (subject, _) =>
+            subject != context.targetingKey &&
+            subject != _state?.data.context.targetingKey,
+      );
+    }
     _currentToken?.cancel();
     final token = _CancelToken();
     _currentToken = token;
@@ -132,6 +157,9 @@ class FlagsRepository {
         obfuscation: assignments.obfuscation,
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
+      _subjectTelemetryOptOut.removeWhere(
+        (subject, _) => subject != context.targetingKey,
+      );
       _setStatus(DatadogFlagsClientStatus.ready);
       await _writeCached(data);
     } catch (_) {
@@ -139,6 +167,9 @@ class FlagsRepository {
           matchingCached == null &&
           !_hasCurrentStateForContext(context)) {
         _state = null;
+        _subjectTelemetryOptOut.removeWhere(
+          (subject, _) => subject != context.targetingKey,
+        );
         _setStatus(DatadogFlagsClientStatus.error);
       } else if (!token.isCanceled) {
         _setStatus(DatadogFlagsClientStatus.stale);
@@ -184,6 +215,8 @@ class FlagsRepository {
     _currentToken?.cancel();
     _currentToken = null;
     _state = null;
+    _evaluationTelemetryOptedOut = false;
+    _subjectTelemetryOptOut.clear();
     _setStatus(DatadogFlagsClientStatus.notReady);
   }
 

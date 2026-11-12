@@ -3,6 +3,7 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
@@ -21,7 +22,10 @@ final class DatadogRumHook extends HookAdapter {
     FlagEvaluationDetails<Object> details,
     HookHints hints,
   ) {
-    if (details.errorCode == null) {
+    if (details.errorCode == null &&
+        details.flagMetadata[DatadogOpenFeatureProvider
+                .evaluationTelemetryOptOutMetadata] !=
+            true) {
       _sdk.rum?.addFeatureFlagEvaluation(
         context.flagKey,
         details.variant ?? details.value,

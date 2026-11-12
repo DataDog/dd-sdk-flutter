@@ -73,6 +73,14 @@ final class DatadogFlagsConfiguration {
   /// Whether evaluations should be aggregated and sent to intake.
   final bool trackEvaluations;
 
+  /// Enables the `dd_evaluation_telemetry_opt_out` evaluation context attribute.
+  ///
+  /// Only boolean `true` suppresses new evaluation events and counts.
+  /// The Flutter integration also suppresses automatic RUM flag annotations.
+  /// Exposures and existing events are unchanged.
+  /// The attribute remains available for targeting, cache matching, and exposures.
+  final bool enableEvaluationTelemetryOptOutParameter;
+
   final Duration _evaluationFlushInterval;
 
   /// HTTP client used for assignments and telemetry.
@@ -98,6 +106,7 @@ final class DatadogFlagsConfiguration {
     this.trackExposures = true,
     this.customEvaluationEndpoint,
     this.trackEvaluations = true,
+    this.enableEvaluationTelemetryOptOutParameter = false,
     Duration evaluationFlushInterval = defaultEvaluationFlushInterval,
     this.httpClient,
     this.datadogConfig,

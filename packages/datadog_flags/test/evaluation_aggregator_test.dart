@@ -24,6 +24,31 @@ void main() {
         EvaluationAggregator.defaultUploadTimeout;
   });
 
+  test('opt-out stops before aggregation work and enqueue', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(
+      requests: requests,
+      dateProvider: () => throw StateError('Aggregation must not run'),
+    );
+    addTearDown(aggregator.shutdown);
+    aggregator.recordEvaluation(
+      flagKey: 'checkout.enabled',
+      assignment: _assignment(),
+      evaluationContext: FlagsEvaluationContext.empty,
+      error: null,
+      telemetryOptedOut: true,
+    );
+    aggregator.recordEvaluation(
+      flagKey: 'missing',
+      assignment: null,
+      evaluationContext: FlagsEvaluationContext.empty,
+      error: 'FLAG_NOT_FOUND',
+      telemetryOptedOut: true,
+    );
+    await aggregator.flush();
+    expect(requests, isEmpty);
+  });
+
   test('aggregates matching flag evaluations into one intake event', () async {
     final requests = <http.Request>[];
     final dates = [

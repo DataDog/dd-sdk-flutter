@@ -72,9 +72,10 @@ class EvaluationAggregator {
     required FlagAssignment? assignment,
     required FlagsEvaluationContext evaluationContext,
     required String? error,
+    bool telemetryOptedOut = false,
   }) {
     final configuration = runtime.configuration;
-    if (!configuration.trackEvaluations) {
+    if (!configuration.trackEvaluations || telemetryOptedOut) {
       return;
     }
 

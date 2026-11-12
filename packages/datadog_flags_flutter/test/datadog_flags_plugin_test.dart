@@ -19,10 +19,64 @@ class MockDatadogFlags extends Mock implements DatadogFlags {}
 
 class MockDatadogFlagsClient extends Mock implements DatadogFlagsClient {}
 
+class MockDatadogRum extends Mock implements DatadogRum {}
+
 class MockDatadogFlagsLifecycleClient extends Mock
     implements DatadogFlagsClient, DatadogFlagsClientLifecycle {}
 
 void main() {
+  test(
+    'reset precedes initialize when the delegate is already resolved',
+    () async {
+      final delegate = MockDatadogFlagsClient();
+      const nextContext = FlagsEvaluationContext(targetingKey: 'next');
+      when(
+        () => delegate.initialize(FlagsEvaluationContext.empty),
+      ).thenAnswer((_) async {});
+      when(() => delegate.initialize(nextContext)).thenAnswer((_) async {});
+      when(() => delegate.reset()).thenAnswer((_) async {});
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async => delegate,
+        addRumFeatureFlagEvaluation: null,
+      );
+      await client.initialize(FlagsEvaluationContext.empty);
+      clearInteractions(delegate);
+      final reset = client.reset();
+      final initialize = client.initialize(nextContext);
+      await Future.wait([reset, initialize]);
+      verifyInOrder([
+        () => delegate.reset(),
+        () => delegate.initialize(nextContext),
+      ]);
+    },
+  );
+
+  test(
+    'reset reaches delegate when initialize follows before resolution',
+    () async {
+      final delegate = MockDatadogFlagsClient();
+      final ready = Completer<DatadogFlagsClient>();
+      when(() => delegate.reset()).thenAnswer((_) async {});
+      when(
+        () => delegate.initialize(FlagsEvaluationContext.empty),
+      ).thenAnswer((_) async {});
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () => ready.future,
+        addRumFeatureFlagEvaluation: null,
+      );
+      final reset = client.reset();
+      final initialize = client.initialize(FlagsEvaluationContext.empty);
+      ready.complete(delegate);
+      await Future.wait([reset, initialize]);
+      verifyInOrder([
+        () => delegate.reset(),
+        () => delegate.initialize(FlagsEvaluationContext.empty),
+      ]);
+    },
+  );
+
   test('overlapping lifecycle calls resolve and subscribe once', () async {
     const context = FlagsEvaluationContext(targetingKey: 'a');
     final delegate = MockDatadogFlagsLifecycleClient();
@@ -175,6 +229,7 @@ void main() {
         trackExposures: false,
         customEvaluationEndpoint: Uri.parse('https://eval.example.com'),
         trackEvaluations: false,
+        enableEvaluationTelemetryOptOutParameter: true,
         evaluationFlushInterval: const Duration(seconds: 2),
         datadogConfig: flagsDatadogConfig,
         dateProvider: () => date,
@@ -205,6 +260,7 @@ void main() {
       Uri.parse('https://eval.example.com'),
     );
     expect(flagsConfiguration.trackEvaluations, isFalse);
+    expect(flagsConfiguration.enableEvaluationTelemetryOptOutParameter, isTrue);
     expect(
       flagsConfiguration.evaluationFlushInterval,
       const Duration(seconds: 2),
@@ -402,6 +458,37 @@ void main() {
     when(() => mockSdk.getPlugin<DatadogFlagsPlugin>()).thenReturn(plugin);
 
     expect(mockSdk.flags, same(plugin));
+  });
+
+  test('plugin reset clears wrapper telemetry policy with core state', () async {
+    final delegate = _mockClient();
+    when(
+      () => delegate.getBooleanDetails(key: 'flag', defaultValue: false),
+    ).thenReturn(const FlagDetails(key: 'flag', value: true, variant: 'on'));
+    final flags = _mockFlags(sharedClient: delegate);
+    final rum = MockDatadogRum();
+    when(() => mockSdk.rum).thenReturn(rum);
+    final plugin = _plugin(
+      mockSdk,
+      flags: flags,
+      flagsConfiguration: const DatadogFlagsConfiguration(
+        enableEvaluationTelemetryOptOutParameter: true,
+      ),
+    );
+    final client = plugin.sharedClient();
+    await client.initialize(
+      const FlagsEvaluationContext(
+        targetingKey: 'user',
+        attributes: {'dd_evaluation_telemetry_opt_out': true},
+      ),
+    );
+    client.getBooleanDetails(key: 'flag', defaultValue: false);
+    verifyNever(() => rum.addFeatureFlagEvaluation('flag', 'on'));
+    await plugin.reset();
+    // This delegate intentionally retains a value to expose stale wrapper policy.
+    client.getBooleanDetails(key: 'flag', defaultValue: false);
+    verify(() => rum.addFeatureFlagEvaluation('flag', 'on')).called(1);
+    verify(() => flags.reset()).called(1);
   });
 }
 
