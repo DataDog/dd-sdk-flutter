@@ -162,6 +162,42 @@ For successful evaluations, details report `CACHED` when the installed assignmen
 were restored from the configured store, including an in-memory store. After a
 network response replaces those assignments, details report the response reason.
 
+## First installed flags
+
+This notification uses the native client API, which is deprecated in favour of OpenFeature. The OpenFeature examples above remain the recommended setup for normal evaluations.
+
+Register after obtaining the client, before or after initializing its context:
+
+```dart
+final client = DatadogFlags.instance.sharedClient();
+final unregister = client.onFirstFlags((event) {
+  print('First installed flags: ${event.flagsChanged}');
+  final details = client.getBooleanDetails(
+    key: 'checkout.enabled',
+    defaultValue: false,
+  );
+  print(details.value);
+});
+// Call unregister() when the application no longer needs this notification.
+```
+
+The callback receives the keys from the first accepted cache or network
+configuration: logical keys for plain configurations, including `[]` when empty,
+and `null` when logical keys are unavailable due to obfuscation. Late
+registrations receive the same event. Delivery runs in a later microtask;
+evaluations in the callback read current flag values. If no usable configuration
+is installed, the callback remains pending until you unregister it.
+
+Call the returned function to cancel delivery before the callback starts.
+Generate `example/.env` with `melos generate_env`. It copies `DD_CLIENT_TOKEN`
+and optional `DD_APPLICATION_ID` from the environment, writes `DD_ENV=prod`,
+and omits `DD_SITE`. Edit the generated file to set `DD_ENV` and optional `DD_SITE`.
+The CLI loads `.env` over environment variables; `--env` and `--site` override
+those values.
+Run `dart run bin/first_flags.dart --help` from `example` for its options.
+See the [First Flags CLI example](example/bin/first_flags.dart) and
+`DatadogFlagsClient.onFirstFlags` API documentation for details.
+
 ## Contributing
 
 See the [contributing guide](../../CONTRIBUTING.md) and
