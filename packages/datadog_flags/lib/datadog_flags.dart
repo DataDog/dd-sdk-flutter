@@ -20,3 +20,5 @@ export 'src/flags_error.dart'
 export 'src/flags_store.dart' show DatadogFlagsStore, FlagsData;
 export 'src/evaluation_context.dart'
     show FlagsEvaluationContext, strictContextSwitchingAttribute;
+export 'src/exposure_hook.dart'
+    show ExposureCallback, ExposureEvaluation, ExposureHook;

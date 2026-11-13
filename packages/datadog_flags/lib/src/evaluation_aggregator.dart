@@ -13,6 +13,7 @@ import 'evaluation_context.dart';
 import 'flags_runtime.dart';
 import 'intake_request.dart';
 import 'json_value.dart';
+import 'split_features.dart';
 
 class EvaluationAggregator {
   static const int defaultMaxBatchSize = 1000;
@@ -117,12 +118,16 @@ class EvaluationAggregator {
     }
 
     final now = configuration.dateProvider().millisecondsSinceEpoch;
+    final features = error == null && assignment != null
+        ? assignment.features.forDestination(SplitFeatureDestination.evaluation)
+        : const <String, Object>{};
     final key = _aggregationKey(
       flagKey: flagKey,
       allocationKey: assignment?.allocationKey,
       variantKey: assignment?.variationKey,
       evaluationContext: evaluationContext,
       error: error,
+      features: features,
     );
     final existing = _aggregations[key];
     if (existing != null) {
@@ -143,6 +148,7 @@ class EvaluationAggregator {
           : evaluationContext.targetingKey ?? '',
       error: error,
       attributes: evaluationContext?.attributes ?? const {},
+      features: features,
       firstEvaluation: now,
       lastEvaluation: now,
       evaluationCount: 1,
@@ -379,6 +385,7 @@ String _aggregationKey({
   required String? variantKey,
   required FlagsEvaluationContext? evaluationContext,
   required String? error,
+  required Map<String, Object> features,
 }) {
   return jsonEncode({
     'flagKey': flagKey,
@@ -389,6 +396,7 @@ String _aggregationKey({
         : evaluationContext.targetingKey ?? '',
     'error': error,
     'context': _sortedJson(evaluationContext?.attributes ?? const {}),
+    if (features.isNotEmpty) 'features': _sortedJson(features),
   });
 }
 
@@ -400,6 +408,7 @@ class _AggregatedEvaluation {
   final String? targetingKey;
   final String? error;
   final Map<String, Object?> attributes;
+  final Map<String, Object> features;
   int firstEvaluation;
   int lastEvaluation;
   int evaluationCount;
@@ -413,6 +422,7 @@ class _AggregatedEvaluation {
     required this.targetingKey,
     required this.error,
     required this.attributes,
+    required this.features,
     required this.firstEvaluation,
     required this.lastEvaluation,
     required this.evaluationCount,
@@ -439,6 +449,7 @@ class _AggregatedEvaluation {
       'runtime_default_used': runtimeDefaultUsed ? true : null,
       'error': error == null ? null : {'message': error},
       'context': eventContext.isEmpty ? null : eventContext,
+      'features': features.isEmpty ? null : features,
     });
   }
 }
