@@ -12,6 +12,7 @@ import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk_experimental.dart'
     show createIsolatedOpenFeatureAPI;
@@ -25,6 +26,113 @@ void main() {
   });
 
   tearDown(() => api.shutdown());
+
+  for (final injected in [false, true]) {
+    test(
+      'provider shares ${injected ? 'injected' : 'owned'} HTTP transport until shutdown',
+      () async {
+        final transport = _MockHttpClient();
+        final requests = <http.Request>[];
+        final upload = Completer<http.Response>();
+        final uploadStarted = Completer<void>();
+        final delegate = MockClient((request) async {
+          requests.add(request);
+          if (request.url.path == '/api/v2/flagevaluation') {
+            uploadStarted.complete();
+            return upload.future;
+          }
+          return _responseFor(request, _assignmentsResponse());
+        });
+        registerFallbackValue(Uri.parse('https://example.com'));
+        when(
+          () => transport.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (invocation) => delegate.post(
+            invocation.positionalArguments.single as Uri,
+            headers:
+                invocation.namedArguments[#headers] as Map<String, String>?,
+            body: invocation.namedArguments[#body],
+          ),
+        );
+        var created = 0;
+        await http.runWithClient(
+          () async {
+            final provider = DatadogProvider.fromConfiguration(
+              DatadogFlagsConfiguration(
+                datadogConfig: const DatadogFlagsConfig(
+                  clientToken: 'client-token',
+                  env: 'test',
+                  site: DatadogFlagsSite.us1,
+                ),
+                httpClient: injected ? transport : null,
+                evaluationFlushInterval: const Duration(hours: 1),
+              ),
+            );
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'A'),
+            );
+            await api.setProviderAndWait(provider);
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            await provider.refresh();
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'B'),
+            );
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'A'),
+            );
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            expect(created, injected ? 0 : 1);
+            verifyNever(() => transport.close());
+            // Retiring context repositories does not flush the shared telemetry.
+            expect(
+              requests.where((r) => r.url.path != '/precompute-assignments'),
+              isEmpty,
+            );
+            final shuttingDown = provider.shutdown();
+            await uploadStarted.future;
+            verifyNever(() => transport.close());
+            upload.complete(http.Response('{}', 202));
+            await shuttingDown;
+            await provider.shutdown();
+            if (injected) {
+              verifyNever(() => transport.close());
+            } else {
+              verify(() => transport.close()).called(1);
+            }
+            final evaluations = requests
+                .where((r) => r.url.path == '/api/v2/flagevaluation')
+                .expand(_evaluationEvents);
+            expect(
+              {
+                for (final event in evaluations)
+                  event['targeting_key']: event['evaluation_count'],
+              },
+              {'A': 2, 'B': 1},
+            );
+          },
+          () {
+            created++;
+            return transport;
+          },
+        );
+        delegate.close();
+      },
+    );
+  }
 
   test(
     'DateTime attributes preserve available precision and normalize to UTC',
@@ -2310,3 +2418,5 @@ List<Map<String, Object?>> _evaluationEvents(http.Request request) {
   return (body['flagEvaluations'] as List<Object?>)
       .cast<Map<String, Object?>>();
 }
+
+class _MockHttpClient extends Mock implements http.Client {}

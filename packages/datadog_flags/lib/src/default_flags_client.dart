@@ -26,23 +26,18 @@ class DefaultDatadogFlagsClient
   final FlagsRepository _repository;
   final ExposureLogger _exposureLogger;
   final EvaluationAggregator _evaluationAggregator;
+  final bool _ownsTelemetry;
 
   DefaultDatadogFlagsClient({
     required this.name,
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
+    bool ownsTelemetry = true,
   }) : _repository = repository,
        _exposureLogger = exposureLogger,
-       _evaluationAggregator = evaluationAggregator;
-
-  // Runtime replacement preserves deduplication and pending telemetry uploads.
-  void inheritTelemetry(DefaultDatadogFlagsClient previous) {
-    _exposureLogger.inheritHistory(previous._exposureLogger);
-    _evaluationAggregator.inheritPendingEvaluations(
-      previous._evaluationAggregator,
-    );
-  }
+       _evaluationAggregator = evaluationAggregator,
+       _ownsTelemetry = ownsTelemetry;
 
   void cancelPendingLoad() => _repository.cancelPendingLoad();
 
@@ -128,10 +123,12 @@ class DefaultDatadogFlagsClient
   Future<void> shutdown() async {
     isShutdown = true;
     await _repository.dispose();
-    await Future.wait([
-      _evaluationAggregator.shutdown(),
-      _exposureLogger.shutdown(),
-    ]);
+    if (_ownsTelemetry) {
+      await Future.wait([
+        _evaluationAggregator.shutdown(),
+        _exposureLogger.shutdown(),
+      ]);
+    }
   }
 
   @override

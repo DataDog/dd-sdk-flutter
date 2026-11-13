@@ -6,12 +6,18 @@
 import 'dart:async';
 
 import 'package:meta/meta.dart';
+import 'package:http/http.dart' as http;
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
 import 'datadog_flags.dart';
 import 'assignment.dart';
 import 'default_flags_client.dart';
+import 'evaluation_aggregator.dart';
+import 'exposure_logger.dart';
+import 'flag_assignments_fetcher.dart';
+import 'flags_repository.dart';
+import 'flags_runtime.dart';
 import 'evaluation_context.dart';
 import 'exposure_hook.dart';
 import 'flags_client.dart';
@@ -65,8 +71,9 @@ final class DatadogProvider
   final StreamController<openfeature.ProviderEvent> _events =
       StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
 
+  _ProviderResources? _resources;
   _ProviderRuntime? _activeRuntime;
-  _ProviderRuntime? _telemetrySource;
+  _ProviderRuntime? _retainedRuntime;
   _ProviderRuntime? _pendingRuntime;
   bool _requiresContextRetry = false;
   bool _hasCommittedContext = false;
@@ -128,7 +135,7 @@ final class DatadogProvider
     _requestedContext = newContext;
     _requiresContextRetry = true;
     final requested = newContext.datadogContext;
-    final retained = _telemetrySource;
+    final retained = _retainedRuntime;
     final retainedContext = retained?.client.evaluationContext;
     if (_activeRuntime == null &&
         retained != null &&
@@ -139,7 +146,7 @@ final class DatadogProvider
         (!requested.strictContextSwitching ||
             targetingContextsMatch(retainedContext, requested))) {
       _activeRuntime = retained;
-      _telemetrySource = null;
+      _retainedRuntime = null;
     }
     final active = _activeRuntime;
     final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
@@ -153,7 +160,7 @@ final class DatadogProvider
                 )))) {
       _withholdActiveAssignments();
     }
-    if (_activeRuntime ?? _telemetrySource case final previous?
+    if (_activeRuntime ?? _retainedRuntime case final previous?
         when (previous.client.evaluationContext?.targetingKey ?? '') !=
             (requested.targetingKey ?? '')) {
       previous.client.cancelPendingLoad();
@@ -214,9 +221,11 @@ final class DatadogProvider
     _fatalMessage = null;
     _shutdownGeneration += 1;
     _contextRevision += 1;
+    final resources = _resources;
+    _resources = null;
     final activeRuntime = _activeRuntime;
     final pendingRuntime = _pendingRuntime;
-    final telemetrySource = _telemetrySource;
+    final retainedRuntime = _retainedRuntime;
     _activeRuntime = null;
     _pendingRuntime = null;
     _resolvedClientName = null;
@@ -224,15 +233,16 @@ final class DatadogProvider
     _requiresContextRetry = false;
     _hasCommittedContext = false;
     _requiresFreshAssignments = false;
-    _telemetrySource = null;
+    _retainedRuntime = null;
     await Future.wait([
       ..._retiring,
       if (activeRuntime != null) _disableQuietly(activeRuntime),
-      if (telemetrySource != null && !identical(telemetrySource, activeRuntime))
-        _disableQuietly(telemetrySource),
+      if (retainedRuntime != null && !identical(retainedRuntime, activeRuntime))
+        _disableQuietly(retainedRuntime),
       if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
         _disableQuietly(pendingRuntime),
     ]);
+    await resources?.shutdown();
   }
 
   @override
@@ -394,7 +404,8 @@ final class DatadogProvider
       return;
     }
 
-    if (_configuration.datadogConfig == null) {
+    final datadogConfig = _configuration.datadogConfig;
+    if (datadogConfig == null) {
       _emitLoadError('Datadog Flags configuration is required.', fatal: true);
       return;
     }
@@ -412,28 +423,22 @@ final class DatadogProvider
       return;
     }
 
-    final owner = DatadogFlags();
     _ProviderRuntime? runtime;
     var initializationReturned = false;
     try {
-      await owner.enable(configuration: _configuration);
-      if (revision != _contextRevision) {
-        await _disableOwnerQuietly(owner);
-        return;
-      }
-      final client = owner.sharedClient(
-        name: _resolvedClientName ?? DatadogFlags.defaultClientName,
+      final resources = _resources ??= _ProviderResources(
+        FlagsRuntime(
+          configuration: _configuration,
+          datadogConfig: datadogConfig,
+          httpClient: _configuration.httpClient ?? http.Client(),
+        ),
+        ownsHttpClient: _configuration.httpClient == null,
       );
-      if (client is! DefaultDatadogFlagsClient) {
-        await _disableOwnerQuietly(owner);
-        _emitLoadError(
-          'The Datadog client does not expose assignment lifecycle state.',
-        );
-        return;
-      }
-
+      final client = resources.createClient(
+        _resolvedClientName ?? DatadogFlags.defaultClientName,
+      );
       final lifecycle = client as DatadogFlagsClientLifecycle;
-      final candidate = _ProviderRuntime(owner, client);
+      final candidate = _ProviderRuntime(client);
       runtime = candidate;
       _pendingRuntime = candidate;
       candidate.statusSubscription = lifecycle.statusChanges.listen((status) {
@@ -472,8 +477,6 @@ final class DatadogProvider
         if (!identical(_activeRuntime, runtime)) {
           await _disableQuietly(runtime);
         }
-      } else if (!identical(_activeRuntime?.owner, owner)) {
-        await _disableOwnerQuietly(owner);
       }
       if (revision == _contextRevision) {
         if ((_requestedContext?.datadogContext.strictContextSwitching ??
@@ -672,11 +675,8 @@ final class DatadogProvider
       return;
     }
     final previous = _activeRuntime;
-    final telemetrySource = previous ?? _telemetrySource;
-    _telemetrySource = null;
-    if (telemetrySource != null && !identical(telemetrySource, runtime)) {
-      runtime.client.inheritTelemetry(telemetrySource.client);
-    }
+    final retainedRuntime = previous ?? _retainedRuntime;
+    _retainedRuntime = null;
     _activeRuntime = runtime;
     _hasCommittedContext = true;
     if (status == DatadogFlagsClientStatus.ready) {
@@ -713,8 +713,8 @@ final class DatadogProvider
         ),
       );
     }
-    if (telemetrySource != null && !identical(telemetrySource, runtime)) {
-      _retire(telemetrySource);
+    if (retainedRuntime != null && !identical(retainedRuntime, runtime)) {
+      _retire(retainedRuntime);
     }
   }
 
@@ -722,7 +722,7 @@ final class DatadogProvider
     final active = _activeRuntime;
     if (active == null) return;
     _activeRuntime = null;
-    _telemetrySource = active;
+    _retainedRuntime = active;
     unawaited(active.statusSubscription?.cancel());
     active.statusSubscription = null;
   }
@@ -744,16 +744,7 @@ final class DatadogProvider
     try {
       await runtime?.disable();
     } on Object {
-      // Assignment readiness must not be replaced by a teardown error from an
-      // inactive runtime. Datadog runtime shutdown already bounds its uploads.
-    }
-  }
-
-  static Future<void> _disableOwnerQuietly(DatadogFlags owner) async {
-    try {
-      await owner.disable();
-    } on Object {
-      // Preserve the assignment lifecycle result when cleanup also fails.
+      // Preserve assignment readiness when an inactive repository fails to close.
     }
   }
 
@@ -845,19 +836,65 @@ final class DatadogProvider
   }
 }
 
+/// Resources shared by every context revision of one provider.
+final class _ProviderResources {
+  final FlagsRuntime runtime;
+  final bool ownsHttpClient;
+  late final ExposureLogger exposureLogger = ExposureLogger(runtime);
+  late final EvaluationAggregator evaluationAggregator = EvaluationAggregator(
+    runtime,
+  );
+  Future<void>? _shutdown;
+
+  _ProviderResources(this.runtime, {required this.ownsHttpClient});
+
+  DefaultDatadogFlagsClient createClient(String name) {
+    final configuration = runtime.configuration;
+    return DefaultDatadogFlagsClient(
+      name: name,
+      repository: FlagsRepository(
+        clientName: name,
+        fetcher: FlagAssignmentsFetcher(
+          datadogConfig: runtime.datadogConfig,
+          configuration: configuration,
+          httpClient: runtime.httpClient,
+        ),
+        store: configuration.store,
+        dateProvider: configuration.dateProvider,
+        initializationTimeout: configuration.initializationTimeout,
+      ),
+      exposureLogger: exposureLogger,
+      evaluationAggregator: evaluationAggregator,
+      ownsTelemetry: false,
+    );
+  }
+
+  Future<void> shutdown() => _shutdown ??= _drain();
+
+  Future<void> _drain() async {
+    try {
+      await Future.wait([
+        exposureLogger.shutdown(),
+        evaluationAggregator.shutdown(),
+      ]);
+    } finally {
+      if (ownsHttpClient) runtime.httpClient.close();
+    }
+  }
+}
+
 final class _ProviderRuntime {
-  final DatadogFlags owner;
   final DefaultDatadogFlagsClient client;
   StreamSubscription<DatadogFlagsClientStatus>? statusSubscription;
   Future<void>? _disabling;
 
-  _ProviderRuntime(this.owner, this.client);
+  _ProviderRuntime(this.client);
 
   Future<void> disable() => _disabling ??= _disable();
 
   Future<void> _disable() async {
     await statusSubscription?.cancel();
-    await owner.disable();
+    await client.shutdown();
   }
 }
 

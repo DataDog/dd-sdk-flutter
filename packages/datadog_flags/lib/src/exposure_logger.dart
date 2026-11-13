@@ -27,49 +27,10 @@ class ExposureLogger {
   Future<bool>? _uploadInFlight;
   Future<void>? _shutdownInFlight;
   Timer? _flushTimer;
-  final Stopwatch _flushClock = Stopwatch();
-  Duration _flushDelay = Duration.zero;
   bool _shutdownDrainActive = false;
-  ExposureLogger? _successor;
-  final Set<Future<void>> _inheritedUploads = {};
-  UploadBackoff _backoff = UploadBackoff();
+  final UploadBackoff _backoff = UploadBackoff();
 
   ExposureLogger(this.runtime);
-
-  void inheritHistory(ExposureLogger previous) {
-    _backoff = previous._backoff;
-    final remaining = previous._flushTimer == null
-        ? null
-        : previous._flushDelay - previous._flushClock.elapsed;
-    previous._flushClock.stop();
-    _loggedAssignments.addAll(previous._loggedAssignments);
-    previous._successor = this;
-    previous._flushTimer?.cancel();
-    previous._flushTimer = null;
-    _pendingExposures.addAll(previous._pendingExposures);
-    previous._pendingExposures.clear();
-    for (final upload in previous._inheritedUploads) {
-      _inheritUpload(upload);
-    }
-    final activeUpload = previous._uploadInFlight;
-    if (activeUpload != null) {
-      _inheritUpload(activeUpload.then<void>((_) {}));
-    }
-    if (_pendingExposures.isNotEmpty) {
-      if (remaining == null) {
-        _scheduleFlush();
-      } else {
-        _scheduleFlushAfter(remaining.isNegative ? Duration.zero : remaining);
-      }
-    }
-  }
-
-  void _inheritUpload(Future<void> upload) {
-    // The previous logger restores failed batches through the successor chain.
-    final settled = upload.catchError((Object _) {});
-    _inheritedUploads.add(settled);
-    unawaited(settled.whenComplete(() => _inheritedUploads.remove(settled)));
-  }
 
   /// Records an exposure of [assignment] in the exposure cache and, when
   /// exposure tracking is on, queues it for Datadog.
@@ -110,7 +71,6 @@ class ExposureLogger {
   }
 
   Future<void> shutdown() {
-    _flushClock.stop();
     _flushTimer?.cancel();
     _flushTimer = null;
 
@@ -133,12 +93,7 @@ class ExposureLogger {
     _shutdownDrainActive = true;
     try {
       final activeUpload = _uploadInFlight;
-      var activeSucceeded = true;
-      await Future.wait([
-        ..._inheritedUploads,
-        if (activeUpload != null)
-          activeUpload.then<void>((succeeded) => activeSucceeded = succeeded),
-      ]);
+      final activeSucceeded = await activeUpload ?? true;
       if (!activeSucceeded) return;
       await _uploadPendingExposures(rescheduleOnFailure: false);
     } finally {
@@ -153,7 +108,7 @@ class ExposureLogger {
       _scheduleFlushAfter(_backoff.remaining);
       return;
     }
-    if (_uploadInFlight != null || _inheritedUploads.isNotEmpty) {
+    if (_uploadInFlight != null) {
       _scheduleRetryFlush();
       return;
     }
@@ -250,11 +205,6 @@ class ExposureLogger {
     List<Map<String, Object?>> exposures, {
     required bool reschedule,
   }) {
-    final successor = _successor;
-    if (successor != null) {
-      successor._restore(exposures, reschedule: true);
-      return;
-    }
     _pendingExposures.insertAll(0, exposures);
     if (reschedule && !_shutdownDrainActive) {
       _scheduleRetryFlush();
@@ -280,12 +230,7 @@ class ExposureLogger {
       return;
     }
 
-    _flushDelay = delay;
-    _flushClock
-      ..reset()
-      ..start();
     _flushTimer = Timer(delay, () {
-      _flushClock.stop();
       _flushTimer = null;
       unawaited(_flushPendingExposures(rescheduleOnFailure: true));
     });

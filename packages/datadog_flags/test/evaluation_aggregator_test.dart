@@ -17,59 +17,49 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test(
-    'batch and periodic triggers preserve increasing backoff across handoff',
-    () async {
-      EvaluationAggregator.maxBatchSize = 1;
-      final requests = <http.Request>[];
-      final clock = Stopwatch()..start();
-      final times = <int>[];
-      final client = MockClient((request) async {
-        requests.add(request);
-        times.add(clock.elapsedMilliseconds);
-        return http.Response('{}', times.length < 3 ? 503 : 202);
-      });
-      final first = _aggregator(
-        requests: requests,
-        httpClient: client,
-        flushInterval: const Duration(milliseconds: 20),
-      );
-      final second = _aggregator(
-        requests: requests,
-        httpClient: client,
-        flushInterval: const Duration(milliseconds: 20),
-      );
-      addTearDown(first.shutdown);
-      addTearDown(second.shutdown);
-      void record(EvaluationAggregator target, String key) =>
-          target.recordEvaluation(
-            flagKey: key,
-            assignment: _assignment(),
-            evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
-            error: null,
-          );
-      record(first, 'first');
-      await _waitUntil(() => times.length == 1);
-      second.inheritPendingEvaluations(first);
-      for (var i = 0; i < 10; i++) {
-        record(second, 'next-$i');
-        await second.flush();
-      }
-      expect(times, hasLength(1));
-      await _waitUntil(() => times.length == 2);
-      for (var i = 0; i < 10; i++) {
-        record(second, 'later-$i');
-        await second.flush();
-      }
-      expect(times, hasLength(2));
-      await _waitUntil(() => times.length == 3);
-      expect(times[1] - times[0], greaterThanOrEqualTo(390));
-      expect(times[2] - times[1], greaterThanOrEqualTo(790));
-      record(second, 'after-success');
-      await _waitUntil(() => times.length == 4);
-      expect(times[3] - times[2], lessThan(400));
-    },
-  );
+  test('batch and periodic triggers preserve increasing backoff', () async {
+    EvaluationAggregator.maxBatchSize = 1;
+    final requests = <http.Request>[];
+    final clock = Stopwatch()..start();
+    final times = <int>[];
+    final client = MockClient((request) async {
+      requests.add(request);
+      times.add(clock.elapsedMilliseconds);
+      return http.Response('{}', times.length < 3 ? 503 : 202);
+    });
+    final first = _aggregator(
+      requests: requests,
+      httpClient: client,
+      flushInterval: const Duration(milliseconds: 20),
+    );
+    addTearDown(first.shutdown);
+    void record(EvaluationAggregator target, String key) =>
+        target.recordEvaluation(
+          flagKey: key,
+          assignment: _assignment(),
+          evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+          error: null,
+        );
+    record(first, 'first');
+    await _waitUntil(() => times.length == 1);
+    for (var i = 0; i < 10; i++) {
+      record(first, 'next-$i');
+      await first.flush();
+    }
+    expect(times, hasLength(1));
+    await _waitUntil(() => times.length == 2);
+    for (var i = 0; i < 10; i++) {
+      record(first, 'later-$i');
+      await first.flush();
+    }
+    expect(times, hasLength(2));
+    await _waitUntil(() => times.length == 3);
+    expect(times[1] - times[0], greaterThanOrEqualTo(390));
+    expect(times[2] - times[1], greaterThanOrEqualTo(790));
+    record(first, 'after-success');
+    await _waitUntil(() => times.length == 4);
+    expect(times[3] - times[2], lessThan(400));
+  });
 
   tearDown(() {
     EvaluationAggregator.maxBatchSize =
