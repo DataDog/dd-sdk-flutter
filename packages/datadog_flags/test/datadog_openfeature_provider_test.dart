@@ -1878,7 +1878,7 @@ void main() {
     expect(details.reason, 'ERROR');
   });
 
-  test('reports missing Datadog configuration during initialization', () async {
+  test('recovers from fatal configuration by replacing the provider', () async {
     final provider = DatadogProvider.fromConfiguration(
       const DatadogFlagsConfiguration(),
     );
@@ -1888,7 +1888,26 @@ void main() {
       throwsA(isA<OpenFeatureException>()),
     );
 
-    expect(api.getClient().providerStatus, ProviderStatus.fatal);
+    final client = api.getClient();
+    expect(client.providerStatus, ProviderStatus.fatal);
+    final failed = client.getBooleanDetails('show-paywall', false);
+    expect(failed.value, isFalse);
+    expect(failed.errorCode, ErrorCode.providerFatal);
+
+    final replacement = DatadogProvider.fromConfiguration(
+      _configuration(
+        MockClient(
+          (request) async => _responseFor(request, _assignmentsResponse()),
+        ),
+      ),
+    );
+    await api.setProviderAndWait(replacement);
+
+    expect(client.providerStatus, ProviderStatus.ready);
+    final recovered = client.getBooleanDetails('show-paywall', false);
+    expect(recovered.value, isTrue);
+    expect(recovered.errorCode, isNull);
+    expect(recovered.reason, 'TARGETING_MATCH');
   });
   test(
     'published assignments survive a store write that never finishes',
