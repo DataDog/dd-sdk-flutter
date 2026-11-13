@@ -30,15 +30,9 @@ class EvaluationAggregator {
   Future<bool>? _uploadInFlight;
   Future<void>? _shutdownInFlight;
   Timer? _periodicFlushTimer;
-  final Stopwatch _periodicFlushClock = Stopwatch();
-  Duration _periodicFlushDelay = Duration.zero;
   Timer? _retryFlushTimer;
-  final Stopwatch _retryFlushClock = Stopwatch();
-  Duration _retryFlushDelay = Duration.zero;
   bool _shutdownDrainActive = false;
-  EvaluationAggregator? _successor;
-  final Set<Future<void>> _inheritedUploads = {};
-  UploadBackoff _backoff = UploadBackoff();
+  final UploadBackoff _backoff = UploadBackoff();
 
   EvaluationAggregator(this.runtime) {
     if (runtime.configuration.trackEvaluations) {
@@ -48,62 +42,10 @@ class EvaluationAggregator {
 
   void _schedulePeriodicFlush(Duration delay) {
     _periodicFlushTimer?.cancel();
-    _periodicFlushDelay = delay;
-    _periodicFlushClock
-      ..reset()
-      ..start();
     _periodicFlushTimer = Timer(delay, () {
       _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
       unawaited(flush());
     });
-  }
-
-  void inheritPendingEvaluations(EvaluationAggregator previous) {
-    _backoff = previous._backoff;
-    if (runtime.configuration.trackEvaluations &&
-        previous._periodicFlushTimer != null) {
-      final remaining =
-          previous._periodicFlushDelay - previous._periodicFlushClock.elapsed;
-      final interval = runtime.configuration.evaluationFlushInterval;
-      _schedulePeriodicFlush(
-        remaining.isNegative
-            ? Duration.zero
-            : (remaining > interval ? interval : remaining),
-      );
-    }
-    final retryRemaining = previous._retryFlushTimer == null
-        ? null
-        : previous._retryFlushDelay - previous._retryFlushClock.elapsed;
-    previous._periodicFlushClock.stop();
-    previous._retryFlushClock.stop();
-    previous._successor = this;
-    previous._periodicFlushTimer?.cancel();
-    previous._periodicFlushTimer = null;
-    previous._retryFlushTimer?.cancel();
-    previous._retryFlushTimer = null;
-    _restore(previous._aggregations.values.toList(), reschedule: false);
-    previous._aggregations.clear();
-    if (runtime.configuration.trackEvaluations &&
-        retryRemaining != null &&
-        _aggregations.isNotEmpty) {
-      _scheduleRetryFlush(
-        retryRemaining.isNegative ? Duration.zero : retryRemaining,
-      );
-    }
-    for (final upload in previous._inheritedUploads) {
-      _inheritUpload(upload);
-    }
-    final activeUpload = previous._uploadInFlight;
-    if (activeUpload != null) {
-      _inheritUpload(activeUpload.then<void>((_) {}));
-    }
-  }
-
-  void _inheritUpload(Future<void> upload) {
-    // Failed batches are restored through the successor chain before settling.
-    final settled = upload.catchError((Object _) {});
-    _inheritedUploads.add(settled);
-    unawaited(settled.whenComplete(() => _inheritedUploads.remove(settled)));
   }
 
   void recordEvaluation({
@@ -165,8 +107,6 @@ class EvaluationAggregator {
   }
 
   Future<void> shutdown() {
-    _periodicFlushClock.stop();
-    _retryFlushClock.stop();
     _periodicFlushTimer?.cancel();
     _periodicFlushTimer = null;
     _retryFlushTimer?.cancel();
@@ -191,12 +131,7 @@ class EvaluationAggregator {
     _shutdownDrainActive = true;
     try {
       final activeUpload = _uploadInFlight;
-      var activeSucceeded = true;
-      await Future.wait([
-        ..._inheritedUploads,
-        if (activeUpload != null)
-          activeUpload.then<void>((succeeded) => activeSucceeded = succeeded),
-      ]);
+      final activeSucceeded = await activeUpload ?? true;
       if (!activeSucceeded) return;
       await _uploadPendingEvaluations(rescheduleOnFailure: false);
     } finally {
@@ -211,7 +146,7 @@ class EvaluationAggregator {
       _scheduleRetryFlush(_backoff.remaining);
       return;
     }
-    if (_uploadInFlight != null || _inheritedUploads.isNotEmpty) {
+    if (_uploadInFlight != null) {
       if (rescheduleOnFailure) {
         _scheduleRetryFlush();
       }
@@ -289,11 +224,6 @@ class EvaluationAggregator {
     List<_AggregatedEvaluation> evaluations, {
     required bool reschedule,
   }) {
-    final successor = _successor;
-    if (successor != null) {
-      successor._restore(evaluations, reschedule: true);
-      return;
-    }
     for (final evaluation in evaluations) {
       final existing = _aggregations[evaluation.aggregationKey];
       if (existing == null) {
@@ -367,12 +297,7 @@ class EvaluationAggregator {
       return;
     }
 
-    _retryFlushDelay = delay;
-    _retryFlushClock
-      ..reset()
-      ..start();
     _retryFlushTimer = Timer(delay, () {
-      _retryFlushClock.stop();
       _retryFlushTimer = null;
       unawaited(_flushPendingEvaluations(rescheduleOnFailure: true));
     });
