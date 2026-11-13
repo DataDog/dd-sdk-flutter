@@ -690,6 +690,16 @@ notify-nightly-failed:
     - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
 
+# Linux runners reach Vault through CI Identities, which also injects VAULT_ADDR. This
+# runs as a trusted job (develop), so it can read kv/ci/datadog/dd-sdk-flutter/trusted-jobs.
+# Manage these values with `dart run ci_helpers secrets`.
+.nightly-vars-linux:
+  script:
+    - set +o xtrace
+    - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/ci/datadog/dd-sdk-flutter/trusted-jobs/e2e)
+    - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/ci/datadog/dd-sdk-flutter/trusted-jobs/e2e)
+    - test -n "$DD_E2E_CLIENT_TOKEN" && test -n "$DD_E2E_APPLICATION_ID"
+
 .nightly:
   only: [schedules]
   when: always
@@ -831,11 +841,14 @@ nightly-ios:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
+# Does not extend .nightly: its VAULT_ADDR would replace the one the runner injects.
 nightly-android:
-  extends: [.nightly, .android-emulator-runner]
+  extends: .android-emulator-runner
+  only: [schedules]
+  when: always
   stage: e2e-test
   script:
-    - !reference [.nightly-vars, script]
+    - !reference [.nightly-vars-linux, script]
     - !reference [.pre, script]
     - !reference [.pre-android, script]
     - cd tools/ci && dart pub get && dart run ci_helpers start_sim --platform android --sdk $ANDROID_EMULATOR_SDK
