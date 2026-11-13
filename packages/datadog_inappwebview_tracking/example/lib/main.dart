@@ -11,7 +11,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 String? customEndpoint;
 
 Future<void> main() async {
-  await dotenv.load(mergeWith: Platform.environment);
+  await dotenv.load(fileName: 'dd.env', mergeWith: Platform.environment);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');

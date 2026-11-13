@@ -7,6 +7,7 @@
 
 build/
 **/.env
+**/dd.env
 
 # Datadog C SDK fallback data directory (desktop, when no data directory is set)
 **/.datadog/
@@ -29,10 +30,7 @@ tools/ci/venv
 ndk_crash_reports_v2/
 ndk_crash_reports_intermediary_v2/
 .fvm/
-packages/datadog_flutter_plugin/integration_test_app/ios/Podfile.lock
-packages/datadog_tracking_http_client/example/ios/Podfile.lock
-examples/native-hybrid-app/ios/Podfile.lock
-packages/datadog_flutter_plugin/example/ios/Podfile.lock
+**/ios/Podfile.lock
 # Flutter generates these for the macOS example apps when CocoaPods is in use.
 # macOS builds use Swift Package Manager, so they are never meant to be committed.
 **/macos/Podfile

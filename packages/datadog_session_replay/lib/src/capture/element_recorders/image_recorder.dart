@@ -9,18 +9,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/widgets.dart';
 
 import '../../../datadog_session_replay.dart';
-import '../../datadog_session_replay_platform_interface.dart';
-import '../../sr_data_models.dart';
 import '../capture_node.dart';
 import '../recorder.dart';
 import '../view_tree_snapshot.dart';
-
-// This size was chosen so that 'Content Image' would fit without
-// overlapping other content in the replay.
-const int _labelMinWidth = 125;
-
-// ~800x800 decoded pixels; raw RGBA ~2 MB.
-const int defaultMaxImagePixelBudget = 640000;
+import 'raster_resources.dart';
 
 @visibleForTesting
 enum DownscalingNeed { none, fitToBounds, downscaling }
@@ -117,47 +109,30 @@ class ImageRecorder implements ElementRecorder {
     bool shouldCaptureImage =
         capturePrivacy.imagePrivacyLevel == ImagePrivacyLevel.maskNone;
     if (!shouldCaptureImage) {
-      return SpecificElement(
-        subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-        nodes: [
-          PlaceholderNode(
-            attributes,
-            wireframeId: elementId,
-            caption: 'Image',
-            minWidth: _labelMinWidth,
-          ),
-        ],
+      return placeholderElement(
+        attributes,
+        wireframeId: elementId,
+        caption: 'Image',
       );
     }
 
     final totalPixelSize = uiImage.width * uiImage.height;
     if (totalPixelSize > maxImagePixelBudget &&
         imageDownscaling == ImageDownscaling.disabled) {
-      return SpecificElement(
-        subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-        nodes: [
-          PlaceholderNode(
-            attributes,
-            wireframeId: elementId,
-            caption: 'Large Image',
-            minWidth: _labelMinWidth,
-          ),
-        ],
+      return placeholderElement(
+        attributes,
+        wireframeId: elementId,
+        caption: 'Large Image',
       );
     }
 
     final hasResourceKey = keyGenerator.hasImageKey(uiImage);
     if (hasResourceKey) {
       final resourceKey = keyGenerator.keyForImage(uiImage);
-      return SpecificElement(
-        subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-        nodes: [
-          ResourceImageNode(
-            attributes,
-            wireframeId: elementId,
-            resourceKey: resourceKey,
-          ),
-        ],
+      return resourceElement(
+        attributes,
+        wireframeId: elementId,
+        resourceKey: resourceKey,
       );
     }
 
@@ -174,7 +149,7 @@ class ImageRecorder implements ElementRecorder {
       return IgnoredElement(subtreeStrategy: CaptureNodeSubtreeStrategy.ignore);
     }
     // Read synchronously; the element may be unmounted once processing runs.
-    final devicePixelRatio = _devicePixelRatio(element);
+    final devicePixelRatio = devicePixelRatioOf(element);
 
     return AdditionalProcessingElement(
       subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
@@ -262,32 +237,18 @@ class ImageRecorder implements ElementRecorder {
     required ui.Image encodingImageForByteData,
   }) async {
     try {
-      // Prevent conversion of the image data to speed things up, we're going to
-      // be hashing / compressing in the processor anyway
-      final byteData = await encodingImageForByteData.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
+      final resourceKey = await saveRasterForProcessing(
+        encodingImageForByteData,
+        () => keyGenerator.keyForImage(sourceImageForKeyGen),
       );
-      if (byteData != null) {
-        final resourceKey = keyGenerator.keyForImage(sourceImageForKeyGen);
-        await DatadogSessionReplayPlatform.instance.saveImageForProcessing(
-          resourceKey,
-          encodingImageForByteData.width,
-          encodingImageForByteData.height,
-          byteData,
-        );
-        return SpecificElement(
-          subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-          nodes: [
-            ResourceImageNode(
-              attributes,
-              wireframeId: elementId,
-              resourceKey: resourceKey,
-            ),
-          ],
-        );
-      } else {
+      if (resourceKey == null) {
         return _placeholder(elementId, attributes, 'Empty Image');
       }
+      return resourceElement(
+        attributes,
+        wireframeId: elementId,
+        resourceKey: resourceKey,
+      );
     } catch (_) {
       return _placeholder(elementId, attributes, 'Error Image');
     }
@@ -298,16 +259,10 @@ class ImageRecorder implements ElementRecorder {
     CapturedViewAttributes attributes,
     String caption,
   ) {
-    return SpecificElement(
-      subtreeStrategy: CaptureNodeSubtreeStrategy.ignore,
-      nodes: [
-        PlaceholderNode(
-          attributes,
-          wireframeId: elementId,
-          caption: caption,
-          minWidth: _labelMinWidth,
-        ),
-      ],
+    return placeholderElement(
+      attributes,
+      wireframeId: elementId,
+      caption: caption,
     );
   }
 
@@ -355,28 +310,12 @@ class ImageRecorder implements ElementRecorder {
       return (DownscalingNeed.fitToBounds, fitToBoundsWidth, fitToBoundsHeight);
     }
 
-    final downscaling = math.sqrt(pixelBudget / fitToBoundsPixels);
-    final downscaledWidth = math.max(
-      1,
-      (fitToBoundsWidth * downscaling).floor(),
+    final (:width, :height) = fitPixelBudget(
+      fitToBoundsWidth,
+      fitToBoundsHeight,
+      pixelBudget,
     );
-    final downscaledHeight = math.max(
-      1,
-      (fitToBoundsHeight * downscaling).floor(),
-    );
-    return (DownscalingNeed.downscaling, downscaledWidth, downscaledHeight);
-  }
-
-  static double _devicePixelRatio(Element element) {
-    final view = View.maybeOf(element);
-    if (view != null) {
-      return view.devicePixelRatio;
-    }
-    final views = WidgetsBinding.instance.platformDispatcher.views;
-    if (views.isNotEmpty) {
-      return views.first.devicePixelRatio;
-    }
-    return 1.0;
+    return (DownscalingNeed.downscaling, width, height);
   }
 
   static Future<ui.Image> _downscaleImageDefault(
@@ -412,36 +351,5 @@ class ImageRecorder implements ElementRecorder {
       }
     }
     return assetImage;
-  }
-}
-
-@immutable
-@visibleForTesting
-class ResourceImageNode extends CaptureNode {
-  final int wireframeId;
-  final int resourceKey;
-
-  const ResourceImageNode(
-    super.attributes, {
-    required this.wireframeId,
-    required this.resourceKey,
-  });
-
-  @override
-  List<SRWireframe> buildWireframes() {
-    final resourceId = DatadogSessionReplayPlatform.instance.resourceIdForKey(
-      resourceKey,
-    );
-
-    return [
-      SRImageWireframe(
-        id: wireframeId,
-        x: attributes.x,
-        y: attributes.y,
-        width: attributes.width,
-        height: attributes.height,
-        resourceId: resourceId,
-      ),
-    ];
   }
 }

@@ -26,6 +26,22 @@ typedef DatadogClientAttributesProvider =
       Object? error,
     );
 
+/// An [ErrorTypeResolver] for the errors of the `http` package, so their type
+/// is not obfuscated in apps built with `--obfuscate`. [DatadogClient]
+/// registers it automatically.
+String? httpErrorTypeResolver(Object error) {
+  if (error.runtimeType == http.ClientException) {
+    return 'ClientException';
+  }
+  // `IOClient` wraps every SocketException (no connection, DNS failure,
+  // connection refused) in a private subclass of ClientException that also
+  // implements SocketException. Report the name it has in unobfuscated builds.
+  if (error is http.ClientException && error is SocketException) {
+    return '_ClientSocketException';
+  }
+  return null;
+}
+
 /// A composable client for use with the `http` package that supports tracking
 /// network requests and sending them to Datadog.
 ///
@@ -72,6 +88,7 @@ class DatadogClient extends http.BaseClient {
     this.ignoreUrlPatterns = const [],
     http.Client? innerClient,
   }) : _innerClient = innerClient ?? http.Client() {
+    datadogSdk.addIntegrationErrorTypeResolver(httpErrorTypeResolver);
     datadogSdk.updateConfigurationInfo(
       LateConfigurationProperty.trackNetworkRequests,
       true,
@@ -142,7 +159,7 @@ class DatadogClient extends http.BaseClient {
           rum.stopResourceWithErrorInfo(
             rumKey,
             e.toString(),
-            e.runtimeType.toString(),
+            datadogSdk.resolveErrorType(e),
             attributes,
           );
         } catch (innerE, st) {
@@ -180,7 +197,7 @@ class DatadogClient extends http.BaseClient {
               rum.stopResourceWithErrorInfo(
                 rumKey!,
                 firstError.toString(),
-                firstError.runtimeType.toString(),
+                datadogSdk.resolveErrorType(e),
                 attributes,
               );
             }

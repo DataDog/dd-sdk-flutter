@@ -6,6 +6,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/args.dart';
 import 'package:path/path.dart' as path;
 
 // Not all functionality is available in Flutter web. These integration tests
@@ -28,7 +29,23 @@ const fileExclude = [
 
 const testDriver = 'test_driver/integration_test.dart';
 
-void main(List<String> args) async {
+// Runs every integration test file with `flutter drive`, once per compiler.
+// `--compiler` is `js`, `wasm`, or `all` (the default).
+void main(List<String> arguments) async {
+  final parser = ArgParser()
+    ..addOption(
+      'compiler',
+      allowed: ['js', 'wasm', 'all'],
+      defaultsTo: 'all',
+      help: 'Compiler to run the tests with.',
+    );
+  final results = parser.parse(arguments);
+  final compilers = switch (results['compiler']) {
+    'js' => [false],
+    'wasm' => [true],
+    _ => [false, true],
+  };
+
   // Check path
   var testDirectory = Directory('integration_test');
   if (!testDirectory.existsSync()) {
@@ -37,8 +54,12 @@ void main(List<String> args) async {
     exit(1);
   }
 
-  bool wasm = args.contains('--wasm');
+  for (final wasm in compilers) {
+    await _runAll(testDirectory, wasm: wasm);
+  }
+}
 
+Future<void> _runAll(Directory testDirectory, {required bool wasm}) async {
   for (final file in testDirectory.listSync()) {
     if (file is File) {
       final baseName = path.basename(file.path);

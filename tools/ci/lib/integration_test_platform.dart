@@ -32,6 +32,14 @@ enum TestPlatform {
   /// Runs before each test file.
   final void Function()? beforeEachFile;
 
+  /// `flutter build` arguments that compile the app for this platform, or
+  /// `null` when no separate build is needed before the first test.
+  List<String>? get warmUpBuildArgs => switch (this) {
+    ios => const ['build', 'ios', '--simulator', '--debug'],
+    android => const ['build', 'apk', '--debug'],
+    macos || linux || windows => null,
+  };
+
   /// Test files that don't run on this platform.
   List<String> get excludedFiles => switch (this) {
     macos || linux || windows => const ['configuration_telemetry_test.dart'],

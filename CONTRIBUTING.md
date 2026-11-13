@@ -35,14 +35,14 @@ Next, at the root of the repository, bootstrap melos:
 melos bootstrap
 ```
 
-Next, we need to generate necessary `.env` files for the various apps in order to use them with
+Next, we need to generate necessary `dd.env` files for the various apps in order to use them with
 Datadog. We use Melos for this as well. Run:
 
 ```bash
 melos prepare
 ```
 
-Running `melos prepare` creates `.env` files in the various example application,
+Running `melos prepare` creates `dd.env` files in the various example application,
 which should be modified with your Client Id and Application Id from the Datadog
 RUM setup. Alternately, it can pull this information from the environment
 variables `DD_CLIENT_TOKEN` and `DD_APPLICATION_ID` for most test apps, and
@@ -183,6 +183,25 @@ SDKs are pinned to the currently supported native releases. For this reason, `ma
 should be "Forward Only", as we do not want to bring these pins back into `develop`.
 You should not, nor should you need to, merge changes from `main` back into `develop` 
 or any development branch.
+
+### Refreshing the `dd-sdk-ios` pin
+
+On `develop`, the iOS plugin depends on the `develop` branch of `dd-sdk-ios`, but
+SwiftPM records the resolved commit in `Package.resolved` (which is gitignored) and
+keeps building it. Flutter also keeps a checkout in `build/ios/SourcePackages`. If an
+example fails to build with errors about missing `dd-sdk-ios` symbols, it is possible
+the pin is stale.
+
+Deleting only `Package.resolved`, the SwiftPM cache, or Xcode's DerivedData does not
+reliably fix this: the pins are regenerated from the checkout in `build/ios`. Run:
+
+```
+melos run reset:ios_packages
+```
+
+This deletes `build/ios/SourcePackages` and both `Package.resolved` files in every iOS
+app, so the next `flutter run` or `flutter build ios` resolves `develop` again. To do it
+for a single app, delete those three paths by hand.
 
 ## Trunk based development and patch releases
 

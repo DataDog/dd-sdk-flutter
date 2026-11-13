@@ -5,9 +5,12 @@
 
 import 'dart:io';
 
-// Writes a `.env` file from environment variables. Replaces a bash `tee <<
+// Writes a `dd.env` file from environment variables. Replaces a bash `tee <<
 // END` heredoc that melos previously ran via `cmd.exe` on Windows, where
 // `tee` doesn't exist.
+//
+// The file isn't a dotfile because Android's default asset filter drops
+// dotfiles from the APK (flutter/flutter#196444).
 void main(List<String> arguments) {
   final isE2e = arguments.contains('--e2e');
   final clientTokenVar = isE2e ? 'DD_E2E_CLIENT_TOKEN' : 'DD_CLIENT_TOKEN';
@@ -32,6 +35,6 @@ void main(List<String> arguments) {
   }
   buffer.writeln('DD_ENV=prod');
 
-  print('Generating .env');
-  File('.env').writeAsStringSync(buffer.toString());
+  print('Generating dd.env');
+  File('dd.env').writeAsStringSync(buffer.toString());
 }

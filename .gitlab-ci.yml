@@ -2,7 +2,7 @@ include:
   - 'https://gitlab-templates.ddbuild.io/slack-notifier/v3-sdm/template.yml'
 
 variables:
-  CURRENT_CI_IMAGE: "11"
+  CURRENT_CI_IMAGE: "14"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
   DISTRIBUTION_REGISTRY: registry.ddbuild.io
   # Linux CI Images
@@ -17,7 +17,7 @@ variables:
   IOS_SDK: 'iOS-26'
   ANDROID_EMULATOR_SDK: "33"
   IS_ON_CI: $CI
-  SLACK_CHANNEL: "#mobile-sdk-ops"
+  SLACK_CHANNEL: "#dd-sdk-flutter-ops"
   # Flutter 3.38.0 bundles prerelease Dart; 3.38.1 includes stable Dart 3.10.
   # https://github.com/flutter/flutter/issues/178400
   FLUTTER_MIN_VERSION: '3.38.1'
@@ -28,6 +28,11 @@ variables:
   KUBERNETES_MEMORY_REQUEST: "32Gi"
   KUBERNETES_MEMORY_LIMIT: "48Gi"
   KUBERNETES_CPU_REQUEST: 4
+
+# Cancel a pipeline's interruptible jobs when a newer commit is pushed to the same ref.
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
 
 stages:
   - ci-image
@@ -42,7 +47,7 @@ stages:
 
 # Prebuild - install necessary tools
 
-.pre:
+.pre-setup:
   script:
     - ulimit -S -n 2048
     - export PATH=$PATH:$HOME/.pub-cache/bin
@@ -55,9 +60,29 @@ stages:
     - dart pub global activate junitreport
     - melos bootstrap
     - mkdir -p $CI_PROJECT_DIR/.build/test-results/
+
+.pre-clean:
+  script:
     - melos full_clean
+
+.pre-prepare:
+  script:
     - melos prepare
     - pushd tools/ci && dart pub get && popd
+
+.pre:
+  script:
+    - !reference [.pre-setup, script]
+    - !reference [.pre-clean, script]
+    - !reference [.pre-prepare, script]
+
+# Tart VMs start from a clean checkout, so only the lockfiles need deleting before
+# resolving dependencies, instead of a full `melos full_clean`.
+.pre-tart:
+  script:
+    - !reference [.pre-setup, script]
+    - melos delete_pubspec_lock
+    - !reference [.pre-prepare, script]
 
 .pre-web:
   script:
@@ -108,10 +133,25 @@ stages:
     - export PATH="$PATH:${CI_PROJECT_DIR}/tools/ci/.tmp/chrome-linux64/"
     - echo $CHROME_EXECUTABLE
 
+.infra-retry:
+  retry:
+    max: 1
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+
 .tart-runner:
+  extends: .infra-retry
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/ci-platform-machine-images/tart-vm:dd-sdk-flutter-sequoia-latest
   tags:
     - macos:tart
+
+.android-emulator-runner:
+  extends: .infra-retry
+  image: $CI_IMAGE_DOCKER
+  tags:
+    - kvm:amd64
 
 ci-image:
   when: manual
@@ -147,11 +187,12 @@ ci-image-windows:
 build-flutter:
   extends: .tart-runner
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - pushd tools/releaser && dart pub get && dart test && popd
     - melos dartfmt_check
     - melos run analyze:dart
@@ -162,9 +203,12 @@ build-flutter:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 build-android:
   stage: build
+  interruptible: true
   except: [schedules]
   image: $CI_IMAGE_DOCKER
   tags: ["arch:amd64"]
@@ -182,14 +226,25 @@ build-android:
     paths:
       - "$CI_PROJECT_DIR/**/reports/detekt/*"
 
+# Junit reports and xcresult bundles from the Xcode unit tests.
+.xcode-test-artifacts:
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/xcresult
+
 build-ios-spm:
-  extends: .tart-runner
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -201,15 +256,14 @@ build-ios-spm:
 # dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
 # macOS can only build via Swift Package Manager until that's fixed upstream.
 build-macos-spm:
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
+  interruptible: true
   except: [ schedules ]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -218,13 +272,14 @@ build-macos-spm:
     - melos run unit_test:macos
 
 build-ios:
-  extends: .tart-runner
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
@@ -236,6 +291,7 @@ build-ios:
 
 build-web:
   stage: build
+  interruptible: true
   except: [schedules]
   image: $CI_IMAGE_DOCKER
   tags:
@@ -251,9 +307,12 @@ build-web:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 build-linux:
   stage: build
+  interruptible: true
   except: [ schedules ]
   image: $CI_IMAGE_DOCKER
   tags: [ "arch:amd64" ]
@@ -267,12 +326,15 @@ build-linux:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 # Windows shell-executor runners don't support the `image:` keyword, so unlike the
 # Linux jobs (build-android/build-web), the toolchain image has to be run explicitly
 # via `docker run` on the bare host.
 build-windows:
   stage: build
+  interruptible: true
   except: [ schedules ]
   tags: [ "windows-v2:2022" ]
   variables:
@@ -291,18 +353,21 @@ build-windows:
     expire_in: "30 days"
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+    paths:
+      - .build/test-results/*.jsonl
 
 # Integration Tests
 
 android-integration-test:
+  extends: .android-emulator-runner
   stage: integration-test
+  interruptible: true
   except: [schedules]
-  needs: [build-android]
+  needs:
+    - job: build-flutter
+      artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-android, script]
@@ -315,17 +380,21 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - tools/ci/emulator.log
       - .build/test-results/*.jsonl
 
 ios-integration-test:
   extends: .tart-runner
   stage: integration-test
+  interruptible: true
   except: [schedules]
-  needs: [build-ios]
+  needs:
+    - job: build-flutter
+      artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
@@ -340,16 +409,17 @@ ios-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 macos-integration-test:
+  extends: .tart-runner
   stage: integration-test
+  interruptible: true
   except: [ schedules ]
-  needs: [ build-macos-spm ]
+  needs:
+    - job: build-flutter
+      artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -363,8 +433,14 @@ macos-integration-test:
 
 web-integration-test:
   stage: integration-test
+  interruptible: true
   except: [schedules]
-  needs: [build-web]
+  needs:
+    - job: build-flutter
+      artifacts: false
+  parallel:
+    matrix:
+      - WEB_COMPILER: [js, wasm]
   image: $CI_IMAGE_DOCKER
   tags:
     - "arch:amd64"
@@ -376,8 +452,11 @@ web-integration-test:
 
 linux-integration-test:
   stage: integration-test
+  interruptible: true
   except: [ schedules ]
-  needs: [ build-linux ]
+  needs:
+    - job: build-flutter
+      artifacts: false
   image: $CI_IMAGE_DOCKER
   tags:
     [ "arch:amd64" ]
@@ -569,10 +648,12 @@ notify-publish-develop-failure:
   when: on_failure
   only:
     - develop
+  except:
+    - schedules
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":status_alert: $CI_PROJECT_NAME $CI_COMMIT_TAG develop pipeline <$BUILD_URL|$COMMIT_MESSAGE> failed."'
-    - postmessage "#mobile-sdk-ops" "$MESSAGE_TEXT"
+    - postmessage "#dd-sdk-flutter-ops" "$MESSAGE_TEXT"
 
 notify-pipeline-succeeded:
   stage: post
@@ -589,12 +670,11 @@ notify-nightly-failed:
   stage: post-nightly
   when: on_failure
   only:
-    - develop
     - schedules
   script:
     - BUILD_URL="$CI_PROJECT_URL/pipelines/$CI_PIPELINE_ID"
     - 'MESSAGE_TEXT=":status_alert: $CI_PROJECT_NAME $CI_COMMIT_TAG Nightly develop pipeline <$BUILD_URL|$COMMIT_MESSAGE> failed."'
-    - postmessage "#mobile-sdk-ops" "$MESSAGE_TEXT"
+    - postmessage "#dd-sdk-flutter-ops" "$MESSAGE_TEXT"
 
 # Nightly
 
@@ -625,7 +705,7 @@ nightly-min-version-test:
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - fvm install $FLUTTER_MIN_VERSION
     - fvm use $FLUTTER_MIN_VERSION
@@ -639,35 +719,71 @@ nightly-min-version-test:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
-nightly-beta-test:
-  extends: [.nightly, .tart-runner]
-  stage: version-test
-  variables:
-    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+.nightly-beta-artifacts:
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Switches the fvm-managed Flutter SDK on a Tart runner to the beta channel.
+.use-fvm-beta:
   script:
-    - !reference [.pre, script]
-    - !reference [.pre-ios, script]
-    - !reference [.install-gradle-mirror, script]
     - fvm destroy
     - fvm install beta
     - fvm use beta
     - fvm flutter upgrade --force
+
+nightly-beta-test-flutter:
+  extends: [.nightly, .nightly-beta-artifacts, .tart-runner]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  script:
+    - !reference [.pre-tart, script]
+    - !reference [.use-fvm-beta, script]
+    - fvm exec dart pub global activate melos
+    - flutter doctor
+    - fvm exec melos pub:get
+    - fvm exec melos run analyze:dart
+    - fvm exec melos run unit_test:flutter
+
+nightly-beta-test-ios:
+  extends: [.nightly, .nightly-beta-artifacts, .tart-runner]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  script:
+    - !reference [.pre-tart, script]
+    - !reference [.pre-ios, script]
+    - !reference [.use-fvm-beta, script]
     - fvm flutter precache --ios
     - fvm exec dart pub global activate melos
     - pod repo update
     - flutter doctor
     - fvm exec melos pub:get
     - fvm exec melos remove_podfile_lock --no-select
-    - fvm exec melos run analyze
-    - fvm exec melos run build
-    - fvm exec melos run unit_test:flutter
-    - fvm exec melos run unit_test:android
+    - fvm exec melos run analyze:ios
+    - fvm exec melos run build:ios
     - fvm exec melos run unit_test:ios
-  artifacts:
-    when: always
-    expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+nightly-beta-test-android:
+  extends: [.nightly, .nightly-beta-artifacts]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  image: $CI_IMAGE_DOCKER
+  tags:
+    - "arch:amd64"
+  script:
+    - !reference [.pre, script]
+    - git -C "$(dirname $(dirname $(which flutter)))" reset --hard
+    - flutter channel beta
+    - flutter upgrade --force
+    - !reference [.pre-android, script]
+    - melos run analyze:android
+    - melos run build:android
+    - melos run unit_test:android
 
 nightly-beta-test-web:
   extends: .nightly
@@ -701,7 +817,7 @@ nightly-ios:
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
     - pod repo update
     - melos pub:get
@@ -716,7 +832,7 @@ nightly-ios:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-android:
-  extends: .nightly
+  extends: [.nightly, .android-emulator-runner]
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]
@@ -731,17 +847,19 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - tools/ci/emulator.log
       - .build/test-results/*.jsonl
 
 # Verify the published Dart floor with the repository's Flutter version manager.
 openfeature-min-version-test:
   extends: .tart-runner
   stage: build
+  interruptible: true
   except: [schedules]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - fvm install $FLUTTER_MIN_VERSION
     - fvm use $FLUTTER_MIN_VERSION
     - cd packages/datadog_flags
