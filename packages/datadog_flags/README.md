@@ -137,6 +137,8 @@ application ID, service, and version. The environment is sent as `dd_env`.
   for evaluation telemetry. The interval must be between 1 and 60 seconds.
   The default is 10 seconds.
 - `dateProvider` for application-controlled timestamps.
+- `flagSelection` to load only the flags that match a `FlagSelection` of tags or
+  key patterns. Stored assignments are restored only under the same selection.
 
 The store loads a `FlagsData` snapshot only when its context matches the request.
 Cache writes and deletes are serialized per store instance and client name.

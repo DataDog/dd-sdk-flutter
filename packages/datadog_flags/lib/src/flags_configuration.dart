@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'flags_client.dart';
+import 'flag_selection.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
 
@@ -89,6 +90,21 @@ final class DatadogFlagsConfiguration {
   /// Clock used for timestamps in stored assignments and telemetry.
   final DateTime Function() dateProvider;
 
+  /// Loads only the flags that match these tags or key patterns.
+  ///
+  /// Every client created with this configuration uses the selection. Stored
+  /// assignments fetched under a different selection are not restored. See
+  /// [FlagSelection] for the matching rules, limits, and fallbacks.
+  ///
+  /// The SDK reports a selection the server ignored through the
+  /// `DD-Flag-Selection-Ignored` response header. On web, a
+  /// [customFlagsEndpoint] proxy must forward this header and list it in
+  /// `Access-Control-Expose-Headers`; otherwise the full configuration still
+  /// loads, but the SDK logs nothing.
+  ///
+  /// When omitted, every flag is loaded.
+  final FlagSelection? flagSelection;
+
   /// Creates SDK runtime configuration.
   const DatadogFlagsConfiguration({
     this.customFlagsEndpoint,
@@ -103,6 +119,7 @@ final class DatadogFlagsConfiguration {
     this.datadogConfig,
     this.store,
     this.dateProvider = DateTime.now,
+    this.flagSelection,
   }) : _evaluationFlushInterval = evaluationFlushInterval;
 
   /// Flush interval coerced to the same 1s-60s bounds used by the iOS and

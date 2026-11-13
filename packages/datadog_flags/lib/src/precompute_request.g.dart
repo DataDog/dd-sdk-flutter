@@ -22,6 +22,7 @@ Map<String, dynamic> _$PrecomputeRequestAttributesToJson(
   'env': instance.env.toJson(),
   'source': instance.source.toJson(),
   'subject': instance.subject.toJson(),
+  'flag_selection': ?instance.flagSelection?.toJson(),
 };
 
 Map<String, dynamic> _$PrecomputeRequestEnvToJson(
@@ -42,4 +43,11 @@ Map<String, dynamic> _$PrecomputeRequestSubjectToJson(
   'targeting_attributes': sanitizeJsonScalarObject(
     instance.targetingAttributes,
   ),
+};
+
+Map<String, dynamic> _$PrecomputeRequestFlagSelectionToJson(
+  PrecomputeRequestFlagSelection instance,
+) => <String, dynamic>{
+  'tags': instance.tags,
+  'key_patterns': instance.keyPatterns,
 };

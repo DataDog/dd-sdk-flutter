@@ -148,6 +148,7 @@ void main() {
       },
     );
     final date = DateTime.utc(2026);
+    const flagSelection = FlagSelection(tags: ['team:mobile']);
     final flagsDatadogConfig = DatadogFlagsConfig(
       clientToken: 'flags-token',
       env: 'staging',
@@ -178,6 +179,7 @@ void main() {
         evaluationFlushInterval: const Duration(seconds: 2),
         datadogConfig: flagsDatadogConfig,
         dateProvider: () => date,
+        flagSelection: flagSelection,
       ),
     );
 
@@ -185,6 +187,7 @@ void main() {
     await plugin.ready;
 
     final flagsConfiguration = capturedConfiguration!;
+    expect(flagsConfiguration.flagSelection, same(flagSelection));
     expect(flagsConfiguration.datadogConfig, same(flagsDatadogConfig));
     expect(
       flagsConfiguration.customFlagsEndpoint,
