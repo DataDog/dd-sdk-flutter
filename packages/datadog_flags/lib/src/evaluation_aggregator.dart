@@ -108,7 +108,7 @@ class EvaluationAggregator {
   void recordEvaluation({
     required String flagKey,
     required FlagAssignment? assignment,
-    required FlagsEvaluationContext evaluationContext,
+    required FlagsEvaluationContext? evaluationContext,
     required String? error,
   }) {
     final configuration = runtime.configuration;
@@ -138,9 +138,11 @@ class EvaluationAggregator {
       flagKey: flagKey,
       variantKey: assignment?.variationKey,
       allocationKey: assignment?.allocationKey,
-      targetingKey: evaluationContext.targetingKey,
+      targetingKey: evaluationContext == null
+          ? null
+          : evaluationContext.targetingKey ?? '',
       error: error,
-      attributes: evaluationContext.attributes,
+      attributes: evaluationContext?.attributes ?? const {},
       firstEvaluation: now,
       lastEvaluation: now,
       evaluationCount: 1,
@@ -375,16 +377,18 @@ String _aggregationKey({
   required String flagKey,
   required String? allocationKey,
   required String? variantKey,
-  required FlagsEvaluationContext evaluationContext,
+  required FlagsEvaluationContext? evaluationContext,
   required String? error,
 }) {
   return jsonEncode({
     'flagKey': flagKey,
     'variantKey': variantKey,
     'allocationKey': allocationKey,
-    'targetingKey': evaluationContext.targetingKey ?? '',
+    'targetingKey': evaluationContext == null
+        ? null
+        : evaluationContext.targetingKey ?? '',
     'error': error,
-    'context': _sortedJson(evaluationContext.attributes),
+    'context': _sortedJson(evaluationContext?.attributes ?? const {}),
   });
 }
 

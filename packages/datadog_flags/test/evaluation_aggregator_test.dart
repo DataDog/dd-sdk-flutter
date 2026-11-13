@@ -174,6 +174,68 @@ void main() {
     expect(evaluation.containsKey('runtime_default_used'), isFalse);
   });
 
+  for (final keys in <List<String?>>[
+    [null, ''],
+    ['', null],
+  ]) {
+    test('normalizes empty-subject telemetry in order $keys', () async {
+      final requests = <http.Request>[];
+      final aggregator = _aggregator(requests: requests);
+      addTearDown(aggregator.shutdown);
+
+      for (final key in [...keys, 'user-123']) {
+        aggregator.recordEvaluation(
+          flagKey: 'checkout.enabled',
+          assignment: _assignment(),
+          evaluationContext: FlagsEvaluationContext(targetingKey: key),
+          error: null,
+        );
+      }
+      await aggregator.flush();
+
+      final evaluations = _flagEvaluations(
+        _evaluationRequests(requests).single,
+      );
+      expect(evaluations, hasLength(2));
+      expect(evaluations.first['targeting_key'], '');
+      expect(evaluations.first['evaluation_count'], 2);
+      expect(evaluations.last['targeting_key'], 'user-123');
+      expect(evaluations.last['evaluation_count'], 1);
+    });
+  }
+
+  test(
+    'keeps missing telemetry identity separate from an empty subject',
+    () async {
+      final requests = <http.Request>[];
+      final aggregator = _aggregator(requests: requests);
+      addTearDown(aggregator.shutdown);
+
+      for (final context in <FlagsEvaluationContext?>[
+        null,
+        FlagsEvaluationContext.empty,
+        const FlagsEvaluationContext(targetingKey: ''),
+      ]) {
+        aggregator.recordEvaluation(
+          flagKey: 'checkout.enabled',
+          assignment: null,
+          evaluationContext: context,
+          error: FlagEvaluationError.providerNotReady.code,
+        );
+      }
+      await aggregator.flush();
+
+      final evaluations = _flagEvaluations(
+        _evaluationRequests(requests).single,
+      );
+      expect(evaluations, hasLength(2));
+      expect(evaluations.first.containsKey('targeting_key'), isFalse);
+      expect(evaluations.first['evaluation_count'], 1);
+      expect(evaluations.last['targeting_key'], '');
+      expect(evaluations.last['evaluation_count'], 2);
+    },
+  );
+
   test('keeps runtime-default and error evaluations separate', () async {
     final requests = <http.Request>[];
     final aggregator = _aggregator(requests: requests);

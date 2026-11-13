@@ -168,7 +168,7 @@ class DefaultDatadogFlagsClient
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: null,
-        evaluationContext: FlagsEvaluationContext.empty,
+        evaluationContext: null,
         error: FlagEvaluationError.providerNotReady.code,
       );
       return FlagDetails(
