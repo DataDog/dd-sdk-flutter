@@ -60,8 +60,9 @@ abstract interface class DatadogFlagsClient {
   /// error until assignments are available and while assignments are withheld.
   /// A targeting-key change immediately withholds the installed assignments.
   /// By default, same-key attribute changes retain assignments while pending or failed.
-  /// The boolean attribute `dd_strict_evaluation_context_switching` also requires
-  /// matching targeting attributes and withholds assignments after failure.
+  /// Setting [strictContextSwitchingAttribute] to `true` in context attributes
+  /// also requires matching targeting attributes and withholds assignments
+  /// after failure.
   /// Strict retries require a successful fetch before evaluations recover.
   /// Throws [StateError] if this client has been shut down.
   Future<void> initialize(FlagsEvaluationContext context);

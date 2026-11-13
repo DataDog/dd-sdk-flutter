@@ -1399,6 +1399,7 @@ void main() {
 
   test('shutdown releases timers and ignores a pending refresh', () async {
     final timers = <Timer>[];
+    const flushInterval = Duration(seconds: 37);
     await runZoned(
       () async {
         final response = Completer<http.Response>();
@@ -1417,6 +1418,7 @@ void main() {
               return response.future;
             }),
             trackTelemetry: true,
+            evaluationFlushInterval: flushInterval,
           ),
         );
         await provider.initialize(EvaluationContext(targetingKey: 'subject'));
@@ -1442,6 +1444,11 @@ void main() {
         expect(timers.every((timer) => !timer.isActive), isTrue);
       },
       zoneSpecification: ZoneSpecification(
+        createTimer: (self, parent, zone, duration, callback) {
+          final timer = parent.createTimer(zone, duration, callback);
+          if (duration == flushInterval) timers.add(timer);
+          return timer;
+        },
         createPeriodicTimer: (self, parent, zone, duration, callback) {
           final timer = parent.createPeriodicTimer(zone, duration, callback);
           timers.add(timer);

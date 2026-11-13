@@ -18,13 +18,15 @@ import 'flags_error.dart';
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
 /// One provider instance owns one OpenFeature domain. Context reconciliation
-/// creates a candidate Datadog runtime and swaps it into use only after
-/// assignments for the new context are available. By default, attribute-only changes retain
-/// assignments while loading or after failure. Targeting-key changes return
-/// application defaults until assignments for the new key are available.
-/// The boolean context attribute `dd_strict_evaluation_context_switching`
-/// also withholds assignments during attribute changes and failed loads.
-/// The provider removes it from assignment requests and telemetry.
+/// installs assignments only after the new context has loaded.
+///
+/// By default, attribute-only changes retain assignments while loading or after
+/// failure. Targeting-key changes return application defaults until assignments
+/// for the new key are available.
+///
+/// Set [strictContextSwitchingAttribute] to `true` in the evaluation context's
+/// attributes to withhold assignments during attribute changes and failed loads.
+/// The provider removes this attribute from assignment requests and telemetry.
 final class DatadogProvider
     implements
         openfeature.FeatureProvider,

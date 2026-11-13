@@ -78,6 +78,34 @@ void main() {
         EvaluationAggregator.defaultUploadTimeout;
   });
 
+  test('periodic flush repeats and stops retrying after shutdown', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(
+      requests: requests,
+      flushInterval: const Duration(milliseconds: 20),
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        return http.Response('{}', requests.length < 3 ? 202 : 503);
+      }),
+    );
+    addTearDown(aggregator.shutdown);
+
+    for (var i = 1; i <= 3; i++) {
+      aggregator.recordEvaluation(
+        flagKey: 'flag-$i',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+        error: null,
+      );
+      await _waitUntil(() => requests.length == i);
+    }
+    await aggregator.shutdown();
+    final countAfterDrain = requests.length;
+    // Failed batches remain pending, so another timer would attempt an upload.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    expect(requests, hasLength(countAfterDrain));
+  });
+
   test('aggregates matching flag evaluations into one intake event', () async {
     final requests = <http.Request>[];
     final dates = [

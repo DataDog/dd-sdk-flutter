@@ -92,9 +92,18 @@ A missing targeting key and an empty key identify the same subject.
 If reconciliation fails, OpenFeature retains the previous active context.
 The provider discards late results from that failed reconciliation.
 
-Set the boolean context attribute `dd_strict_evaluation_context_switching: true`
+Use `strictContextSwitchingAttribute` from `package:datadog_flags/datadog_flags.dart`
 to use downloaded assignments only while both the targeting key and targeting
-attributes match.
+attributes match:
+
+```dart
+await api.setEvaluationContextAndWait(
+  EvaluationContext(
+    targetingKey: 'user-123',
+    attributes: {strictContextSwitchingAttribute: true},
+  ),
+);
+```
 Strict mode returns defaults during an attribute change and after a failed fetch.
 An unchanged-context refresh keeps assignments while pending, then returns defaults
 if loading fails. Retries keep assignments withheld after a failure for their

@@ -26,7 +26,12 @@ bool shouldRetryFlagsUpload(int statusCode) {
   return statusCode == 408 || statusCode == 429 || statusCode >= 500;
 }
 
-/// Monotonic, bounded retry pacing shared across telemetry runtime handoffs.
+/// Exponential upload backoff shared across telemetry runtime handoffs.
+///
+/// Delays start at 500 ms with 20 percent jitter and are capped at 60 seconds.
+/// Handoffs preserve the failure count and remaining monotonic delay. Periodic
+/// flushes and batch-size triggers respect this delay. Successful uploads and
+/// non-retryable responses reset it. Shutdown makes one bounded drain attempt.
 final class UploadBackoff {
   static const maxDelay = Duration(seconds: 60);
   final Stopwatch _clock = Stopwatch()..start();

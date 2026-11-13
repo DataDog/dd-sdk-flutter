@@ -51,18 +51,10 @@ class EvaluationAggregator {
     _periodicFlushClock
       ..reset()
       ..start();
-    final interval = runtime.configuration.evaluationFlushInterval;
-    if (delay == interval) {
-      _periodicFlushTimer = Timer.periodic(interval, (_) {
-        _periodicFlushClock.reset();
-        unawaited(flush());
-      });
-    } else {
-      _periodicFlushTimer = Timer(delay, () {
-        _schedulePeriodicFlush(interval);
-        unawaited(flush());
-      });
-    }
+    _periodicFlushTimer = Timer(delay, () {
+      _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
+      unawaited(flush());
+    });
   }
 
   void inheritPendingEvaluations(EvaluationAggregator previous) {

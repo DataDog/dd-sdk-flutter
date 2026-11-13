@@ -136,12 +136,3 @@ test setup and controlled transports belong in the integration test app.
 Use the normal release process and generated changelogs. Publish `datadog_flags`
 before the Flutter integration package, then validate the Flutter package against
 the hosted core. Local Melos overrides are not proof of hosted consumer resolution.
-
-## Telemetry retries
-
-Exposure and evaluation uploads use exponential backoff with jitter. The initial
-retry delay is 500 ms, with 20 percent jitter and a maximum delay of 60 seconds.
-Runtime handoffs preserve the failure count and remaining monotonic delay.
-Periodic flushes and batch-size triggers respect that delay. Successful uploads
-and non-retryable responses reset the delay. Shutdown makes one bounded drain
-attempt; it does not start an unbounded retry loop.

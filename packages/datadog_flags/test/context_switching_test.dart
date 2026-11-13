@@ -7,7 +7,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:datadog_flags/src/default_flags_client.dart';
 import 'package:datadog_flags/src/flags_client.dart';
-import 'package:datadog_flags/src/evaluation_context.dart';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/flags_store.dart';
 import 'package:http/http.dart' as http;
