@@ -11,6 +11,7 @@ import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
 import 'datadog_flags.dart';
 import 'default_flags_client.dart';
 import 'evaluation_context.dart';
+import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
@@ -54,6 +55,7 @@ final class DatadogOpenFeatureProvider
 
   _ProviderRuntime? _activeRuntime;
   _ProviderRuntime? _pendingRuntime;
+  final _flagSelectionDropLog = FlagSelectionDropLog();
   var _contextRevision = 0;
   var _shutdownGeneration = 0;
   Future<void>? _contextOperation;
@@ -301,6 +303,7 @@ final class DatadogOpenFeatureProvider
     }
 
     final owner = DatadogFlags();
+    shareFlagSelectionDropLog(owner, _flagSelectionDropLog);
     _ProviderRuntime? runtime;
     var initializationReturned = false;
     try {

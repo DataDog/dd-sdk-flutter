@@ -202,6 +202,42 @@ void main() {
       expect(fetcher.flagSelection, isNull);
     });
 
+    test(
+      'logs a dropped selection once per provider across its clients',
+      () async {
+        final dropLog = FlagSelectionDropLog();
+        final selection = FlagSelection(
+          keyPatterns: [for (var i = 0; i < 32; i++) 'k$i'],
+        );
+        for (var revision = 0; revision < 3; revision++) {
+          final fetcher = FlagAssignmentsFetcher(
+            datadogConfig: _datadogConfig,
+            configuration: DatadogFlagsConfiguration(flagSelection: selection),
+            httpClient: _client(<http.Request>[]),
+            logger: logger,
+            dropLog: dropLog,
+          );
+          await fetcher.fetch(_context);
+          expect(fetcher.flagSelection, isNull);
+        }
+
+        verify(
+          () => logger.error(
+            'flagSelection was not sent (too_many_values: each list accepts at '
+            'most 31 values). Loading the full flag configuration.',
+          ),
+        ).called(1);
+      },
+    );
+
+    test('shares a drop log with the clients of a provider owner', () {
+      final owner = DatadogFlags();
+      expect(flagSelectionDropLogFor(owner), isNull);
+      final dropLog = FlagSelectionDropLog();
+      shareFlagSelectionDropLog(owner, dropLog);
+      expect(flagSelectionDropLogFor(owner), same(dropLog));
+    });
+
     test('logs the limit text for each dropped reason', () {
       final cases = {
         const FlagSelection(tags: ['\uD800']):

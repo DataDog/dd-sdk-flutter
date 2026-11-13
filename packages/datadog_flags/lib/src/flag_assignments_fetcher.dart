@@ -31,9 +31,11 @@ class FlagAssignmentsFetcher {
     required this.configuration,
     required this.httpClient,
     FlagsLogger logger = const FlagsLogger(),
+    FlagSelectionDropLog? dropLog,
   }) : flagSelection = resolveFlagSelection(
          configuration.flagSelection,
          logger,
+         dropLog: dropLog,
        );
 
   Future<PrecomputedAssignments> fetch(

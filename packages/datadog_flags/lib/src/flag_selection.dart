@@ -120,11 +120,30 @@ FlagSelectionResult canonicalizeFlagSelection(FlagSelection? input) {
   );
 }
 
+/// Shared by every client an OpenFeature provider builds, so a dropped
+/// selection is logged once per provider rather than on each context change.
+final class FlagSelectionDropLog {
+  bool logged = false;
+}
+
+final _ownerDropLogs = Expando<FlagSelectionDropLog>();
+
+void shareFlagSelectionDropLog(Object owner, FlagSelectionDropLog dropLog) =>
+    _ownerDropLogs[owner] = dropLog;
+
+FlagSelectionDropLog? flagSelectionDropLogFor(Object owner) =>
+    _ownerDropLogs[owner];
+
 /// Canonicalizes [input] and logs why it is dropped, if it is.
-FlagSelection? resolveFlagSelection(FlagSelection? input, FlagsLogger logger) {
+FlagSelection? resolveFlagSelection(
+  FlagSelection? input,
+  FlagsLogger logger, {
+  FlagSelectionDropLog? dropLog,
+}) {
   final result = canonicalizeFlagSelection(input);
   final error = result.error;
-  if (error != null) {
+  if (error != null && !(dropLog?.logged ?? false)) {
+    dropLog?.logged = true;
     logger.error(
       'flagSelection was not sent (${error.reason}: ${error.limit}). '
       'Loading the full flag configuration.',
