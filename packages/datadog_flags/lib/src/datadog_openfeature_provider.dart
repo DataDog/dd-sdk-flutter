@@ -102,6 +102,7 @@ final class DatadogProvider
     openfeature.EvaluationContext newContext,
   ) async {
     if (_fatalMessage case final message?) {
+      // OpenFeature needs a terminal event for each context-change operation.
       _emitLoadError(message, fatal: true);
       return;
     }
@@ -159,6 +160,8 @@ final class DatadogProvider
   /// It does not emit configuration-changed. Failure without usable assignments
   /// emits error. A retry replaces the pending initial assignment request.
   /// Avoid retrying from every error event.
+  /// After a fatal configuration error, refresh does nothing. Register a new
+  /// provider with valid configuration to recover.
   ///
   /// After assignments have been activated, a successful refresh emits ready
   /// followed by configuration-changed. A failed refresh preserves usable
@@ -176,10 +179,7 @@ final class DatadogProvider
     if (generation != _shutdownGeneration) {
       throw StateError('The provider shut down while refresh was waiting.');
     }
-    if (_fatalMessage case final message?) {
-      _emitLoadError(message, fatal: true);
-      return;
-    }
+    if (_fatalMessage != null) return;
     final context = _requestedContext;
     if (context == null || _requiresContextRetry) {
       throw StateError(

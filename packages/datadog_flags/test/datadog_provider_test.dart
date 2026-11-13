@@ -113,7 +113,7 @@ void main() {
   );
 
   test(
-    'fatal configuration remains fatal across context changes and refresh',
+    'fatal context changes terminate while refresh avoids duplicate errors',
     () async {
       final provider = DatadogProvider.fromConfiguration(
         const DatadogFlagsConfiguration(),
@@ -121,12 +121,27 @@ void main() {
       addTearDown(provider.shutdown);
       final events = <ProviderEvent>[];
       provider.events.listen(events.add);
-      await provider.initialize(EvaluationContext.empty);
-      await provider.onContextChanged(
-        EvaluationContext.empty,
-        EvaluationContext(targetingKey: 'B'),
+      api = createIsolatedOpenFeatureAPI(
+        lifecycleTimeout: const Duration(milliseconds: 100),
       );
+      final fatalError = isA<OpenFeatureException>().having(
+        (error) => error.errorCode,
+        'errorCode',
+        ErrorCode.providerFatal,
+      );
+      await expectLater(api.setProviderAndWait(provider), throwsA(fatalError));
+      expect(events, hasLength(1));
+      for (final key in ['B', 'C']) {
+        await expectLater(
+          api.setEvaluationContextAndWait(EvaluationContext(targetingKey: key)),
+          throwsA(fatalError),
+        );
+        expect(api.getClient().providerStatus, ProviderStatus.fatal);
+      }
+      expect(events, hasLength(3));
       await provider.refresh();
+      await provider.refresh();
+      expect(events, hasLength(3));
       final details = [
         provider.resolveBooleanValue('flag', false, EvaluationContext.empty),
         provider.resolveStringValue(
