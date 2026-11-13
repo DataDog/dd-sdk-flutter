@@ -10,8 +10,10 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
+import 'flags_log.dart';
 import 'flags_store.dart';
 import 'json_value.dart';
 
@@ -33,6 +35,7 @@ class FlagsRepository {
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
+  final FlagsLogger _logger;
   final _CacheOperationQueue _cacheOperations;
 
   @visibleForTesting
@@ -53,7 +56,9 @@ class FlagsRepository {
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  }) : _cacheOperations = _cacheOperationQueue(store, clientName);
+    FlagsLogger logger = const FlagsLogger(),
+  }) : _logger = logger,
+       _cacheOperations = _cacheOperationQueue(store, clientName);
 
   FlagsEvaluationContext? get context => _state?.data.context;
 
@@ -108,8 +113,11 @@ class FlagsRepository {
       return;
     }
 
+    // A snapshot fetched under another selection holds a different flag set.
     final matchingCached =
-        cached != null && _contextsMatch(cached.context, context)
+        cached != null &&
+            _contextsMatch(cached.context, context) &&
+            flagSelectionsEqual(cached.flagSelection, fetcher.flagSelection)
         ? cached
         : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
@@ -130,9 +138,14 @@ class FlagsRepository {
         context: context,
         date: dateProvider(),
         obfuscation: assignments.obfuscation,
+        flagSelection: fetcher.flagSelection,
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       _setStatus(DatadogFlagsClientStatus.ready);
+      final ignoredReason = assignments.flagSelectionIgnoredReason;
+      if (ignoredReason != null) {
+        logIgnoredFlagSelection(_logger, ignoredReason);
+      }
       await _writeCached(data);
     } catch (_) {
       if (!token.isCanceled &&

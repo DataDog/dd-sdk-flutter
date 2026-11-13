@@ -54,11 +54,15 @@ final class PrecomputedAssignments {
   final String? environment;
   final FlagKeyObfuscation? obfuscation;
 
+  /// Reason from `DD-Flag-Selection-Ignored`, or null when not reported.
+  final String? flagSelectionIgnoredReason;
+
   const PrecomputedAssignments({
     required this.flags,
     this.createdAt,
     this.environment,
     this.obfuscation,
+    this.flagSelectionIgnoredReason,
   });
 }
 

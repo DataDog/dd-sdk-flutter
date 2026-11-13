@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_key_obfuscation.dart';
+import 'flag_selection.dart';
 
 /// Storage contract for last-known feature flag assignments.
 abstract class DatadogFlagsStore {
@@ -39,18 +40,27 @@ class FlagsData {
   /// Encoding metadata stored with these assignments. Null means legacy keys.
   final FlagKeyObfuscation? obfuscation;
 
+  /// Canonical selection [flags] were fetched with. Null means every flag.
+  final FlagSelection? flagSelection;
+
   /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
     required this.context,
     required this.date,
     this.obfuscation,
+    this.flagSelection,
   });
 
   /// Creates a flag assignment snapshot from persisted JSON.
   factory FlagsData.fromJson(Map<String, Object?> json) {
     final obfuscation = FlagKeyObfuscation.fromSnapshot(json);
-    final flags = obfuscation == null
+    final flagSelection = json.containsKey('flagSelection')
+        ? flagSelectionFromJson(json['flagSelection'])
+        : null;
+    final flags = flagSelection != null
+        ? json['selectedFlags'] as Map<String, Object?>
+        : obfuscation == null
         ? json['flags'] as Map<String, Object?>? ?? const {}
         : json['encodedFlags'] as Map<String, Object?>;
     obfuscation?.validateKeys(flags.keys);
@@ -66,6 +76,7 @@ class FlagsData {
       ),
       date: DateTime.parse(json['date'] as String),
       obfuscation: obfuscation,
+      flagSelection: flagSelection,
     );
   }
 
@@ -73,8 +84,14 @@ class FlagsData {
   Map<String, Object?> toJson() {
     return {
       // Older SDKs read only `flags`. Keep encoded assignments separate so a
-      // downgraded SDK cannot interpret their digests as plaintext flag keys.
-      if (obfuscation == null)
+      // downgraded SDK cannot interpret their digests as plaintext flag keys,
+      // and selected assignments separate so it cannot take them as every flag.
+      if (flagSelection != null) ...{
+        'selectedFlags': flags.map(
+          (key, value) => MapEntry(key, value.toJson()),
+        ),
+        'flagSelection': flagSelectionToJson(flagSelection!),
+      } else if (obfuscation == null)
         'flags': flags.map((key, value) => MapEntry(key, value.toJson()))
       else
         'encodedFlags': flags.map(

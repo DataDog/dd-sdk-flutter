@@ -175,6 +175,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
       datadogConfig: flagsDatadogConfig,
       store: _flagsConfiguration.store,
       dateProvider: _flagsConfiguration.dateProvider,
+      flagSelection: _flagsConfiguration.flagSelection,
     );
   }
 

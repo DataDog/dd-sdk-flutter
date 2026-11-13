@@ -8,6 +8,7 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'evaluation_context.dart';
+import 'flag_selection.dart';
 import 'json_value.dart';
 import 'sdk_metadata.dart';
 
@@ -23,6 +24,7 @@ final class PrecomputeRequest {
   factory PrecomputeRequest.fromContext({
     required DatadogFlagsConfig datadogConfig,
     required FlagsEvaluationContext evaluationContext,
+    FlagSelection? flagSelection,
   }) {
     return PrecomputeRequest(
       data: PrecomputeRequestData(
@@ -36,6 +38,12 @@ final class PrecomputeRequest {
             targetingKey: evaluationContext.targetingKey ?? '',
             targetingAttributes: evaluationContext.attributes,
           ),
+          flagSelection: flagSelection == null
+              ? null
+              : PrecomputeRequestFlagSelection(
+                  tags: flagSelection.tags,
+                  keyPatterns: flagSelection.keyPatterns,
+                ),
         ),
       ),
     );
@@ -64,11 +72,14 @@ final class PrecomputeRequestAttributes {
   final PrecomputeRequestEnv env;
   final PrecomputeRequestSource source;
   final PrecomputeRequestSubject subject;
+  @JsonKey(name: 'flag_selection', includeIfNull: false)
+  final PrecomputeRequestFlagSelection? flagSelection;
 
   const PrecomputeRequestAttributes({
     required this.env,
     required this.source,
     required this.subject,
+    this.flagSelection,
   });
 
   Map<String, Object?> toJson() => _$PrecomputeRequestAttributesToJson(this);
@@ -115,4 +126,19 @@ final class PrecomputeRequestSubject {
   });
 
   Map<String, Object?> toJson() => _$PrecomputeRequestSubjectToJson(this);
+}
+
+@immutable
+@JsonSerializable(createFactory: false)
+final class PrecomputeRequestFlagSelection {
+  final List<String> tags;
+  @JsonKey(name: 'key_patterns')
+  final List<String> keyPatterns;
+
+  const PrecomputeRequestFlagSelection({
+    required this.tags,
+    required this.keyPatterns,
+  });
+
+  Map<String, Object?> toJson() => _$PrecomputeRequestFlagSelectionToJson(this);
 }
