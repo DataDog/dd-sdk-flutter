@@ -219,47 +219,73 @@ this release line branch, and the changelog change cherry-picked back into `deve
 
 ## Shared precomputed response tests
 
-The Flags module uses the JSON contract from [ffe-system-test-data](https://github.com/DataDog/ffe-system-test-data/tree/main/precomputed-assignments).
-This keeps response behavior consistent across mobile SDKs. The snapshot is test data only.
+The Flags module tests use a snapshot of the JSON contract from [ffe-system-test-data](https://github.com/DataDog/ffe-system-test-data/tree/main/precomputed-assignments).
+The snapshot keeps response behavior consistent across mobile SDKs. It contains test data only.
 It adds no runtime dependency and requires no Git submodule.
 
-The generated snapshot is at `packages/datadog_flags/test/fixtures/precomputed`. `SOURCE.json` records the source commit and file digests.
-The runner discovers all nested JSON cases.
-Adding a case requires an upstream fixture change and snapshot refresh. It requires no runner or filename-list change.
-Missing or empty fixtures fail the suite. Shared `_include` and `_skip` fields describe API applicability.
+The snapshot is at `packages/datadog_flags/test/fixtures/precomputed`.
+Its `SOURCE.json` records the source commit and file digests.
+Each fixture is a JSON test case with a response, evaluations, and expected results.
+The test runner (`packages/datadog_flags/test/precomputed_fixture_files_test.dart`) runs the fixtures from generated embedded text.
+Snapshot generation discovers all nested JSON fixtures.
+To add a fixture, change it upstream, refresh the snapshot, and regenerate the embedded text.
+You do not need to change the test runner or maintain a filename list.
+Missing fixtures or an empty snapshot fail verification.
+The shared `_include` and `_skip` fields define platform applicability for fixtures, evaluations, and event expectations.
 Do not add local exclusions to hide failures.
 
 Numeric semantics follow the [shared contract](https://github.com/DataDog/ffe-system-test-data/blob/main/precomputed-assignments/README.md#mobile-conformance-and-numeric-types).
 
-Upstream CI requires a generated obfuscated companion for each applicable plain fixture. It rejects missing, stale, or orphaned companions. Edit the plain case upstream and regenerate; do not maintain two sets of expectations. Dedicated malformed-encoding cases and fixed digest vectors remain separate.
+### Fixture coverage
 
-Cases cover values, defaults, errors, reasons, variants, emission gates, duplicate evaluations, and numeric boundaries.
-Obfuscation cases cover fixed digests, salts, Unicode, whitespace, malformed metadata, and plaintext event identity.
-The portable suite uses the public client with a test HTTP transport. Each valid fixture also runs after JSON cache restoration. It checks transmitted exposure and evaluation payloads. VM, dart2js, and dart2wasm run the same embedded text; JS reports native Int64 applicability separately. Native bridge tests remain separate.
+A generated obfuscated companion is a fixture with encoded response-map keys and the same expected public results as its plain fixture.
+Upstream CI requires a companion for each applicable plain fixture.
+It rejects missing, stale, or orphaned companions.
+Edit the plain fixture upstream, then regenerate its companion.
+Dedicated malformed-encoding fixtures and fixed digest vectors are maintained separately from generated companions. They do not require plain-fixture counterparts.
 
-Run from the repository root:
+Fixtures cover values, defaults, errors, reasons, variants, event emission conditions, duplicate evaluations, and numeric boundaries.
+Obfuscation fixtures cover fixed digests, salts, Unicode, whitespace, malformed metadata, and plaintext event identity.
+
+The fixture tests use the public client with a test HTTP transport.
+They check the exposure and evaluation payloads it sends.
+Each applicable fixture with a valid response also runs after JSON cache restoration.
+The tests run the same embedded fixtures on VM, dart2js, and dart2wasm.
+On dart2js, fixtures restricted to native Int64 values are reported as skipped.
+Excluded evaluations and event expectations within a fixture are omitted without separate test results.
+These tests do not cover the native bridge, which has separate tests.
+
+### Run the fixture tests
+
+To verify the snapshot and run the fixture tests, run the following from the repository root:
 
 ```sh
-python3 ci/sync-precomputed-fixtures.py --verify
-cd packages/datadog_flags
-dart test test/precomputed_fixture_files_test.dart
+dart pub get
+dart run ci/sync-precomputed-fixtures.dart --verify
+dart ci/embed-precomputed-fixtures.dart --check
+(cd packages/datadog_flags && dart test test/precomputed_fixture_files_test.dart)
 ```
 
-Refresh the snapshot from a reviewed upstream commit:
+### Refresh the snapshot
+
+From the repository root, refresh the snapshot from a reviewed upstream commit:
 
 ```sh
-python3 ci/sync-precomputed-fixtures.py --ref <full-upstream-sha>
-python3 ci/sync-precomputed-fixtures.py --check
+dart pub get
+dart run ci/sync-precomputed-fixtures.dart --ref <full-upstream-sha>
+dart run ci/sync-precomputed-fixtures.dart --check
 dart ci/embed-precomputed-fixtures.dart
 ```
 
-The importer copies committed bytes, regenerates the index, and removes deleted cases.
-It preserves Unity asset GUIDs where applicable. Do not edit imported JSON or its checksums.
+The importer (`ci/sync-precomputed-fixtures.dart`) copies committed bytes, regenerates the fixture index, and removes deleted fixtures.
+Do not edit imported JSON or its checksums.
 Use `--source <local-checkout> --ref <commit>` to test an upstream fixture branch before publication.
 `--verify` checks local integrity without networking. `--check` also compares the recorded upstream commit.
 
+### Automatic fixture updates
+
 The weekly `Precomputed flag fixtures` workflow opens a draft update PR when fixture content changes.
 It uses a short-lived token restricted to the default branch and this workflow.
-It waits when an update PR is already open. Normal SDK CI must pass before merge.
+It waits when an update PR is already open. Normal SDK CI must pass before the update PR merges.
 Merge the upstream fixture contract before merging its consumer PRs.
 The update workflow never merges or publishes an SDK release.

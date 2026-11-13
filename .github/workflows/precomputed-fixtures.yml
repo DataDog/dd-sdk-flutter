@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'ci/*precomputed*'
+      - 'test/ci/sync_precomputed_fixtures_test.dart'
+      - 'pubspec.yaml'
       - 'packages/datadog_flags/test/fixtures/precomputed_text.dart'
       - 'packages/datadog_flags/test/fixtures/precomputed/**'
       - '.github/workflows/precomputed-fixtures.yml'
@@ -23,12 +25,16 @@ jobs:
         with:
           persist-credentials: false
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
+      - name: Install tooling dependencies
+        run: dart pub get
+      - name: Test fixture importer
+        run: dart test test/ci/sync_precomputed_fixtures_test.dart
       - name: Verify embedded fixture text
         run: dart ci/embed-precomputed-fixtures.dart --check
       - name: Verify the local snapshot
-        run: python3 ci/sync-precomputed-fixtures.py --verify
+        run: dart run ci/sync-precomputed-fixtures.dart --verify
       - name: Compare with the recorded upstream commit
-        run: python3 ci/sync-precomputed-fixtures.py --check
+        run: dart run ci/sync-precomputed-fixtures.dart --check
   update:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
@@ -46,9 +52,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d
+      - name: Install tooling dependencies
+        run: dart pub get
       - name: Import upstream fixtures
         id: sync
-        run: python3 ci/sync-precomputed-fixtures.py --ref main
+        run: dart run ci/sync-precomputed-fixtures.dart --ref main
       - name: Embed updated fixture text
         if: steps.sync.outputs.changed == 'true'
         run: dart ci/embed-precomputed-fixtures.dart
@@ -68,12 +76,7 @@ jobs:
           git add -- 'packages/datadog_flags/test/fixtures/precomputed' 'packages/datadog_flags/test/fixtures/precomputed_text.dart'
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo 'ready=true' >> "$GITHUB_OUTPUT"
-          python3 - <<'BODY'
-          import os
-          from pathlib import Path
-          template = Path('ci/precomputed-fixtures-pr.md').read_text()
-          Path('/tmp/precomputed-pr.md').write_text(template.replace('SOURCE_COMMIT', os.environ['SOURCE_COMMIT']))
-          BODY
+          sed "s/SOURCE_COMMIT/$SOURCE_COMMIT/g" ci/precomputed-fixtures-pr.md > /tmp/precomputed-pr.md
       - name: Create a signed fixture commit
         if: steps.prepare.outputs.ready == 'true'
         uses: DataDog/commit-headless@d6afabfd690ea1dbdd7d368acbefd71304928699 # action/v3.4.1

@@ -77,11 +77,11 @@ void main() {
     },
   );
 
-  test('wire strings and cache-shaped objects are not numeric values', () {
-    for (final value in [
-      '5',
-      {'_numericLiteral': '5'},
-    ]) {
+  for (final (name, value) in <(String, Object)>[
+    ('wire string', '5'),
+    ('cache-shaped object', {'_numericLiteral': '5'}),
+  ]) {
+    test('$name is not a numeric wire value', () {
       expect(
         () => FlagAssignment.fromJson({
           'allocationKey': 'a',
@@ -93,6 +93,6 @@ void main() {
         }),
         throwsFormatException,
       );
-    }
-  });
+    });
+  }
 }

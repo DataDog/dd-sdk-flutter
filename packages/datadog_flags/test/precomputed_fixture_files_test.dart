@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import 'fixtures/precomputed_text.dart';
@@ -69,6 +70,7 @@ void checkEvents(List<dynamic> events, List<dynamic> matchers, bool exact) {
 }
 
 void main() {
+  registerFallbackValue(_FakeFlagsData());
   numericGetterRegressions();
   legacyCacheBounds();
   if (precomputedText.isEmpty) {
@@ -245,20 +247,25 @@ void main() {
   });
 }
 
-class _JsonStore implements DatadogFlagsStore {
-  String? content;
-  @override
-  Future<FlagsData?> read(String clientName) async => content == null
-      ? null
-      : FlagsData.fromJson(jsonDecode(content!) as Map<String, Object?>);
-  @override
-  Future<void> write(String clientName, FlagsData data) async {
-    content = jsonEncode(data.toJson());
-  }
+class _FakeFlagsData extends Fake implements FlagsData {}
 
-  @override
-  Future<void> delete(String clientName) async {
-    content = null;
+class _JsonStore extends Mock implements DatadogFlagsStore {
+  String? content;
+
+  _JsonStore() {
+    when(() => read(any())).thenAnswer((_) async {
+      final saved = content;
+      return saved == null
+          ? null
+          : FlagsData.fromJson(jsonDecode(saved) as Map<String, Object?>);
+    });
+    when(() => write(any(), any())).thenAnswer((invocation) async {
+      final data = invocation.positionalArguments[1] as FlagsData;
+      content = jsonEncode(data.toJson());
+    });
+    when(() => delete(any())).thenAnswer((_) async {
+      content = null;
+    });
   }
 }
 
