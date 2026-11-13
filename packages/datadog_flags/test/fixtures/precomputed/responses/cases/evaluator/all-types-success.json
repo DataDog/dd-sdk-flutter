@@ -1,16 +1,7 @@
 {
-  "name": "all-types-success",
-  "description": "Successful precomputed assignments for all supported Flutter value types.",
-  "context": {
-    "targetingKey": "precomputed-user",
-    "attributes": {
-      "plan": "pro",
-      "platform": "flutter"
-    }
-  },
-  "response": {
     "data": {
       "attributes": {
+        "createdAt": "2026-01-01T00:00:00Z",
         "flags": {
           "flutter.fixture.enabled": {
             "allocationKey": "allocation-success",
@@ -31,7 +22,7 @@
           "flutter.fixture.limit": {
             "allocationKey": "allocation-success",
             "variationKey": "limit-five",
-            "variationType": "number",
+            "variationType": "integer",
             "variationValue": 5,
             "reason": "TARGETING_MATCH",
             "doLog": true
@@ -39,7 +30,7 @@
           "flutter.fixture.ratio": {
             "allocationKey": "allocation-success",
             "variationKey": "half",
-            "variationType": "number",
+            "variationType": "float",
             "variationValue": 0.5,
             "reason": "TARGETING_MATCH",
             "doLog": true
@@ -62,4 +53,3 @@
       }
     }
   }
-}

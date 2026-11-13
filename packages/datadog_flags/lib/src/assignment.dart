@@ -7,6 +7,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'json_value.dart';
+import 'numeric_value.dart';
 import 'flag_key_obfuscation.dart';
 import 'split_features.dart';
 
@@ -37,9 +38,15 @@ enum FlagVariationType {
     return switch (this) {
       FlagVariationType.boolean when value is bool => value,
       FlagVariationType.string when value is String => value,
-      FlagVariationType.integer when value is int => value,
-      FlagVariationType.float when value is num => value.toDouble(),
-      FlagVariationType.number when value is num => value,
+      FlagVariationType.integer
+          when (value is num && value.isFinite) || value is NumericValue =>
+        value,
+      FlagVariationType.float
+          when (value is num && value.isFinite) || value is NumericValue =>
+        value,
+      FlagVariationType.number
+          when (value is num && value.isFinite) || value is NumericValue =>
+        value,
       FlagVariationType.object => sanitizeJsonValue(value)!,
       _ => throw FormatException('Invalid variation value for $wireName'),
     };
@@ -75,6 +82,8 @@ final class FlagAssignment {
   final FlagVariationType variationType;
   @JsonKey(toJson: sanitizeJsonValue)
   final Object variationValue;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final NumericValue? numericValue;
   final String reason;
   final bool doLog;
   final int? serialId;
@@ -90,6 +99,7 @@ final class FlagAssignment {
     required this.variationKey,
     required this.variationType,
     required this.variationValue,
+    this.numericValue,
     required this.reason,
     required this.doLog,
     this.serialId,
@@ -106,7 +116,10 @@ final class FlagAssignment {
       allocationKey: assignment.allocationKey,
       variationKey: assignment.variationKey,
       variationType: assignment.variationType,
-      variationValue: variationValue,
+      variationValue: variationValue is NumericValue
+          ? variationValue.integer ?? variationValue.floating ?? 0
+          : variationValue,
+      numericValue: variationValue is NumericValue ? variationValue : null,
       reason: assignment.reason,
       doLog: assignment.doLog,
       serialId: assignment.serialId,
@@ -114,5 +127,24 @@ final class FlagAssignment {
     );
   }
 
-  Map<String, Object?> toJson() => _$FlagAssignmentToJson(this);
+  factory FlagAssignment.fromCacheJson(Map<String, Object?> json) {
+    final value = json['variationValue'];
+    if (const ['number', 'integer', 'float'].contains(json['variationType']) &&
+        value is Map &&
+        value['_numericLiteral'] is String) {
+      json = {
+        ...json,
+        'variationValue': NumericValue(value['_numericLiteral'] as String),
+      };
+    }
+    return FlagAssignment.fromJson(json);
+  }
+
+  Map<String, Object?> toJson() {
+    final json = _$FlagAssignmentToJson(this);
+    if (numericValue case final numeric?) {
+      json['variationValue'] = {'_numericLiteral': numeric.literal};
+    }
+    return json;
+  }
 }

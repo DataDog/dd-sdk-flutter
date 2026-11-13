@@ -22,8 +22,9 @@ flutter test
 ```
 
 Melos bootstrap links local Datadog packages. Use it before testing Flutter
-packages against unpublished local changes. The VM-only fixture-file tests
-use `@TestOn('vm')`; all other core tests run in browser discovery.
+packages against unpublished local changes. The shared precomputed fixture tests
+run on VM, dart2js, and dart2wasm. Each fixture runs before and after JSON cache
+restoration. The runner reports platform exclusions from the shared contract.
 
 ## Upstream provider contract
 

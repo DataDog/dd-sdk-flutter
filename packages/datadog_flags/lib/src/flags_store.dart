@@ -58,7 +58,7 @@ class FlagsData {
       flags: flags.map((key, value) {
         return MapEntry(
           key,
-          FlagAssignment.fromJson(Map<String, Object?>.from(value as Map)),
+          FlagAssignment.fromCacheJson(Map<String, Object?>.from(value as Map)),
         );
       }),
       context: FlagsEvaluationContext.fromJson(

@@ -231,7 +231,12 @@ class DefaultDatadogFlagsClient
     }
 
     final variationValue = assignment.variationValue;
+    final numericValue = assignment.numericValue;
     final assignmentType = assignment.variationType;
+    final numeric =
+        assignmentType == FlagVariationType.integer ||
+        assignmentType == FlagVariationType.float ||
+        assignmentType == FlagVariationType.number;
     final resolvedValue = switch (requestedType) {
       FlagVariationType.boolean
           when assignmentType == FlagVariationType.boolean =>
@@ -239,16 +244,14 @@ class DefaultDatadogFlagsClient
       FlagVariationType.string
           when assignmentType == FlagVariationType.string =>
         variationValue,
-      FlagVariationType.integer
-          when (assignmentType == FlagVariationType.integer ||
-                  assignmentType == FlagVariationType.number) &&
-              variationValue is int =>
-        variationValue,
-      FlagVariationType.float
-          when (assignmentType == FlagVariationType.float ||
-                  assignmentType == FlagVariationType.number) &&
-              variationValue is num =>
-        variationValue.toDouble(),
+      FlagVariationType.integer when numeric && numericValue != null =>
+        numericValue.integer ?? _typeMismatch,
+      FlagVariationType.float when numeric && numericValue != null =>
+        numericValue.floating ?? _typeMismatch,
+      FlagVariationType.integer when numeric && variationValue is num =>
+        _losslessInteger(variationValue),
+      FlagVariationType.float when numeric && variationValue is num =>
+        _losslessDouble(variationValue),
       FlagVariationType.object
           when assignmentType == FlagVariationType.object =>
         variationValue,
@@ -289,6 +292,31 @@ class DefaultDatadogFlagsClient
         ...assignment.features.toFlagMetadata(),
       },
     );
+  }
+
+  Object _losslessInteger(num value) {
+    if (!value.isFinite) return _typeMismatch;
+    if (value is int &&
+        value >= -9223372036854775808 &&
+        value < 9223372036854775808.0) {
+      return value;
+    }
+    // The upper bound is exclusive: Double rounds Int64.max to 2^63.
+    if (value < -9223372036854775808 ||
+        value >= 9223372036854775808.0 ||
+        value.truncateToDouble() != value) {
+      return _typeMismatch;
+    }
+    return value.toInt();
+  }
+
+  Object _losslessDouble(num value) {
+    final converted = value.toDouble();
+    if (!converted.isFinite ||
+        (value is int && BigInt.from(value) != BigInt.from(converted))) {
+      return _typeMismatch;
+    }
+    return converted;
   }
 }
 
