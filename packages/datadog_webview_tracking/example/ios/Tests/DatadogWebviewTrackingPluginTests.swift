@@ -135,6 +135,14 @@ class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
         return MockFlutterTextureRegistry()
     }
 
+    func registerViewFactory(_ factory: any FlutterPlatformViewFactory, withId factoryId: String) {}
+
+    func registerViewFactory(
+        _ factory: any FlutterPlatformViewFactory,
+        withId factoryId: String,
+        gestureRecognizersBlockingPolicy: FlutterPlatformViewGestureRecognizersBlockingPolicy
+    ) {}
+
     func register(_ factory: any FlutterPlatformViewFactory, withId factoryId: String) {}
 
     func register(
