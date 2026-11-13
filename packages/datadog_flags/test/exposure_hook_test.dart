@@ -26,67 +26,9 @@ import 'package:test/test.dart';
 
 class _MockLogger extends Mock implements FlagsLogger {}
 
-final class _ThrowingAfterHook extends HookAdapter {
-  @override
-  void after(
-    HookContext context,
-    FlagEvaluationDetails<Object> details,
-    HookHints hints,
-  ) => throw StateError('after hook failed');
-}
+class _MockHook extends Mock implements Hook {}
 
-final class _ThrowingFinallyHook extends HookAdapter {
-  @override
-  void finallyAfter(
-    HookContext context,
-    FlagEvaluationDetails<Object> details,
-    HookHints hints,
-  ) => throw StateError('finally hook failed');
-}
-
-final class _OtherProvider implements FeatureProvider {
-  final String _name;
-
-  _OtherProvider([this._name = 'Other']);
-
-  @override
-  ProviderMetadata get metadata => ProviderMetadata(name: _name);
-
-  @override
-  ResolutionDetails<bool> resolveBooleanValue(
-    String flagKey,
-    bool defaultValue,
-    EvaluationContext context,
-  ) => ResolutionDetails(value: true, variant: 'on');
-
-  @override
-  ResolutionDetails<double> resolveDoubleValue(
-    String flagKey,
-    double defaultValue,
-    EvaluationContext context,
-  ) => ResolutionDetails(value: defaultValue);
-
-  @override
-  ResolutionDetails<int> resolveIntegerValue(
-    String flagKey,
-    int defaultValue,
-    EvaluationContext context,
-  ) => ResolutionDetails(value: defaultValue);
-
-  @override
-  ResolutionDetails<String> resolveStringValue(
-    String flagKey,
-    String defaultValue,
-    EvaluationContext context,
-  ) => ResolutionDetails(value: defaultValue);
-
-  @override
-  ResolutionDetails<Map<String, Object?>> resolveStructureValue(
-    String flagKey,
-    Map<String, Object?> defaultValue,
-    EvaluationContext context,
-  ) => ResolutionDetails(value: defaultValue);
-}
+class _MockProvider extends Mock implements FeatureProvider, ProviderHooks {}
 
 void main() {
   late OpenFeatureAPI api;
@@ -189,6 +131,79 @@ void main() {
     await api.setProviderAndWait(provider);
     api.addHooks([hook ?? ExposureHook(evaluations.add)]);
     return (api.getClient(), provider);
+  }
+
+  setUpAll(() {
+    registerFallbackValue(
+      HookContext(
+        flagKey: 'flag',
+        defaultValue: false,
+        flagValueType: FlagValueType.boolean,
+        clientMetadata: const ClientMetadata(),
+        providerMetadata: const ProviderMetadata(name: 'fallback'),
+        evaluationContext: EvaluationContext.empty,
+      ),
+    );
+    registerFallbackValue(
+      FlagEvaluationDetails<Object>(flagKey: 'flag', value: false),
+    );
+    registerFallbackValue(HookHints());
+    registerFallbackValue(EvaluationContext.empty);
+  });
+
+  Hook afterHook(void Function(HookContext context) after) {
+    final hook = _MockHook();
+    when(() => hook.after(any(), any(), any())).thenAnswer(
+      (invocation) =>
+          after(invocation.positionalArguments.first as HookContext),
+    );
+    return hook;
+  }
+
+  Hook throwingAfterHook() =>
+      afterHook((_) => throw StateError('after hook failed'));
+
+  Hook nestedEvaluationHook(OpenFeatureClient client) {
+    var nested = false;
+    return afterHook((context) {
+      if (nested) return;
+      nested = true;
+      client.getBooleanValue(context.flagKey, false);
+    });
+  }
+
+  FeatureProvider otherProvider([String name = 'Other']) {
+    final provider = _MockProvider();
+    when(() => provider.metadata).thenReturn(ProviderMetadata(name: name));
+    when(() => provider.hooks).thenReturn(const []);
+    when(
+      () => provider.resolveBooleanValue(any(), any(), any()),
+    ).thenReturn(ResolutionDetails(value: true, variant: 'on'));
+    return provider;
+  }
+
+  FeatureProvider wrappingProvider(
+    DatadogOpenFeatureProvider delegate, {
+    required bool forwardHooks,
+    required bool forwardMetadata,
+  }) {
+    final provider = _MockProvider();
+    when(() => provider.metadata).thenReturn(
+      forwardMetadata
+          ? delegate.metadata
+          : const ProviderMetadata(name: 'Wrapper'),
+    );
+    when(
+      () => provider.hooks,
+    ).thenReturn(forwardHooks ? delegate.hooks : const []);
+    when(() => provider.resolveBooleanValue(any(), any(), any())).thenAnswer(
+      (invocation) => delegate.resolveBooleanValue(
+        invocation.positionalArguments[0] as String,
+        invocation.positionalArguments[1] as bool,
+        invocation.positionalArguments[2] as EvaluationContext,
+      ),
+    );
+    return provider;
   }
 
   setUp(() {
@@ -321,7 +336,7 @@ void main() {
               'plain',
               false,
               options: EvaluationOptions(
-                hooks: [_ThrowingAfterHook(), _NestedEvaluationHook(client)],
+                hooks: [throwingAfterHook(), nestedEvaluationHook(client)],
               ),
             ),
         'a direct provider call': (_, provider) => provider.resolveBooleanValue(
@@ -429,12 +444,16 @@ void main() {
 
   test('a failing finallyAfter hook keeps the exposure', () async {
     final (client, _) = await start();
+    final finallyHook = _MockHook();
+    when(
+      () => finallyHook.finallyAfter(any(), any(), any()),
+    ).thenThrow(StateError('finally hook failed'));
 
     expect(
       client.getBooleanValue(
         'plain',
         false,
-        options: EvaluationOptions(hooks: [_ThrowingFinallyHook()]),
+        options: EvaluationOptions(hooks: [finallyHook]),
       ),
       isTrue,
     );
@@ -491,7 +510,7 @@ void main() {
       client.getBooleanValue(
         'plain',
         false,
-        options: EvaluationOptions(hooks: [_ThrowingAfterHook()]),
+        options: EvaluationOptions(hooks: [throwingAfterHook()]),
       ),
       isFalse,
     );
@@ -522,7 +541,17 @@ void main() {
       client.getBooleanValue(
         'flag',
         false,
-        options: EvaluationOptions(hooks: [_DirectResolveHook(provider)]),
+        options: EvaluationOptions(
+          hooks: [
+            afterHook(
+              (_) => provider.resolveBooleanValue(
+                'plain',
+                false,
+                EvaluationContext.empty,
+              ),
+            ),
+          ],
+        ),
       );
       await api.shutdown();
 
@@ -537,7 +566,7 @@ void main() {
 
   test('records nested evaluations of the same flag once', () async {
     final (client, _) = await start();
-    final nested = _NestedEvaluationHook(client);
+    final nested = nestedEvaluationHook(client);
 
     client.getBooleanValue(
       'plain',
@@ -649,7 +678,7 @@ void main() {
       final (_, provider) = await start();
       await api.setProviderForDomainAndWait(
         'wrapped',
-        _WrappingProvider(provider, forwardHooks: false, forwardMetadata: true),
+        wrappingProvider(provider, forwardHooks: false, forwardMetadata: true),
       );
       final wrapped = <ExposureEvaluation>[];
       api.addHooks([exposureHookWithLogger(wrapped.add, logger)]);
@@ -681,7 +710,7 @@ void main() {
     final (_, provider) = await start();
     await api.setProviderForDomainAndWait(
       'wrapped',
-      _WrappingProvider(provider, forwardHooks: true, forwardMetadata: false),
+      wrappingProvider(provider, forwardHooks: true, forwardMetadata: false),
     );
 
     api.getClient('wrapped').getBooleanValue('plain', false);
@@ -697,7 +726,7 @@ void main() {
     for (var i = 0; i < 9; i++) {
       await api.setProviderForDomainAndWait(
         'other-$i',
-        _OtherProvider('Other $i'),
+        otherProvider('Other $i'),
       );
       api.getClient('other-$i').getBooleanValue('flag', false);
       api.getClient('other-$i').getBooleanValue('flag', false);
@@ -708,7 +737,7 @@ void main() {
 
   test('skips evaluations from other providers', () async {
     final logger = _MockLogger();
-    await api.setProviderForDomainAndWait('other', _OtherProvider());
+    await api.setProviderForDomainAndWait('other', otherProvider());
     api.addHooks([exposureHookWithLogger(evaluations.add, logger)]);
 
     api.getClient('other').getBooleanValue('flag', false);
@@ -863,93 +892,4 @@ void main() {
     expect(messages, hasLength(2));
     expect(messages.join(), allOf(contains('"FUTURE"'), contains('"LATER"')));
   });
-}
-
-final class _NestedEvaluationHook extends HookAdapter {
-  final OpenFeatureClient _client;
-  bool _nested = false;
-
-  _NestedEvaluationHook(this._client);
-
-  @override
-  void after(
-    HookContext context,
-    FlagEvaluationDetails<Object> details,
-    HookHints hints,
-  ) {
-    if (_nested) return;
-    _nested = true;
-    _client.getBooleanValue(context.flagKey, false);
-  }
-}
-
-final class _DirectResolveHook extends HookAdapter {
-  final DatadogOpenFeatureProvider _provider;
-
-  _DirectResolveHook(this._provider);
-
-  @override
-  void after(
-    HookContext context,
-    FlagEvaluationDetails<Object> details,
-    HookHints hints,
-  ) {
-    _provider.resolveBooleanValue('plain', false, EvaluationContext.empty);
-  }
-}
-
-final class _WrappingProvider implements FeatureProvider, ProviderHooks {
-  final DatadogOpenFeatureProvider _delegate;
-  final bool _forwardHooks;
-  final bool _forwardMetadata;
-
-  _WrappingProvider(
-    this._delegate, {
-    required bool forwardHooks,
-    required bool forwardMetadata,
-  }) : _forwardHooks = forwardHooks,
-       _forwardMetadata = forwardMetadata;
-
-  @override
-  ProviderMetadata get metadata => _forwardMetadata
-      ? _delegate.metadata
-      : const ProviderMetadata(name: 'Wrapper');
-
-  @override
-  List<Hook> get hooks => _forwardHooks ? _delegate.hooks : const [];
-
-  @override
-  ResolutionDetails<bool> resolveBooleanValue(
-    String flagKey,
-    bool defaultValue,
-    EvaluationContext context,
-  ) => _delegate.resolveBooleanValue(flagKey, defaultValue, context);
-
-  @override
-  ResolutionDetails<double> resolveDoubleValue(
-    String flagKey,
-    double defaultValue,
-    EvaluationContext context,
-  ) => _delegate.resolveDoubleValue(flagKey, defaultValue, context);
-
-  @override
-  ResolutionDetails<int> resolveIntegerValue(
-    String flagKey,
-    int defaultValue,
-    EvaluationContext context,
-  ) => _delegate.resolveIntegerValue(flagKey, defaultValue, context);
-
-  @override
-  ResolutionDetails<String> resolveStringValue(
-    String flagKey,
-    String defaultValue,
-    EvaluationContext context,
-  ) => _delegate.resolveStringValue(flagKey, defaultValue, context);
-
-  @override
-  ResolutionDetails<Map<String, Object?>> resolveStructureValue(
-    String flagKey,
-    Map<String, Object?> defaultValue,
-    EvaluationContext context,
-  ) => _delegate.resolveStructureValue(flagKey, defaultValue, context);
 }
