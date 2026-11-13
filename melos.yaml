@@ -502,7 +502,7 @@ scripts:
   prepare:
     run: melos pub:get && melos generate_env && melos generate_env:e2e
     description: |
-      Run `flutter pub get` on all packages and generate `.env` files for all package examples
+      Run `flutter pub get` on all packages and generate `dd.env` files for all package examples
 
   pub:get:
     exec:

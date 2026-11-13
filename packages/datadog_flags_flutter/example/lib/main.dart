@@ -25,7 +25,7 @@ const _service = 'com.datadoghq.flags.example';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   final isConfigured = _clientToken.isNotEmpty;
   final flagsConfiguration = flagsExampleConfiguration(
@@ -119,7 +119,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       setState(() {
         _status =
             widget.configurationError ??
-            'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
+            'Set DD_CLIENT_TOKEN in dd.env to evaluate flags.';
       });
       return;
     }

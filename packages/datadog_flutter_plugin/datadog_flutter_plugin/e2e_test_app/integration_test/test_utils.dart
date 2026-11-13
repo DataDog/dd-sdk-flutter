@@ -19,7 +19,7 @@ Future<void> initializeDatadog({
   DatadogConfigCallback? configCallback,
   TrackingConsent trackingConsent = TrackingConsent.granted,
 }) async {
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 

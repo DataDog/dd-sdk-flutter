@@ -2,7 +2,7 @@ include:
   - 'https://gitlab-templates.ddbuild.io/slack-notifier/v3-sdm/template.yml'
 
 variables:
-  CURRENT_CI_IMAGE: "11"
+  CURRENT_CI_IMAGE: "14"
   BUILD_STABLE_REGISTRY: 486234852809.dkr.ecr.us-east-1.amazonaws.com
   DISTRIBUTION_REGISTRY: registry.ddbuild.io
   # Linux CI Images
@@ -147,6 +147,12 @@ stages:
   tags:
     - macos:tart
 
+.android-emulator-runner:
+  extends: .infra-retry
+  image: $CI_IMAGE_DOCKER
+  tags:
+    - kvm:amd64
+
 ci-image:
   when: manual
   stage: ci-image
@@ -250,17 +256,14 @@ build-ios-spm:
 # dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
 # macOS can only build via Swift Package Manager until that's fixed upstream.
 build-macos-spm:
-  extends: [.infra-retry, .xcode-test-artifacts]
+  extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   interruptible: true
   except: [ schedules ]
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -356,7 +359,7 @@ build-windows:
 # Integration Tests
 
 android-integration-test:
-  extends: .infra-retry
+  extends: .android-emulator-runner
   stage: integration-test
   interruptible: true
   except: [schedules]
@@ -365,9 +368,6 @@ android-integration-test:
       artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
     - !reference [.pre, script]
     - !reference [.pre-android, script]
@@ -380,6 +380,7 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - tools/ci/emulator.log
       - .build/test-results/*.jsonl
 
 ios-integration-test:
@@ -408,7 +409,7 @@ ios-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 macos-integration-test:
-  extends: .infra-retry
+  extends: .tart-runner
   stage: integration-test
   interruptible: true
   except: [ schedules ]
@@ -417,11 +418,8 @@ macos-integration-test:
       artifacts: false
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
     - flutter config --enable-swift-package-manager
     - melos remove_cocoapods
@@ -721,35 +719,71 @@ nightly-min-version-test:
     reports:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
-nightly-beta-test:
-  extends: [.nightly, .tart-runner]
+.nightly-beta-artifacts:
+  artifacts:
+    when: always
+    expire_in: "30 days"
+    reports:
+      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+# Switches the fvm-managed Flutter SDK on a Tart runner to the beta channel.
+.use-fvm-beta:
+  script:
+    - fvm destroy
+    - fvm install beta
+    - fvm use beta
+    - fvm flutter upgrade --force
+
+nightly-beta-test-flutter:
+  extends: [.nightly, .nightly-beta-artifacts, .tart-runner]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  script:
+    - !reference [.pre-tart, script]
+    - !reference [.use-fvm-beta, script]
+    - fvm exec dart pub global activate melos
+    - flutter doctor
+    - fvm exec melos pub:get
+    - fvm exec melos run analyze:dart
+    - fvm exec melos run unit_test:flutter
+
+nightly-beta-test-ios:
+  extends: [.nightly, .nightly-beta-artifacts, .tart-runner]
   stage: version-test
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
   script:
     - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
-    - !reference [.install-gradle-mirror, script]
-    - fvm destroy
-    - fvm install beta
-    - fvm use beta
-    - fvm flutter upgrade --force
+    - !reference [.use-fvm-beta, script]
     - fvm flutter precache --ios
     - fvm exec dart pub global activate melos
     - pod repo update
     - flutter doctor
     - fvm exec melos pub:get
     - fvm exec melos remove_podfile_lock --no-select
-    - fvm exec melos run analyze
-    - fvm exec melos run build
-    - fvm exec melos run unit_test:flutter
-    - fvm exec melos run unit_test:android
+    - fvm exec melos run analyze:ios
+    - fvm exec melos run build:ios
     - fvm exec melos run unit_test:ios
-  artifacts:
-    when: always
-    expire_in: "30 days"
-    reports:
-      junit: $CI_PROJECT_DIR/.build/test-results/*.xml
+
+nightly-beta-test-android:
+  extends: [.nightly, .nightly-beta-artifacts]
+  stage: version-test
+  variables:
+    VAULT_ADDR: "https://vault.us1.ddbuild.io"
+  image: $CI_IMAGE_DOCKER
+  tags:
+    - "arch:amd64"
+  script:
+    - !reference [.pre, script]
+    - git -C "$(dirname $(dirname $(which flutter)))" reset --hard
+    - flutter channel beta
+    - flutter upgrade --force
+    - !reference [.pre-android, script]
+    - melos run analyze:android
+    - melos run build:android
+    - melos run unit_test:android
 
 nightly-beta-test-web:
   extends: .nightly
@@ -798,7 +832,7 @@ nightly-ios:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
 
 nightly-android:
-  extends: .nightly
+  extends: [.nightly, .android-emulator-runner]
   stage: e2e-test
   script:
     - !reference [.nightly-vars, script]
@@ -813,6 +847,7 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
+      - tools/ci/emulator.log
       - .build/test-results/*.jsonl
 
 # Verify the published Dart floor with the repository's Flutter version manager.

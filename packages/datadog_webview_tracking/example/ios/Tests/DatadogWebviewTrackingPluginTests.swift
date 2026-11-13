@@ -104,6 +104,7 @@ class FlutterSdkTests: XCTestCase {
 class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
     var viewController: UIViewController?
     var publishedValue: NSObject?
+    var engineIdentifier: Int64 = 0
 
     func publish(_ value: NSObject) {
         publishedValue = value
@@ -134,14 +135,6 @@ class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
     func textures() -> any FlutterTextureRegistry {
         return MockFlutterTextureRegistry()
     }
-
-    func registerViewFactory(_ factory: any FlutterPlatformViewFactory, withId factoryId: String) {}
-
-    func registerViewFactory(
-        _ factory: any FlutterPlatformViewFactory,
-        withId factoryId: String,
-        gestureRecognizersBlockingPolicy: FlutterPlatformViewGestureRecognizersBlockingPolicy
-    ) {}
 
     func register(_ factory: any FlutterPlatformViewFactory, withId factoryId: String) {}
 

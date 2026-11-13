@@ -12,7 +12,7 @@ import 'screens/test_select_screen.dart';
 void main() async {
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 

@@ -53,7 +53,7 @@
 
 - Examples show minimal SDK usage. Do not add test hooks, dogfooding features, or other
   scaffolding. Dogfooding apps go in `test_apps`.
-- Example apps read configuration from the `.env` files that `melos generate_env`
+- Example apps read configuration from the `dd.env` files that `melos generate_env`
   produces, not `String.fromEnvironment`.
 
 ## Tests

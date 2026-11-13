@@ -36,7 +36,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    - dd.env
 
 dependency_overrides:
   datadog_flutter_plugin:

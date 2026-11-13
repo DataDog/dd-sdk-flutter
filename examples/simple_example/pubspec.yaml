@@ -53,5 +53,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    - dd.env
     - assets/webview_page.html

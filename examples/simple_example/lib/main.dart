@@ -23,7 +23,7 @@ const graphQlUrl = 'http://localhost:3000/graphql';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   configureUrlStrategy();
 

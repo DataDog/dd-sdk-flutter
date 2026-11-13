@@ -6,14 +6,14 @@
 #
 
 ########
-# .env generation for package examples has moved to `melos.yaml` (`melos generate_env`).
+# dd.env generation for package examples has moved to `melos.yaml` (`melos generate_env`).
 # This script now only generates config for examples/native-hybrid-app and examples/simple_example
 ########
 
 set -e
 cd "$(dirname "$0")"
 
-tee examples/simple_example/.env > /dev/null << END
+tee examples/simple_example/dd.env > /dev/null << END
 # Edit this file with your Datadog client token, environment and application id
 DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_APPLICATION_ID
@@ -22,7 +22,7 @@ END
 
 flagsTargetingAttributesJson=${FLAGS_TARGETING_ATTRIBUTES_JSON:-'{"attr1":"value1","companyId":"1"}'}
 flagDotEnvFiles=(
-  "examples/simple_example/.env"
+  "examples/simple_example/dd.env"
 )
 
 for f in "${flagDotEnvFiles[@]}"; do
