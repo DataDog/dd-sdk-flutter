@@ -698,7 +698,8 @@ notify-nightly-failed:
     - set +o xtrace
     - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/ci/datadog/dd-sdk-flutter/trusted-jobs/e2e)
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/ci/datadog/dd-sdk-flutter/trusted-jobs/e2e)
-    - test -n "$DD_E2E_CLIENT_TOKEN" && test -n "$DD_E2E_APPLICATION_ID"
+    - test -n "$DD_E2E_CLIENT_TOKEN"
+    - test -n "$DD_E2E_APPLICATION_ID"
 
 .nightly:
   only: [schedules]
