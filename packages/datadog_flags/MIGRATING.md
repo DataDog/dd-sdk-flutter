@@ -4,17 +4,30 @@
 | --- | --- |
 | `DatadogFlags.enable` and `sharedClient` | `setProviderAndWait` and `getClient` |
 | `DatadogFlagsClient.initialize` | `setEvaluationContextAndWait` |
-| `FlagsEvaluationContext` for evaluation | `EvaluationContext` |
 | `FlagDetails` | `FlagEvaluationDetails` |
 | `FlagEvaluationError` | `ErrorCode` |
 | `getObjectDetails` | `getStructureDetails` for JSON objects |
 | `DatadogFlags.disable` | `OpenFeatureAPI.shutdown` |
+| `DatadogFlags.reset` and `DatadogFlagsClient.reset` | Call `delete` on your store with the domain name, or `default`. Shutdown clears in-memory assignments. |
 
 Configuration and store interfaces remain available. Legacy clients remain
 functional during migration. After a legacy client's `shutdown()`, obtain a new
 client with `sharedClient()`; the old client cannot be initialized again.
 
 For Flutter RUM, add `DatadogRumHook` from `datadog_flags_flutter` to the
-OpenFeature client. Do not initialize the deprecated plugin for the same flags.
+API with `OpenFeatureAPI.instance.addHooks`. Register the hook again after shutdown. Do not initialize the deprecated plugin for the same flags.
 Each Dart isolate must create its own OpenFeature API and provider state.
 
+`FlagsEvaluationContext` remains supported by the storage interface. Application
+evaluations use OpenFeature `EvaluationContext`.
+
+Use `DatadogProvider.fromConfiguration(configuration)` with a
+`DatadogFlagsConfiguration`.
+The provider requires a positive initialization timeout of at most 20 seconds.
+It applies the budget to initialization, each context change, and each refresh.
+
+Stored snapshots must include the configuration scope written by the SDK.
+Snapshots from earlier versions without this scope are treated as cache misses.
+After upgrading, evaluations use caller defaults until fresh assignments arrive.
+Custom stores must preserve `scope`, for example by using `FlagsData.toJson()`
+and `FlagsData.fromJson()`.

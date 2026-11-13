@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/flags_store.dart' show flagsDataScope;
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:http/http.dart' as http;
@@ -26,6 +27,766 @@ void main() {
   tearDown(() => api.shutdown());
 
   test(
+    'DateTime attributes preserve available precision and normalize to UTC',
+    () async {
+      final date = DateTime.parse('2026-01-02T05:30:00.000123+05:30').toLocal();
+      final subjects = <Map<String, Object?>>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            subjects.add(
+              _subject(jsonDecode(request.body) as Map<String, Object?>),
+            );
+            return _responseFor(request, _assignmentsResponse());
+          }),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(attributes: {'date': date}),
+      );
+      await api.setProviderAndWait(provider);
+      final expected = date.microsecond == 0
+          ? '2026-01-02T00:00:00.000Z'
+          : '2026-01-02T00:00:00.000123Z';
+      expect(
+        (subjects.single['targeting_attributes'] as Map)['date'],
+        expected,
+      );
+    },
+  );
+
+  test(
+    'strict initial retry ignores a late cache until a fresh success',
+    () async {
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      final response = Completer<http.Response>();
+      final started = Completer<void>();
+      var attempts = 0;
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((_) {
+            if (++attempts == 1) {
+              return Future.value(http.Response('offline', 503));
+            }
+            started.complete();
+            return response.future;
+          }),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 30),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(
+          targetingKey: 'A',
+          attributes: {'dd_strict_evaluation_context_switching': true},
+        ),
+      );
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      store.readDelay = const Duration(milliseconds: 60);
+      await provider.refresh();
+      await started.future;
+      expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      response.complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
+      await _waitUntil(
+        () => api.getClient().providerStatus == ProviderStatus.ready,
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    },
+  );
+
+  test(
+    'fatal context changes terminate while refresh avoids duplicate errors',
+    () async {
+      final provider = DatadogProvider.fromConfiguration(
+        const DatadogFlagsConfiguration(),
+      );
+      addTearDown(provider.shutdown);
+      final events = <ProviderEvent>[];
+      provider.events.listen(events.add);
+      api = createIsolatedOpenFeatureAPI(
+        lifecycleTimeout: const Duration(milliseconds: 100),
+      );
+      final fatalError = isA<OpenFeatureException>().having(
+        (error) => error.errorCode,
+        'errorCode',
+        ErrorCode.providerFatal,
+      );
+      await expectLater(api.setProviderAndWait(provider), throwsA(fatalError));
+      expect(events, hasLength(1));
+      for (final key in ['B', 'C']) {
+        await expectLater(
+          api.setEvaluationContextAndWait(EvaluationContext(targetingKey: key)),
+          throwsA(fatalError),
+        );
+        expect(api.getClient().providerStatus, ProviderStatus.fatal);
+      }
+      expect(events, hasLength(3));
+      await provider.refresh();
+      await provider.refresh();
+      expect(events, hasLength(3));
+      final details = [
+        provider.resolveBooleanValue('flag', false, EvaluationContext.empty),
+        provider.resolveStringValue(
+          'flag',
+          'fallback',
+          EvaluationContext.empty,
+        ),
+        provider.resolveIntegerValue('flag', 17, EvaluationContext.empty),
+        provider.resolveDoubleValue('flag', 1.5, EvaluationContext.empty),
+        provider.resolveStructureValue('flag', {
+          'fallback': true,
+        }, EvaluationContext.empty),
+      ];
+      expect(details.map((d) => d.value), [
+        false,
+        'fallback',
+        17,
+        1.5,
+        {'fallback': true},
+      ]);
+      expect(
+        details.every((d) => d.errorCode == ErrorCode.providerFatal),
+        isTrue,
+      );
+      expect(
+        events.every(
+          (e) =>
+              e.type == ProviderEventType.error &&
+              e.errorCode == ErrorCode.providerFatal,
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'load errors report the failure type without response content',
+    () async {
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient(
+            (_) async => http.Response('private-response-content', 200),
+          ),
+        ),
+      );
+      final events = <ProviderEvent>[];
+      provider.events.listen(events.add);
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(events.last.message, endsWith('invalidResponse.'));
+      expect(events.last.message, isNot(contains('private-response-content')));
+    },
+  );
+
+  test('stores assignments under the OpenFeature domain name', () async {
+    final store = _MemoryStore();
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
+        MockClient((r) async => _responseFor(r, _assignmentsResponse())),
+        store: store,
+      ),
+    );
+    await api.setProviderForDomainAndWait('checkout', provider);
+    expect(await store.read('checkout'), isNotNull);
+    expect(await store.read('default'), isNull);
+  });
+
+  for (final strict in [false, true]) {
+    test('late cached failure reports an error, strict=$strict', () async {
+      final response = Completer<http.Response>();
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((_) => response.future),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 30),
+        ),
+      );
+      final events = <ProviderEvent>[];
+      provider.events.listen(events.add);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(
+          targetingKey: 'A',
+          attributes: {'dd_strict_evaluation_context_switching': strict},
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      events.clear();
+      response.complete(http.Response('offline', 503));
+      await _waitUntil(
+        () => events.any((e) => e.type == ProviderEventType.error),
+      );
+      expect(events.map((e) => e.type), [
+        ProviderEventType.error,
+        if (!strict) ProviderEventType.stale,
+      ]);
+      expect(api.getClient().getBooleanValue('show-paywall', false), !strict);
+    });
+
+    test(
+      'late previous-key response cannot recreate deleted cache, strict=$strict',
+      () async {
+        final response = Completer<http.Response>();
+        final store = _MemoryStore();
+        await store.write(
+          'default',
+          FlagsData.fromJson({
+            'scope': flagsDataScope(
+              const DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
+            'flags': {'show-paywall': _assignment(variationValue: true)},
+            'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+            'date': DateTime.utc(2026).toIso8601String(),
+          }),
+        );
+        var attempts = 0;
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient(
+              (_) => ++attempts == 1
+                  ? response.future
+                  : Future.value(http.Response('offline', 503)),
+            ),
+            store: store,
+            initializationTimeout: const Duration(milliseconds: 30),
+          ),
+        );
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(
+            targetingKey: 'A',
+            attributes: {'dd_strict_evaluation_context_switching': strict},
+          ),
+        );
+        await api.setProviderAndWait(provider);
+        await expectLater(
+          api.setEvaluationContextAndWait(
+            EvaluationContext(
+              targetingKey: 'B',
+              attributes: {'dd_strict_evaluation_context_switching': strict},
+            ),
+          ),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        await store.delete('default');
+        expect(await store.read('default'), isNull);
+        response.complete(
+          http.Response(jsonEncode(_assignmentsResponse()), 200),
+        );
+        await pumpEventQueue();
+        expect(await store.read('default'), isNull);
+        expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      },
+    );
+  }
+
+  for (final initiallyStrict in [false, true]) {
+    test(
+      'strict same-context timeout withholds assignments, initiallyStrict=$initiallyStrict',
+      () async {
+        var attempts = 0;
+        final response = Completer<http.Response>();
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient(
+              (_) => ++attempts == 1
+                  ? Future.value(
+                      http.Response(jsonEncode(_assignmentsResponse()), 200),
+                    )
+                  : response.future,
+            ),
+            initializationTimeout: const Duration(milliseconds: 30),
+          ),
+        );
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(
+            targetingKey: 'A',
+            attributes: {
+              'dd_strict_evaluation_context_switching': initiallyStrict,
+            },
+          ),
+        );
+        await api.setProviderAndWait(provider);
+        expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+        await expectLater(
+          api.setEvaluationContextAndWait(
+            EvaluationContext(
+              targetingKey: 'A',
+              attributes: {'dd_strict_evaluation_context_switching': true},
+            ),
+          ),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+        response.complete(
+          http.Response(jsonEncode(_assignmentsResponse()), 200),
+        );
+        await pumpEventQueue();
+        expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      },
+    );
+  }
+
+  for (final endpoint in ['/api/v2/exposures', '/api/v2/flagevaluation']) {
+    test(
+      'shutdown drains retained telemetry after a failed key change: $endpoint',
+      () async {
+        final requests = <http.Request>[];
+        var attempts = 0;
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient((r) async {
+              requests.add(r);
+              if (r.url.path == '/precompute-assignments' && ++attempts > 1) {
+                return http.Response('offline', 503);
+              }
+              return _responseFor(r, _assignmentsResponse());
+            }),
+            trackTelemetry: true,
+          ),
+        );
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: 'A'),
+        );
+        await api.setProviderAndWait(provider);
+        api.getClient().getBooleanValue('show-paywall', false);
+        await expectLater(
+          api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+          throwsA(isA<OpenFeatureException>()),
+        );
+        expect(requests.where((r) => r.url.path == endpoint), isEmpty);
+        await api.shutdown();
+        expect(requests.where((r) => r.url.path == endpoint), hasLength(1));
+      },
+    );
+  }
+
+  test(
+    'failed identity change keeps outgoing telemetry retries alive',
+    () async {
+      EvaluationAggregator.maxBatchSize = 1;
+      addTearDown(
+        () => EvaluationAggregator.maxBatchSize =
+            EvaluationAggregator.defaultMaxBatchSize,
+      );
+      final initialUpload = Completer<http.Response>();
+      final started = Completer<void>();
+      var assignments = 0;
+      var attempts = 0;
+      final delivered = <Map<String, Object?>>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            if (request.url.path == '/api/v2/flagevaluation') {
+              if (++attempts == 1) {
+                started.complete();
+                return initialUpload.future;
+              }
+              delivered.addAll(_evaluationEvents(request));
+              return http.Response('{}', 202);
+            }
+            if (request.url.path == '/precompute-assignments' &&
+                ++assignments > 1) {
+              return http.Response('offline', 503);
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'A'),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await started.future;
+      await expectLater(
+        api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      initialUpload.complete(http.Response('offline', 503));
+      await _waitUntil(() => delivered.isNotEmpty);
+      expect(delivered.single['targeting_key'], 'A');
+      await api.shutdown();
+      expect(attempts, 2);
+    },
+  );
+
+  test(
+    'late cached response preserves outgoing telemetry after identity failure',
+    () async {
+      EvaluationAggregator.maxBatchSize = 1;
+      addTearDown(
+        () => EvaluationAggregator.maxBatchSize =
+            EvaluationAggregator.defaultMaxBatchSize,
+      );
+      final initialUpload = Completer<http.Response>();
+      final started = Completer<void>();
+      final firstAssignment = Completer<http.Response>();
+      final store = _MemoryStore();
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      var assignments = 0;
+      var attempts = 0;
+      final delivered = <Map<String, Object?>>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            if (request.url.path == '/api/v2/flagevaluation') {
+              if (++attempts == 1) {
+                started.complete();
+                return initialUpload.future;
+              }
+              delivered.addAll(_evaluationEvents(request));
+              return http.Response('{}', 202);
+            }
+            if (request.url.path == '/precompute-assignments') {
+              if (++assignments == 1) {
+                return firstAssignment.future;
+              }
+              return http.Response('offline', 503);
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 20),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'A'),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await started.future;
+      await expectLater(
+        api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+      firstAssignment.complete(
+        http.Response(jsonEncode(_assignmentsResponse()), 200),
+      );
+      await Future<void>.delayed(Duration.zero);
+      initialUpload.complete(http.Response('offline', 503));
+      await _waitUntil(() => delivered.isNotEmpty);
+      expect(delivered.single['targeting_key'], 'A');
+      await api.shutdown();
+      expect(attempts, 2);
+    },
+  );
+
+  for (final key in <String?>[null, '', 'user']) {
+    test('attribute-only change retains assignments for key $key', () async {
+      var requests = 0;
+      final pending = Completer<http.Response>();
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) {
+            if (request.url.path != '/precompute-assignments') {
+              return Future.value(http.Response('{}', 202));
+            }
+            if (++requests == 1) {
+              return Future.value(
+                http.Response(jsonEncode(_assignmentsResponse()), 200),
+              );
+            }
+            return pending.future;
+          }),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: key, attributes: {'plan': 'free'}),
+      );
+      await api.setProviderAndWait(provider);
+      final operation = expectLater(
+        api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: key, attributes: {'plan': 'pro'}),
+        ),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      await _waitUntil(() => requests == 2);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      pending.complete(http.Response('offline', 503));
+      await operation;
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    });
+  }
+
+  for (final attributes in <Map<String, Object?>>[
+    {
+      'date': DateTime.utc(2026, 1, 2),
+      'nested': {
+        'dates': [DateTime.utc(2026, 1, 2)],
+      },
+    },
+    {
+      'nan': double.nan,
+      'infinity': double.infinity,
+      'nested': [double.negativeInfinity],
+    },
+  ]) {
+    test('normalizes context attributes ${attributes.keys}', () async {
+      final subjects = <Map<String, Object?>>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            if (request.url.path == '/precompute-assignments') {
+              subjects.add(
+                _subject(jsonDecode(request.body) as Map<String, Object?>),
+              );
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'A', attributes: attributes),
+      );
+      await api.setProviderAndWait(provider);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'B', attributes: attributes),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      expect(subjects, hasLength(2));
+      for (final subject in subjects) {
+        final sent = subject['targeting_attributes'] as Map<String, Object?>;
+        if (attributes.containsKey('date')) {
+          expect(sent['date'], '2026-01-02T00:00:00.000Z');
+          expect(jsonDecode(sent['nested'] as String), {
+            'dates': ['2026-01-02T00:00:00.000Z'],
+          });
+        } else {
+          expect(sent['nan'], isNull);
+          expect(sent['infinity'], isNull);
+          expect(jsonDecode(sent['nested'] as String), [null]);
+        }
+      }
+    });
+  }
+
+  test(
+    'refresh after deadline retries initialization and recovers late',
+    () async {
+      var requests = 0;
+      final response = Completer<http.Response>();
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((_) {
+            requests++;
+            return response.future;
+          }),
+          initializationTimeout: const Duration(milliseconds: 20),
+        ),
+      );
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      await provider.refresh();
+      expect(requests, 2);
+      response.complete(http.Response(jsonEncode(_assignmentsResponse()), 200));
+      await _waitUntil(
+        () => api.getClient().providerStatus == ProviderStatus.ready,
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    },
+  );
+
+  for (final withStore in [false, true]) {
+    test(
+      'failed refresh retains usable assignments and reports stale (store: $withStore)',
+      () async {
+        var requests = 0;
+        final events = <ProviderEvent>[];
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
+            MockClient(
+              (_) async => ++requests == 1
+                  ? http.Response(jsonEncode(_assignmentsResponse()), 200)
+                  : http.Response('offline', 503),
+            ),
+            store: withStore ? _MemoryStore() : null,
+          ),
+        );
+        provider.events.listen(events.add);
+        await api.setProviderAndWait(provider);
+        events.clear();
+        await provider.refresh();
+        expect(events.map((e) => e.type), [
+          ProviderEventType.error,
+          ProviderEventType.stale,
+        ]);
+        expect(events.first.message, contains('503'));
+        expect(api.getClient().providerStatus, ProviderStatus.stale);
+        expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      },
+    );
+  }
+
+  test(
+    'refresh after failed initialization uses a matching stored snapshot',
+    () async {
+      final store = _MemoryStore();
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((_) async => http.Response('offline', 503)),
+          store: store,
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'A'),
+      );
+      await expectLater(
+        api.setProviderAndWait(provider),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      await store.write(
+        'default',
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: true)},
+          'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      await provider.refresh();
+      expect(api.getClient().providerStatus, ProviderStatus.stale);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+    },
+  );
+
+  test(
+    'reconciliation deadline with a matching snapshot recovers to ready',
+    () async {
+      final store = _MemoryStore();
+      final secondResponse = Completer<http.Response>();
+      var assignmentRequests = 0;
+      final events = <ProviderEventType>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) {
+            if (request.url.path != '/precompute-assignments') {
+              return Future.value(http.Response('{}', 202));
+            }
+            if (++assignmentRequests == 1) {
+              return Future.value(
+                http.Response(jsonEncode(_assignmentsResponse()), 200),
+              );
+            }
+            return secondResponse.future;
+          }),
+          store: store,
+          initializationTimeout: const Duration(milliseconds: 100),
+        ),
+      );
+      provider.events.listen((event) => events.add(event.type));
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'first'),
+      );
+      await api.setProviderAndWait(provider);
+      await store.write(
+        DatadogFlags.defaultClientName,
+        FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
+          'flags': {'show-paywall': _assignment(variationValue: false)},
+          'context': const FlagsEvaluationContext(
+            targetingKey: 'second',
+          ).toJson(),
+          'date': DateTime.utc(2026).toIso8601String(),
+        }),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'second'),
+      );
+      final client = api.getClient();
+      expect(client.providerStatus, ProviderStatus.stale);
+      var details = client.getBooleanDetails('show-paywall', true);
+      expect(details.value, isFalse);
+      expect(details.reason, 'CACHED');
+      expect(events, [
+        ProviderEventType.ready,
+        ProviderEventType.reconciling,
+        ProviderEventType.contextChanged,
+        ProviderEventType.stale,
+      ]);
+
+      secondResponse.complete(
+        http.Response(jsonEncode(_assignmentsResponse()), 200),
+      );
+      await _waitUntil(() => client.providerStatus == ProviderStatus.ready);
+      details = client.getBooleanDetails('show-paywall', false);
+      expect(details.value, isTrue);
+      expect(details.reason, 'TARGETING_MATCH');
+    },
+  );
+
+  test(
     'refresh during reconciliation does not quarantine the provider',
     () async {
       api = createIsolatedOpenFeatureAPI(
@@ -33,8 +794,8 @@ void main() {
       );
       final pendingB = Completer<http.Response>();
       final subjects = <String?>[];
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient((request) {
             if (request.url.path != '/precompute-assignments') {
               return Future.value(http.Response('{}', 202));
@@ -78,10 +839,154 @@ void main() {
     },
   );
 
+  for (final firstKey in <String?>[null, '']) {
+    test('missing and empty keys share telemetry, first: $firstKey', () async {
+      final requests = <http.Request>[];
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            requests.add(request);
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+        ),
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: firstKey),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: firstKey == null ? '' : null),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'another-user'),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      await api.shutdown();
+
+      final exposures = requests
+          .where((request) => request.url.path.contains('exposure'))
+          .expand((request) => request.body.trim().split('\n'))
+          .map((line) => jsonDecode(line) as Map<String, dynamic>)
+          .toList();
+      expect(exposures, hasLength(2));
+      expect(exposures.map((event) => event['subject']['id']), [
+        '',
+        'another-user',
+      ]);
+      final evaluations = requests
+          .where((request) => request.url.path == '/api/v2/flagevaluation')
+          .expand(_evaluationEvents)
+          .toList();
+      expect(evaluations, hasLength(2));
+      expect(evaluations.map((event) => event['evaluation_count']), [2, 1]);
+    });
+  }
+
+  for (final stream in ['evaluations', 'exposures']) {
+    test('$stream upload during frequent context changes', () async {
+      final requests = <http.Request>[];
+      var exposureAttempts = 0;
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            requests.add(request);
+            if (stream == 'exposures' &&
+                request.url.path == '/api/v2/exposures' &&
+                ++exposureAttempts == 1) {
+              return http.Response('retry', 503);
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+          evaluationFlushInterval: const Duration(seconds: 1),
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      final duration = stream == 'exposures'
+          ? const Duration(seconds: 12)
+          : const Duration(seconds: 3);
+      final interval = stream == 'exposures'
+          ? const Duration(milliseconds: 200)
+          : const Duration(milliseconds: 20);
+      final elapsed = Stopwatch()..start();
+      var revision = 0;
+      while (elapsed.elapsed < duration) {
+        await Future<void>.delayed(interval);
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(attributes: {'revision': ++revision}),
+        );
+        expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      }
+      elapsed.stop();
+      final path = stream == 'exposures'
+          ? '/api/v2/exposures'
+          : '/api/v2/flagevaluation';
+      // Inspect requests before shutdown can drain the queued telemetry.
+      final uploads = requests.where((request) => request.url.path == path);
+      expect(uploads.length, greaterThanOrEqualTo(2));
+      if (stream == 'exposures') {
+        final event =
+            jsonDecode(uploads.first.body.trim()) as Map<String, dynamic>;
+        expect(event['flag'], {'key': 'show-paywall'});
+        expect(event['subject']['id'], '');
+      } else {
+        expect(_evaluationEvents(uploads.first), isNotEmpty);
+      }
+    });
+  }
+
+  test(
+    'evaluation retries keep their deadline across context changes',
+    () async {
+      var attempts = 0;
+      final delivered = <Map<String, Object?>>[];
+      EvaluationAggregator.maxBatchSize = 1;
+      addTearDown(
+        () => EvaluationAggregator.maxBatchSize =
+            EvaluationAggregator.defaultMaxBatchSize,
+      );
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient((request) async {
+            if (request.url.path == '/api/v2/flagevaluation') {
+              if (++attempts == 1) {
+                EvaluationAggregator.maxBatchSize =
+                    EvaluationAggregator.defaultMaxBatchSize;
+                return http.Response('retry', 503);
+              }
+              delivered.addAll(_evaluationEvents(request));
+            }
+            return _responseFor(request, _assignmentsResponse());
+          }),
+          trackTelemetry: true,
+          evaluationFlushInterval: const Duration(seconds: 30),
+        ),
+      );
+      await api.setProviderAndWait(provider);
+      expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+      final elapsed = Stopwatch()..start();
+      var revision = 0;
+      while (elapsed.elapsed < const Duration(seconds: 1)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(attributes: {'revision': ++revision}),
+        );
+      }
+      elapsed.stop();
+      expect(attempts, 2);
+      expect(delivered.single['flag'], {'key': 'show-paywall'});
+      expect(delivered.single['evaluation_count'], 1);
+    },
+  );
+
   test('unchanged refresh preserves exposure deduplication', () async {
     final requests = <http.Request>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           requests.add(request);
           return _responseFor(request, _assignmentsResponse());
@@ -104,8 +1009,8 @@ void main() {
   test('failed sign-out requires an API retry before refresh', () async {
     var failAnonymous = true;
     final subjects = <String?>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           if (request.url.path != '/precompute-assignments') {
             return http.Response('{}', 202);
@@ -145,8 +1050,8 @@ void main() {
   test('changed serial ID still emits an exposure after refresh', () async {
     final requests = <http.Request>[];
     var serialId = 1;
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           requests.add(request);
           return _responseFor(request, {
@@ -185,8 +1090,8 @@ void main() {
   test('shutdown fences a refresh waiting for reconciliation', () async {
     final pendingB = Completer<http.Response>();
     var calls = 0;
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           if (++calls == 2) return pendingB.future;
           return _responseFor(request, _assignmentsResponse());
@@ -223,8 +1128,8 @@ void main() {
             final started = Completer<void>();
             var attempts = 0;
             var successes = 0;
-            final provider = DatadogOpenFeatureProvider(
-              configuration: _configuration(
+            final provider = DatadogProvider.fromConfiguration(
+              _configuration(
                 MockClient((request) async {
                   if (request.url.path.contains('exposure')) {
                     attempts++;
@@ -284,6 +1189,13 @@ void main() {
         await store.write(
           'default',
           FlagsData.fromJson({
+            'scope': flagsDataScope(
+              const DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
             'flags': {'show-paywall': _assignment(variationValue: true)},
             'context': const FlagsEvaluationContext(targetingKey: 'A').toJson(),
             'date': DateTime.utc(2026).toIso8601String(),
@@ -292,8 +1204,8 @@ void main() {
         final initialResponse = Completer<http.Response>();
         final replacementResponse = Completer<http.Response>();
         var requests = 0;
-        final provider = DatadogOpenFeatureProvider(
-          configuration: _configuration(
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
             MockClient(
               (_) => ++requests == 1
                   ? initialResponse.future
@@ -314,7 +1226,10 @@ void main() {
         final replacing = reconcile
             ? expectLater(
                 api.setEvaluationContextAndWait(
-                  EvaluationContext(targetingKey: 'B'),
+                  EvaluationContext(
+                    targetingKey: 'A',
+                    attributes: {'plan': 'pro'},
+                  ),
                 ),
                 throwsA(isA<OpenFeatureException>()),
               )
@@ -340,6 +1255,7 @@ void main() {
     ('refresh', 1),
     ('refresh', 2),
     ('reconcile', 1),
+    ('signout', 1),
   ]) {
     test(
       'in-flight evaluation retries after $replacements $operation replacements',
@@ -353,8 +1269,8 @@ void main() {
         final started = Completer<void>();
         final delivered = <Map<String, Object?>>[];
         var attempts = 0;
-        final provider = DatadogOpenFeatureProvider(
-          configuration: _configuration(
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
             MockClient((request) async {
               if (request.url.path == '/api/v2/flagevaluation') {
                 if (++attempts == 1) {
@@ -376,7 +1292,9 @@ void main() {
         expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
         await started.future;
         for (var i = 0; i < replacements; i++) {
-          if (operation == 'reconcile') {
+          if (operation == 'signout') {
+            await api.setEvaluationContextAndWait(EvaluationContext.empty);
+          } else if (operation == 'reconcile') {
             await api.setEvaluationContextAndWait(
               EvaluationContext(targetingKey: 'B'),
             );
@@ -390,14 +1308,21 @@ void main() {
         await api.shutdown();
         final counts = <String, int>{};
         for (final event in delivered) {
-          final subject = event['targeting_key']! as String;
+          final subject = event['targeting_key'] as String? ?? '';
           counts.update(
             subject,
             (count) => count + (event['evaluation_count']! as int),
             ifAbsent: () => event['evaluation_count']! as int,
           );
         }
-        expect(counts, operation == 'reconcile' ? {'A': 1, 'B': 1} : {'A': 2});
+        expect(
+          counts,
+          operation == 'signout'
+              ? {'A': 1, '': 1}
+              : operation == 'reconcile'
+              ? {'A': 1, 'B': 1}
+              : {'A': 2},
+        );
         expect(attempts, 2);
       },
     );
@@ -406,8 +1331,8 @@ void main() {
   test('queued evaluation retries after runtime replacement', () async {
     final delivered = <Map<String, Object?>>[];
     var attempts = 0;
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           if (request.url.path == '/api/v2/flagevaluation') {
             if (++attempts == 1) return http.Response('offline', 503);
@@ -461,22 +1386,24 @@ void main() {
       EvaluationContext(targetingKey: 'subject'),
     );
     await api.setProviderAndWait(
-      DatadogOpenFeatureProvider(configuration: configuration),
+      DatadogProvider.fromConfiguration(configuration),
     );
     final details = api.getClient().getBooleanDetails('flag', false);
     expect(details.value, isTrue);
     expect(details.reason, 'TARGETING_MATCH');
     expect(details.flagMetadata, {
-      DatadogOpenFeatureProvider.allocationKeyMetadata: 'allocation-a',
-      DatadogOpenFeatureProvider.serialIdMetadata: 42,
+      DatadogProvider.allocationKeyMetadata: 'allocation-a',
+      DatadogProvider.serialIdMetadata: 42,
+      'doLog': true,
+      'variationType': 'boolean',
+      '__dd_allocation_key': 'allocation-a',
       '__dd_do_log': true,
-      '__dd_split_serial_id': 42,
     });
     expect(api.getClient().providerStatus, ProviderStatus.ready);
 
     offline = true;
     await api.setProviderAndWait(
-      DatadogOpenFeatureProvider(configuration: configuration),
+      DatadogProvider.fromConfiguration(configuration),
     );
     final cached = api.getClient().getBooleanDetails('flag', false);
     expect(cached.value, isTrue);
@@ -487,12 +1414,13 @@ void main() {
 
   test('shutdown releases timers and ignores a pending refresh', () async {
     final timers = <Timer>[];
+    const flushInterval = Duration(seconds: 37);
     await runZoned(
       () async {
         final response = Completer<http.Response>();
         var assignmentRequests = 0;
-        final provider = DatadogOpenFeatureProvider(
-          configuration: _configuration(
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
             MockClient((request) {
               if (request.url.path != '/precompute-assignments') {
                 return Future.value(http.Response('{}', 202));
@@ -505,6 +1433,7 @@ void main() {
               return response.future;
             }),
             trackTelemetry: true,
+            evaluationFlushInterval: flushInterval,
           ),
         );
         await provider.initialize(EvaluationContext(targetingKey: 'subject'));
@@ -530,6 +1459,11 @@ void main() {
         expect(timers.every((timer) => !timer.isActive), isTrue);
       },
       zoneSpecification: ZoneSpecification(
+        createTimer: (self, parent, zone, duration, callback) {
+          final timer = parent.createTimer(zone, duration, callback);
+          if (duration == flushInterval) timers.add(timer);
+          return timer;
+        },
         createPeriodicTimer: (self, parent, zone, duration, callback) {
           final timer = parent.createPeriodicTimer(zone, duration, callback);
           timers.add(timer);
@@ -544,8 +1478,8 @@ void main() {
     () async {
       final store = _MemoryStore();
       var fail = false;
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient(
             (_) async => fail
                 ? http.Response('offline', 503)
@@ -561,6 +1495,13 @@ void main() {
       await store.write(
         'default',
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: false)},
           'context': const FlagsEvaluationContext(
             targetingKey: 'second',
@@ -579,8 +1520,8 @@ void main() {
 
   test('maps typed details, errors, and Datadog metadata', () async {
     final requests = <http.Request>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           requests.add(request);
           return _responseFor(request, _assignmentsResponse());
@@ -602,10 +1543,12 @@ void main() {
     expect(boolean.variant, 'enabled');
     expect(boolean.reason, 'TARGETING_MATCH');
     expect(boolean.flagMetadata, {
-      DatadogOpenFeatureProvider.allocationKeyMetadata: 'allocation-a',
-      DatadogOpenFeatureProvider.serialIdMetadata: 42,
+      DatadogProvider.allocationKeyMetadata: 'allocation-a',
+      DatadogProvider.serialIdMetadata: 42,
+      'doLog': true,
+      'variationType': 'boolean',
+      '__dd_allocation_key': 'allocation-a',
       '__dd_do_log': true,
-      '__dd_split_serial_id': 42,
     });
     expect(client.getStringValue('theme', 'light'), 'dark');
     expect(client.getIntegerValue('max-items', 1), 3);
@@ -640,14 +1583,14 @@ void main() {
   });
 
   test(
-    'keeps the previous identity active until reconciliation succeeds',
+    'targeting-key change returns defaults until reconciliation succeeds',
     () async {
       final requests = <http.Request>[];
       final nextContextResponse = Completer<http.Response>();
       var assignmentRequestCount = 0;
       final providerEvents = <ProviderEventType>[];
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient((request) {
             requests.add(request);
             if (request.url.path != '/precompute-assignments') {
@@ -678,7 +1621,10 @@ void main() {
       await _waitUntil(() => assignmentRequestCount == 2);
 
       expect(client.providerStatus, ProviderStatus.reconciling);
-      expect(client.getBooleanValue('show-paywall', false), isTrue);
+      expect(
+        client.getBooleanDetails('show-paywall', false).errorCode,
+        ErrorCode.providerNotReady,
+      );
 
       nextContextResponse.complete(
         http.Response(
@@ -708,10 +1654,10 @@ void main() {
     },
   );
 
-  test('failed reconciliation retains the previous assignments', () async {
+  test('failed targeting-key change returns defaults', () async {
     var assignmentRequestCount = 0;
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           if (request.url.path != '/precompute-assignments') {
             return http.Response('{}', 202);
@@ -739,7 +1685,7 @@ void main() {
     );
 
     expect(client.providerStatus, ProviderStatus.error);
-    expect(client.getBooleanValue('show-paywall', false), isTrue);
+    expect(client.getBooleanValue('show-paywall', false), isFalse);
   });
 
   test('uses matching stored assignments with stale provider status', () async {
@@ -747,6 +1693,13 @@ void main() {
     await store.write(
       DatadogFlags.defaultClientName,
       FlagsData.fromJson({
+        'scope': flagsDataScope(
+          const DatadogFlagsConfig(
+            clientToken: 'client-token',
+            env: 'test',
+            site: DatadogFlagsSite.us1,
+          ),
+        ),
         'flags': {
           'show-paywall': _assignment(variationValue: true, serialId: 7),
         },
@@ -757,8 +1710,8 @@ void main() {
       }),
     );
     final providerEvents = <ProviderEventType>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async => http.Response('unavailable', 503)),
         store: store,
       ),
@@ -780,8 +1733,8 @@ void main() {
     final assignmentResponse = Completer<http.Response>();
     var assignmentRequestCount = 0;
     final providerEvents = <ProviderEventType>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) {
           if (request.url.path != '/precompute-assignments') {
             return Future.value(http.Response('{}', 202));
@@ -819,8 +1772,8 @@ void main() {
     () async {
       final nextContextResponse = Completer<http.Response>();
       var assignmentRequestCount = 0;
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient((request) {
             if (request.url.path != '/precompute-assignments') {
               return Future.value(http.Response('{}', 202));
@@ -849,18 +1802,18 @@ void main() {
       await _waitUntil(() => assignmentRequestCount == 2);
       await expectLater(reconciliation, throwsA(isA<OpenFeatureException>()));
       expect(client.providerStatus, ProviderStatus.error);
-      expect(client.getBooleanValue('show-paywall', false), isTrue);
+      expect(client.getBooleanValue('show-paywall', false), isFalse);
 
       nextContextResponse.complete(
         http.Response(
-          jsonEncode(_assignmentsResponse(booleanValue: false)),
+          jsonEncode(_assignmentsResponse(booleanValue: true)),
           200,
         ),
       );
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       expect(client.providerStatus, ProviderStatus.error);
-      expect(client.getBooleanValue('show-paywall', false), isTrue);
+      expect(client.getBooleanValue('show-paywall', false), isFalse);
     },
   );
 
@@ -868,8 +1821,8 @@ void main() {
     'preserves Datadog evaluation telemetry without claiming tracking',
     () async {
       final requests = <http.Request>[];
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient((request) async {
             requests.add(request);
             return _responseFor(request, _assignmentsResponse());
@@ -902,8 +1855,8 @@ void main() {
 
   test('reports structure mismatches without logging an exposure', () async {
     final requests = <http.Request>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) async {
           requests.add(request);
           return _responseFor(
@@ -932,10 +1885,8 @@ void main() {
   });
 
   test('returns provider-not-ready defaults before initialization', () {
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
-        MockClient((_) async => http.Response('', 500)),
-      ),
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(MockClient((_) async => http.Response('', 500))),
     );
 
     final details = provider.resolveBooleanValue(
@@ -949,9 +1900,9 @@ void main() {
     expect(details.reason, 'ERROR');
   });
 
-  test('reports missing Datadog configuration during initialization', () async {
-    final provider = DatadogOpenFeatureProvider(
-      configuration: const DatadogFlagsConfiguration(),
+  test('recovers from fatal configuration by replacing the provider', () async {
+    final provider = DatadogProvider.fromConfiguration(
+      const DatadogFlagsConfiguration(),
     );
 
     await expectLater(
@@ -959,14 +1910,33 @@ void main() {
       throwsA(isA<OpenFeatureException>()),
     );
 
-    expect(api.getClient().providerStatus, ProviderStatus.error);
+    final client = api.getClient();
+    expect(client.providerStatus, ProviderStatus.fatal);
+    final failed = client.getBooleanDetails('show-paywall', false);
+    expect(failed.value, isFalse);
+    expect(failed.errorCode, ErrorCode.providerFatal);
+
+    final replacement = DatadogProvider.fromConfiguration(
+      _configuration(
+        MockClient(
+          (request) async => _responseFor(request, _assignmentsResponse()),
+        ),
+      ),
+    );
+    await api.setProviderAndWait(replacement);
+
+    expect(client.providerStatus, ProviderStatus.ready);
+    final recovered = client.getBooleanDetails('show-paywall', false);
+    expect(recovered.value, isTrue);
+    expect(recovered.errorCode, isNull);
+    expect(recovered.reason, 'TARGETING_MATCH');
   });
   test(
     'published assignments survive a store write that never finishes',
     () async {
       final store = _BlockedWriteStore();
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient(
             (request) async => _responseFor(request, _assignmentsResponse()),
           ),
@@ -990,6 +1960,13 @@ void main() {
       await store.write(
         'default',
         FlagsData.fromJson({
+          'scope': flagsDataScope(
+            const DatadogFlagsConfig(
+              clientToken: 'client-token',
+              env: 'test',
+              site: DatadogFlagsSite.us1,
+            ),
+          ),
           'flags': {'show-paywall': _assignment(variationValue: true)},
           'context': const FlagsEvaluationContext(
             targetingKey: 'cached',
@@ -999,8 +1976,8 @@ void main() {
       );
       final response = Completer<http.Response>();
       final events = <ProviderEvent>[];
-      final provider = DatadogOpenFeatureProvider(
-        configuration: _configuration(
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
           MockClient((_) => response.future),
           store: store,
           initializationTimeout: const Duration(milliseconds: 100),
@@ -1045,8 +2022,8 @@ void main() {
       'rejects unsafe lifecycle budget $timeout before starting HTTP',
       () async {
         var requests = 0;
-        final provider = DatadogOpenFeatureProvider(
-          configuration: _configuration(
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(
             MockClient((_) async {
               requests++;
               return http.Response('', 500);
@@ -1059,7 +2036,7 @@ void main() {
           throwsA(isA<OpenFeatureException>()),
         );
         expect(requests, 0);
-        expect(api.getClient().providerStatus, ProviderStatus.error);
+        expect(api.getClient().providerStatus, ProviderStatus.fatal);
       },
     );
   }
@@ -1068,8 +2045,8 @@ void main() {
     final first = Completer<http.Response>();
     var requests = 0;
     final events = <ProviderEventType>[];
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(
         MockClient((request) {
           requests++;
           if (requests == 1) return first.future;
@@ -1104,27 +2081,29 @@ void main() {
     );
   });
 
-  test('sign-out retires private flags when anonymous loading fails', () async {
-    var requests = 0;
-    final provider = DatadogOpenFeatureProvider(
-      configuration: _configuration(
-        MockClient(
-          (_) async => ++requests == 1
-              ? http.Response(jsonEncode(_assignmentsResponse()), 200)
-              : http.Response('offline', 503),
+  for (final key in <String?>[null, '']) {
+    test('sign-out to $key retires assignments when loading fails', () async {
+      var requests = 0;
+      final provider = DatadogProvider.fromConfiguration(
+        _configuration(
+          MockClient(
+            (_) async => ++requests == 1
+                ? http.Response(jsonEncode(_assignmentsResponse()), 200)
+                : http.Response('offline', 503),
+          ),
         ),
-      ),
-    );
-    await api.setEvaluationContextAndWait(
-      EvaluationContext(targetingKey: 'private-user'),
-    );
-    await api.setProviderAndWait(provider);
-    await expectLater(
-      api.setEvaluationContextAndWait(EvaluationContext.empty),
-      throwsA(isA<OpenFeatureException>()),
-    );
-    expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
-  });
+      );
+      await api.setEvaluationContextAndWait(
+        EvaluationContext(targetingKey: 'private-user'),
+      );
+      await api.setProviderAndWait(provider);
+      await expectLater(
+        api.setEvaluationContextAndWait(EvaluationContext(targetingKey: key)),
+        throwsA(isA<OpenFeatureException>()),
+      );
+      expect(api.getClient().getBooleanValue('show-paywall', false), isFalse);
+    });
+  }
 
   for (var offset = 0; offset < 7; offset++) {
     test(
@@ -1133,11 +2112,8 @@ void main() {
         final response = Completer<http.Response>();
         final events = <ProviderEvent>[];
         final store = _MemoryStore();
-        final provider = DatadogOpenFeatureProvider(
-          configuration: _configuration(
-            MockClient((_) => response.future),
-            store: store,
-          ),
+        final provider = DatadogProvider.fromConfiguration(
+          _configuration(MockClient((_) => response.future), store: store),
         );
         provider.events.listen(events.add);
         final initializing = provider.initialize(
@@ -1288,6 +2264,7 @@ Future<void> _waitUntil(bool Function() condition) async {
 
 final class _MemoryStore implements DatadogFlagsStore {
   final Map<String, FlagsData> _values = {};
+  Duration readDelay = Duration.zero;
 
   @override
   Future<void> delete(String clientName) async {
@@ -1295,7 +2272,10 @@ final class _MemoryStore implements DatadogFlagsStore {
   }
 
   @override
-  Future<FlagsData?> read(String clientName) async => _values[clientName];
+  Future<FlagsData?> read(String clientName) async {
+    if (readDelay > Duration.zero) await Future<void>.delayed(readDelay);
+    return _values[clientName];
+  }
 
   @override
   Future<void> write(String clientName, FlagsData data) async {

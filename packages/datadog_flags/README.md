@@ -30,8 +30,8 @@ await api.setEvaluationContextAndWait(
     attributes: {'plan': 'pro'},
   ),
 );
-final provider = DatadogOpenFeatureProvider(
-  configuration: DatadogFlagsConfiguration(
+final provider = DatadogProvider.fromConfiguration(
+  DatadogFlagsConfiguration(
     datadogConfig: DatadogFlagsConfig(
       clientToken: '<CLIENT_TOKEN>',
       env: 'production',
@@ -46,7 +46,7 @@ client.addHandler(ProviderEventType.ready, (_) {
 try {
   await api.setProviderAndWait(provider);
 } on OpenFeatureException {
-  // Continue startup with matching cached assignments or defaults.
+  // Evaluations return defaults until initial assignments become available.
 }
 final enabled = client.getBooleanValue('checkout.enabled', false);
 final details = client.getStringDetails('checkout.copy', 'Continue');
@@ -62,11 +62,11 @@ scalar assignment returns the default with `ErrorCode.typeMismatch`. Failed
 evaluations do not emit exposures. Successful structure values are immutable.
 
 Details include the variant, reason, error code, and provider metadata.
-The provider sets the metadata keys `datadog.allocation_key` and
-`datadog.serial_id`, available as
-`DatadogOpenFeatureProvider.allocationKeyMetadata` and `serialIdMetadata`.
-These namespaced keys are provider-specific and are not part of the OpenFeature
-specification.
+The provider supplies `allocationKey`, `doLog`, `variationType`,
+`__dd_allocation_key`, `__dd_do_log`, and an optional `__dd_split_serial_id`.
+The provider name is `datadog`. The allocation, logging, and serial keys are
+available through `DatadogProvider.allocationKeyMetadata`, `doLogMetadata`,
+and `serialIdMetadata`.
 
 ## Identity, refresh, and shutdown
 
@@ -80,20 +80,63 @@ await api.shutdown();
 ```
 
 Each provider instance owns one OpenFeature domain. For a named domain, register
-with `domain:` and use `getClient(domain)`. Unless `clientName` is supplied,
-the provider uses the domain name as its Datadog client name.
+with `setProviderForDomainAndWait(domain, provider)` and use `getClient(domain)`.
+The provider uses the domain name as its Datadog client name, or `default` for
+the default domain.
 
-A normal context change retains the previous context until the new assignments
-are usable. If reconciliation fails, OpenFeature retains the previous active
-context. The provider discards late results from that failed reconciliation.
-Sign-out retires private assignments immediately, including when anonymous
-loading fails. If your application needs assignments cleared immediately on every
-identity switch, register a replacement provider.
+By default, when only targeting attributes change, evaluations retain the previous assignments
+while loading or after failure. When the targeting key changes, including sign-out,
+evaluations return application defaults until assignments for the new key load.
+A targeting-key change cancels the previous key's pending load.
+A missing targeting key and an empty key identify the same subject.
+If reconciliation fails, OpenFeature retains the previous active context.
+The provider discards late results from that failed reconciliation.
 
-`refresh()` reloads the active context and emits `configurationChanged` after
-success. Refresh failure emits an error and retains usable active assignments.
-An unchanged `setEvaluationContextAndWait` call does not trigger a refresh.
-The provider does not poll automatically.
+Use `strictContextSwitchingAttribute` from `package:datadog_flags/datadog_flags.dart`
+to use downloaded assignments only while both the targeting key and targeting
+attributes match:
+
+```dart
+await api.setEvaluationContextAndWait(
+  EvaluationContext(
+    targetingKey: 'user-123',
+    attributes: {strictContextSwitchingAttribute: true},
+  ),
+);
+```
+Strict mode returns defaults during an attribute change and after a failed fetch.
+An unchanged-context refresh keeps assignments while pending, then returns defaults
+if loading fails. Retries keep assignments withheld after a failure for their
+context until a successful fetch. Returning to an exact retained context can reuse
+its assignments when only a different context failed. The SDK removes this attribute, whatever its value,
+from assignment requests, stored assignments, and telemetry. Other OpenFeature
+hooks and providers still receive it.
+Only the boolean value `true` enables strict mode.
+
+`refresh()` reloads assignments for the current context. It waits for pending
+initialization or context reconciliation before starting.
+
+- After assignments have been activated, including stored assignments, a successful
+  refresh emits `ready` followed by `configurationChanged`.
+- By default, a failed refresh emits `error` followed by `stale` when previous
+  assignments remain usable. Evaluations continue to use those assignments.
+- In strict mode, a failed refresh emits `error` and evaluations return defaults
+  until a successful fetch.
+- Before any assignments have been activated, `refresh()` retries the initial
+  context. Activation emits `ready`, followed by `stale` when using stored
+  assignments. It does not emit `configurationChanged`. Failure without usable
+  assignments emits `error`.
+
+After a failed context change, `refresh()` throws `StateError` until a later
+`setEvaluationContextAndWait` succeeds. This also applies to same-key attribute
+changes when previous assignments remain usable. Calling `refresh()` before
+initialization or after shutdown also throws `StateError`.
+
+An initialization retry replaces any pending initial assignment request. Avoid
+calling `refresh()` from every error event: repeated retries can prevent a slow
+request from completing.
+Each `setEvaluationContextAndWait` call reloads assignments, even when the context
+is unchanged. The provider does not poll automatically.
 
 Shutdown clears active assignments, cancels pending assignment publication,
 and drains pending telemetry. Repeated shutdown is safe. A caller-supplied
@@ -105,8 +148,12 @@ HTTP client remains owned by the caller. The provider closes its own client.
 The provider requires a positive value of at most 20 seconds. This leaves time
 before the default OpenFeature lifecycle deadline of 30 seconds. Applications
 using an isolated API with a shorter deadline must choose a smaller budget.
+Missing configuration or an invalid budget produces `PROVIDER_FATAL`. Evaluations
+return caller defaults with that error. Recovery requires a new provider with
+corrected configuration. A valid budget expiring remains a recoverable error.
 
-The core budget covers cache loading, the request, decoding, state publication,
+The provider applies this budget to initialization, each context change, and
+each refresh. The core budget covers cache loading, the request, decoding, state publication,
 and cache storage. Synchronous work can delay timer delivery. The deadline bounds
 the caller's wait; it does not cancel the underlying HTTP or store operation.
 
@@ -140,7 +187,10 @@ application ID, service, and version. The environment is sent as `dd_env`.
   The default is 10 seconds.
 - `dateProvider` for application-controlled timestamps.
 
-The store loads a `FlagsData` snapshot only when its context matches the request.
+The store loads a `FlagsData` snapshot only when its context and configuration
+scope match the request. The scope is a digest of the site, environment, and client
+token. Snapshots without a scope are not used. After an upgrade or token rotation,
+evaluations use defaults until fresh assignments arrive if no eligible snapshot exists.
 Cache writes and deletes are serialized per store instance and client name.
 A store operation that never completes can block later persistence operations.
 Implement store operations so they always complete.
@@ -149,8 +199,20 @@ Storage adapters must preserve the complete `FlagsData.toJson()` result and
 restore it with `FlagsData.fromJson()`. These methods retain the metadata needed
 to evaluate obfuscated assignments.
 
+Snapshots contain the targeting key and attributes. Context changes and shutdown
+do not delete stored snapshots. A successful load for the same client name replaces
+the snapshot. To remove stored data, call `delete` on your store with the domain
+name, or `default` for the default domain.
+
+OpenFeature `DateTime` attributes become UTC ISO-8601 strings. Non-finite numbers
+become `null`. These conversions also apply inside structures and lists.
+Assignment requests send structures and lists in targeting attributes as
+JSON-encoded strings. Telemetry and stored snapshots keep them structured.
+
 Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
-records successes, defaults, and errors. The provider does not implement
+records successes, defaults, and errors when assignments are active. Evaluations
+without active assignments return `ErrorCode.providerNotReady` and are not recorded.
+The provider does not implement
 OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
 
 ## Exposures in your own data store
@@ -173,7 +235,7 @@ api.addHooks([
 ]);
 ```
 
-The callback receives every completed evaluation from `DatadogOpenFeatureProvider`:
+The callback receives every completed evaluation from `DatadogProvider`:
 
 - `isExposure` is true for a successful evaluation of an allocation that logs
   exposures, repeats included.
@@ -215,4 +277,4 @@ network response replaces those assignments, details report the response reason.
 ## Contributing
 
 See the [contributing guide](../../CONTRIBUTING.md) and
-[OpenFeature validation instructions](OPENFEATURE_VALIDATION.md).
+[package contributing guide](CONTRIBUTING.md).

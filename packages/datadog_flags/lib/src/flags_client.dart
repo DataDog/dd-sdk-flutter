@@ -5,13 +5,20 @@
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
+
 import 'evaluation_context.dart';
 import 'flags_error.dart';
 
-const datadogAllocationKeyMetadata = 'datadog.allocation_key';
-const datadogSerialIdMetadata = 'datadog.serial_id';
+const datadogAllocationKeyMetadata = 'allocationKey';
+const datadogDoLogMetadata = 'doLog';
+const datadogVariationTypeMetadata = 'variationType';
+const datadogInternalAllocationKeyMetadata = '__dd_allocation_key';
+const datadogInternalDoLogMetadata = '__dd_do_log';
+const datadogSerialIdMetadata = '__dd_split_serial_id';
 
 /// Current assignment availability for a Datadog feature flags client.
+@internal
 enum DatadogFlagsClientStatus {
   /// No assignments are available for evaluation.
   notReady,
@@ -49,8 +56,15 @@ abstract interface class DatadogFlagsClient {
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
-  /// Evaluations made before initialization completes return their provided
-  /// default value with a `providerNotReady` error.
+  /// Evaluations return their provided default value with a `providerNotReady`
+  /// error until assignments are available and while assignments are withheld.
+  /// A targeting-key change immediately withholds the installed assignments.
+  /// By default, same-key attribute changes retain assignments while pending or failed.
+  /// Setting [strictContextSwitchingAttribute] to `true` in context attributes
+  /// also requires matching targeting attributes and withholds assignments
+  /// after failure.
+  /// Strict retries require a successful fetch before evaluations recover.
+  /// Throws [StateError] if this client has been shut down.
   Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
@@ -94,6 +108,7 @@ abstract interface class DatadogFlagsClient {
 ///
 /// This is separate from [DatadogFlagsClient] so existing custom clients and
 /// test doubles are not required to implement lifecycle reporting.
+@internal
 abstract interface class DatadogFlagsClientLifecycle {
   /// Current assignment availability for this client.
   DatadogFlagsClientStatus get status;
@@ -104,6 +119,9 @@ abstract interface class DatadogFlagsClientLifecycle {
   Stream<DatadogFlagsClientStatus> get statusChanges;
 
   /// Context associated with the assignments currently used for evaluation.
+  ///
+  /// Returns null before assignments load and while they are withheld.
+  /// The strict context-switching attribute is not included.
   FlagsEvaluationContext? get evaluationContext;
 }
 

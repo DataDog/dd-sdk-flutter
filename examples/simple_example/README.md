@@ -27,7 +27,7 @@ names, org names, or customer-owned flag keys.
 ## Feature Flags
 
 The `Flags` screen uses `openfeature_dart_client_sdk` with the
-`DatadogOpenFeatureProvider` from `datadog_flags`. This is the recommended
+`DatadogProvider` from `datadog_flags`. This is the recommended
 integration for new Dart and Flutter applications. The app sets an OpenFeature
 evaluation context, registers the Datadog provider, and evaluates typed flags
 with programmatic defaults.
@@ -36,7 +36,7 @@ The Datadog Flutter SDK initializes separately for RUM and Logs.
 RUM controls distributed tracing for supported network requests. The
 OpenFeature provider owns the Flags runtime and its assignment lifecycle.
 `DatadogRumHook` associates successful evaluations with the active RUM view.
-The Refresh button calls `DatadogOpenFeatureProvider.refresh()`.
+The Refresh button calls `DatadogProvider.refresh()`.
 
 To test feature flags in your own organization, customize the generated `dd.env`
 file:
@@ -74,4 +74,4 @@ is enabled.
 ## Integration tests
 
 OpenFeature integration tests run in the Flags package's dedicated integration test app.
-See the [validation guide](../../packages/datadog_flags/OPENFEATURE_VALIDATION.md).
+See the [validation guide](../../packages/datadog_flags/CONTRIBUTING.md#openfeature-validation).

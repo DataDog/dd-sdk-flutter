@@ -41,8 +41,8 @@ Future<void> main(List<String> arguments) async {
   );
   try {
     await api.setProviderAndWait(
-      DatadogOpenFeatureProvider(
-        configuration: DatadogFlagsConfiguration(
+      DatadogProvider.fromConfiguration(
+        DatadogFlagsConfiguration(
           datadogConfig: DatadogFlagsConfig(
             clientToken: Platform.environment['DD_CLIENT_TOKEN'] ?? '',
             env: results.option('env')!,

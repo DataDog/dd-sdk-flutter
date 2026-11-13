@@ -8,28 +8,28 @@ import 'dart:async';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 import 'flags_example_configuration.dart';
 
-const _clientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
-const _applicationId = String.fromEnvironment('DD_APPLICATION_ID');
-const _env = String.fromEnvironment('DD_ENV', defaultValue: 'dev');
-const _site = String.fromEnvironment('DD_SITE', defaultValue: 'us1');
-const _targetingKey = String.fromEnvironment(
-  'DD_TARGETING_KEY',
-  defaultValue: 'example-user',
-);
-const _flagKey = String.fromEnvironment(
-  'DD_FLAG_KEY',
-  defaultValue: 'checkout.enabled',
-);
+String get _clientToken => dotenv.env['DD_CLIENT_TOKEN'] ?? '';
+String get _applicationId => dotenv.env['DD_APPLICATION_ID'] ?? '';
+String get _env => dotenv.env['DD_ENV'] ?? 'dev';
+String get _site => dotenv.env['DD_SITE'] ?? 'us1';
+String get _targetingKey => dotenv.env['FLAGS_TARGETING_KEY'] ?? 'example-user';
+String get _flagKey =>
+    (dotenv.env['FLAGS_BOOLEAN_KEYS'] ?? 'checkout.enabled').split(',').first;
+
+const _service = 'com.datadoghq.flags.example';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: 'dd.env');
 
   final isConfigured = _clientToken.isNotEmpty;
   final flagsConfiguration = flagsExampleConfiguration(
+    service: _service,
     site: _datadogSiteFor(_site),
     clientToken: _clientToken,
     env: _env,
@@ -37,7 +37,7 @@ Future<void> main() async {
   );
   if (isConfigured) {
     final configuration = DatadogConfiguration(
-      service: 'com.datadoghq.flags.example',
+      service: _service,
       clientToken: _clientToken,
       env: _env,
       site: _datadogSiteFor(_site),
@@ -53,18 +53,15 @@ Future<void> main() async {
   }
 
   final api = OpenFeatureAPI.instance;
-  final client = api.getClient();
-  client.addHooks([DatadogRumHook()]);
+  api.addHooks([DatadogRumHook()]);
   await api.setEvaluationContextAndWait(
     EvaluationContext(targetingKey: _targetingKey),
   );
   if (flagsConfiguration != null) {
     try {
       await api.setProviderAndWait(
-        DatadogOpenFeatureProvider(
-          configuration: DatadogFlagsConfiguration(
-            datadogConfig: flagsConfiguration,
-          ),
+        DatadogProvider.fromConfiguration(
+          DatadogFlagsConfiguration(datadogConfig: flagsConfiguration),
         ),
       );
     } on OpenFeatureException {
@@ -122,7 +119,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       setState(() {
         _status =
             widget.configurationError ??
-            'Set DD_CLIENT_TOKEN with --dart-define to evaluate flags.';
+            'Set DD_CLIENT_TOKEN in dd.env to evaluate flags.';
       });
       return;
     }

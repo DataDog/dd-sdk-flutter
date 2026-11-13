@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/flags_client.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flags_repository.dart';
 import 'package:datadog_flags/src/flags_store.dart';
@@ -610,6 +611,7 @@ FlagsData _storedAssignments(
   required bool value,
 }) {
   return FlagsData.fromJson({
+    'scope': flagsDataScope(_datadogConfig),
     'flags': {'show-paywall': _assignmentJson(value: value)},
     'context': context.toJson(),
     'date': DateTime.utc(2026, 9, 11).toIso8601String(),

@@ -19,6 +19,8 @@ class DefaultDatadogFlagsClient
   static final Object _typeMismatch = Object();
   bool isShutdown = false;
 
+  Object? get lastLoadError => _repository.lastLoadError;
+
   @override
   final String name;
   final FlagsRepository _repository;
@@ -41,6 +43,8 @@ class DefaultDatadogFlagsClient
       previous._evaluationAggregator,
     );
   }
+
+  void cancelPendingLoad() => _repository.cancelPendingLoad();
 
   @override
   DatadogFlagsClientStatus get status => _repository.status;
@@ -202,7 +206,7 @@ class DefaultDatadogFlagsClient
       _evaluationAggregator.recordEvaluation(
         flagKey: key,
         assignment: null,
-        evaluationContext: FlagsEvaluationContext.empty,
+        evaluationContext: null,
         error: FlagEvaluationError.providerNotReady.code,
       );
       return FlagDetails(
@@ -285,6 +289,10 @@ class DefaultDatadogFlagsClient
       reason: restoredFromStore ? 'CACHED' : assignment.reason,
       flagMetadata: {
         datadogAllocationKeyMetadata: assignment.allocationKey,
+        datadogDoLogMetadata: assignment.doLog,
+        datadogVariationTypeMetadata: assignment.variationType.wireName,
+        datadogInternalAllocationKeyMetadata: assignment.allocationKey,
+        datadogInternalDoLogMetadata: assignment.doLog,
         datadogSerialIdMetadata: ?assignment.serialId,
         ...assignment.features.toFlagMetadata(),
       },

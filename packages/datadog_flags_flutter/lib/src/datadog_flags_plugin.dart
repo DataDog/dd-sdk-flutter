@@ -27,7 +27,7 @@ extension DatadogSdkFlagsExtension on DatadogSdk {
 /// Flags SDK account metadata from the initialized [DatadogSdk] and to add
 /// successful flag evaluations to the active RUM view.
 @Deprecated(
-  'Use DatadogOpenFeatureProvider and DatadogRumHook. Removal is planned for the next major version.',
+  'Use DatadogProvider and DatadogRumHook. Removal is planned for the next major version.',
 )
 class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
   /// Optional Flags SDK configuration overrides.
@@ -63,7 +63,7 @@ class DatadogFlagsPluginConfiguration extends DatadogPluginConfiguration {
 /// flag-evaluation telemetry through `datadog_flags`; this plugin only adds the
 /// Flutter-specific setup and RUM feature flag tagging.
 @Deprecated(
-  'Use DatadogOpenFeatureProvider and DatadogRumHook. Removal is planned for the next major version.',
+  'Use DatadogProvider and DatadogRumHook. Removal is planned for the next major version.',
 )
 class DatadogFlagsPlugin extends DatadogPlugin {
   final DatadogFlagsConfiguration _flagsConfiguration;
@@ -187,41 +187,17 @@ class DatadogFlagsPlugin extends DatadogPlugin {
 @Deprecated(
   'Use OpenFeatureClient. Removal is planned for the next major version.',
 )
-class DatadogFlutterFlagsClient
-    implements DatadogFlagsClient, DatadogFlagsClientLifecycle {
+class DatadogFlutterFlagsClient implements DatadogFlagsClient {
   final Future<DatadogFlagsClient> Function() _resolveDelegate;
   final void Function(String key, Object value)? _addRumFeatureFlagEvaluation;
-  final StreamController<DatadogFlagsClientStatus> _statusChanges =
-      StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
 
   DatadogFlagsClient? _delegate;
-  StreamSubscription<DatadogFlagsClientStatus>? _statusSubscription;
   Future<DatadogFlagsClient>? _pendingResolve;
   bool _isShutdown = false;
   Future<void>? _shutdownOperation;
 
   @override
   final String name;
-
-  @override
-  FlagsEvaluationContext? get evaluationContext {
-    return switch (_delegate) {
-      final DatadogFlagsClientLifecycle lifecycle =>
-        lifecycle.evaluationContext,
-      _ => null,
-    };
-  }
-
-  @override
-  DatadogFlagsClientStatus get status {
-    return switch (_delegate) {
-      final DatadogFlagsClientLifecycle lifecycle => lifecycle.status,
-      _ => DatadogFlagsClientStatus.notReady,
-    };
-  }
-
-  @override
-  Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   /// Creates a Flutter-integrated feature flag client.
   @visibleForTesting
@@ -235,7 +211,7 @@ class DatadogFlutterFlagsClient
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {
-    final delegate = await _delegateOrResolve();
+    final delegate = _resolvedDelegate ?? await _delegateOrResolve();
     if (!_isShutdown) await delegate.initialize(context);
   }
 
@@ -311,7 +287,7 @@ class DatadogFlutterFlagsClient
 
   @override
   Future<void> reset() async {
-    final delegate = await _delegateOrResolve();
+    final delegate = _resolvedDelegate ?? await _delegateOrResolve();
     if (!_isShutdown) await delegate.reset();
   }
 
@@ -322,10 +298,12 @@ class DatadogFlutterFlagsClient
     _isShutdown = true;
     final delegate = _delegate;
     _delegate = null;
-    await _statusSubscription?.cancel();
-    _statusSubscription = null;
     await delegate?.shutdown();
   }
+
+  // Preserve call order while initial delegate resolution is still pending.
+  DatadogFlagsClient? get _resolvedDelegate =>
+      _pendingResolve == null ? _delegate : null;
 
   Future<DatadogFlagsClient> _delegateOrResolve() {
     if (_isShutdown) {
@@ -336,14 +314,9 @@ class DatadogFlutterFlagsClient
     return _pendingResolve ??= _resolveDelegate()
         .then((resolved) async {
           if (_isShutdown) {
-            // Release late delegates without subscribing or initializing them.
+            // Release late delegates before initialization.
             await resolved.shutdown();
             return resolved;
-          }
-          if (resolved case final DatadogFlagsClientLifecycle lifecycle) {
-            _statusSubscription = lifecycle.statusChanges.listen((status) {
-              if (!_isShutdown) _statusChanges.add(status);
-            });
           }
           _delegate = resolved;
           return resolved;
@@ -375,14 +348,5 @@ class DatadogFlutterFlagsClient
 ///
 /// Some Datadog Flutter SDK sites, such as FedRAMP, do not currently have a
 /// matching Datadog Flags endpoint.
-DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) {
-  return switch (site) {
-    DatadogSite.us1 => DatadogFlagsSite.us1,
-    DatadogSite.us3 => DatadogFlagsSite.us3,
-    DatadogSite.us5 => DatadogFlagsSite.us5,
-    DatadogSite.eu1 => DatadogFlagsSite.eu1,
-    DatadogSite.ap1 => DatadogFlagsSite.ap1,
-    DatadogSite.ap2 => DatadogFlagsSite.ap2,
-    DatadogSite.us1Fed => null,
-  };
-}
+DatadogFlagsSite? datadogFlagsSiteFor(DatadogSite site) =>
+    DatadogFlagsSite.values.asNameMap()[site.name];

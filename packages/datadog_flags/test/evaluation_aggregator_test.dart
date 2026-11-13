@@ -17,11 +17,93 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'batch and periodic triggers preserve increasing backoff across handoff',
+    () async {
+      EvaluationAggregator.maxBatchSize = 1;
+      final requests = <http.Request>[];
+      final clock = Stopwatch()..start();
+      final times = <int>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        times.add(clock.elapsedMilliseconds);
+        return http.Response('{}', times.length < 3 ? 503 : 202);
+      });
+      final first = _aggregator(
+        requests: requests,
+        httpClient: client,
+        flushInterval: const Duration(milliseconds: 20),
+      );
+      final second = _aggregator(
+        requests: requests,
+        httpClient: client,
+        flushInterval: const Duration(milliseconds: 20),
+      );
+      addTearDown(first.shutdown);
+      addTearDown(second.shutdown);
+      void record(EvaluationAggregator target, String key) =>
+          target.recordEvaluation(
+            flagKey: key,
+            assignment: _assignment(),
+            evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+            error: null,
+          );
+      record(first, 'first');
+      await _waitUntil(() => times.length == 1);
+      second.inheritPendingEvaluations(first);
+      for (var i = 0; i < 10; i++) {
+        record(second, 'next-$i');
+        await second.flush();
+      }
+      expect(times, hasLength(1));
+      await _waitUntil(() => times.length == 2);
+      for (var i = 0; i < 10; i++) {
+        record(second, 'later-$i');
+        await second.flush();
+      }
+      expect(times, hasLength(2));
+      await _waitUntil(() => times.length == 3);
+      expect(times[1] - times[0], greaterThanOrEqualTo(390));
+      expect(times[2] - times[1], greaterThanOrEqualTo(790));
+      record(second, 'after-success');
+      await _waitUntil(() => times.length == 4);
+      expect(times[3] - times[2], lessThan(400));
+    },
+  );
+
   tearDown(() {
     EvaluationAggregator.maxBatchSize =
         EvaluationAggregator.defaultMaxBatchSize;
     EvaluationAggregator.uploadTimeout =
         EvaluationAggregator.defaultUploadTimeout;
+  });
+
+  test('periodic flush repeats and stops retrying after shutdown', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(
+      requests: requests,
+      flushInterval: const Duration(milliseconds: 20),
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        return http.Response('{}', requests.length < 3 ? 202 : 503);
+      }),
+    );
+    addTearDown(aggregator.shutdown);
+
+    for (var i = 1; i <= 3; i++) {
+      aggregator.recordEvaluation(
+        flagKey: 'flag-$i',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+        error: null,
+      );
+      await _waitUntil(() => requests.length == i);
+    }
+    await aggregator.shutdown();
+    final countAfterDrain = requests.length;
+    // Failed batches remain pending, so another timer would attempt an upload.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    expect(requests, hasLength(countAfterDrain));
   });
 
   test('aggregates matching flag evaluations into one intake event', () async {
@@ -92,6 +174,68 @@ void main() {
     expect(evaluation.containsKey('runtime_default_used'), isFalse);
   });
 
+  for (final keys in <List<String?>>[
+    [null, ''],
+    ['', null],
+  ]) {
+    test('normalizes empty-subject telemetry in order $keys', () async {
+      final requests = <http.Request>[];
+      final aggregator = _aggregator(requests: requests);
+      addTearDown(aggregator.shutdown);
+
+      for (final key in [...keys, 'user-123']) {
+        aggregator.recordEvaluation(
+          flagKey: 'checkout.enabled',
+          assignment: _assignment(),
+          evaluationContext: FlagsEvaluationContext(targetingKey: key),
+          error: null,
+        );
+      }
+      await aggregator.flush();
+
+      final evaluations = _flagEvaluations(
+        _evaluationRequests(requests).single,
+      );
+      expect(evaluations, hasLength(2));
+      expect(evaluations.first['targeting_key'], '');
+      expect(evaluations.first['evaluation_count'], 2);
+      expect(evaluations.last['targeting_key'], 'user-123');
+      expect(evaluations.last['evaluation_count'], 1);
+    });
+  }
+
+  test(
+    'keeps missing telemetry identity separate from an empty subject',
+    () async {
+      final requests = <http.Request>[];
+      final aggregator = _aggregator(requests: requests);
+      addTearDown(aggregator.shutdown);
+
+      for (final context in <FlagsEvaluationContext?>[
+        null,
+        FlagsEvaluationContext.empty,
+        const FlagsEvaluationContext(targetingKey: ''),
+      ]) {
+        aggregator.recordEvaluation(
+          flagKey: 'checkout.enabled',
+          assignment: null,
+          evaluationContext: context,
+          error: FlagEvaluationError.providerNotReady.code,
+        );
+      }
+      await aggregator.flush();
+
+      final evaluations = _flagEvaluations(
+        _evaluationRequests(requests).single,
+      );
+      expect(evaluations, hasLength(2));
+      expect(evaluations.first.containsKey('targeting_key'), isFalse);
+      expect(evaluations.first['evaluation_count'], 1);
+      expect(evaluations.last['targeting_key'], '');
+      expect(evaluations.last['evaluation_count'], 2);
+    },
+  );
+
   test('keeps runtime-default and error evaluations separate', () async {
     final requests = <http.Request>[];
     final aggregator = _aggregator(requests: requests);
@@ -159,6 +303,8 @@ void main() {
       );
       await aggregator.flush();
 
+      expect(_evaluationRequests(requests), hasLength(1));
+      await Future<void>.delayed(const Duration(milliseconds: 650));
       expect(_evaluationRequests(requests), hasLength(2));
       final resentEvaluation = _flagEvaluations(
         _evaluationRequests(requests).last,
@@ -257,6 +403,7 @@ EvaluationAggregator _aggregator({
   required List<http.Request> requests,
   http.Client? httpClient,
   bool trackEvaluations = true,
+  Duration flushInterval = const Duration(hours: 1),
   DateTime Function()? dateProvider,
 }) {
   final client = httpClient ?? _successClient(requests);
@@ -265,7 +412,7 @@ EvaluationAggregator _aggregator({
       configuration: DatadogFlagsConfiguration(
         datadogConfig: _datadogConfig(),
         trackEvaluations: trackEvaluations,
-        evaluationFlushInterval: const Duration(hours: 1),
+        evaluationFlushInterval: flushInterval,
         httpClient: client,
         dateProvider: dateProvider ?? DateTime.now,
       ),

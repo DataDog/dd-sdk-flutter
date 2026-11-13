@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/flags_store.dart' show flagsDataScope;
 import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -238,6 +239,13 @@ class Harness {
   static Future<Harness> create({String reason = 'TARGETING_MATCH'}) async {
     final h = Harness();
     h.store.data = FlagsData.fromJson({
+      'scope': flagsDataScope(
+        const DatadogFlagsConfig(
+          clientToken: 'token',
+          env: 'test',
+          site: DatadogFlagsSite.us1,
+        ),
+      ),
       'context': context.toJson(),
       'date': '2026-01-01T00:00:00.000Z',
       'flags': {

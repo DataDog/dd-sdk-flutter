@@ -5,24 +5,20 @@
 
 /// Native Dart client for Datadog Feature Flags and Experimentation.
 ///
-/// Register [DatadogOpenFeatureProvider] with OpenFeatureAPI and evaluate flags
+/// Register [DatadogProvider] with OpenFeatureAPI and evaluate flags
 /// through OpenFeatureClient. The legacy Datadog evaluation API is deprecated.
 library;
 
 export 'src/datadog_flags_config.dart'
     show DatadogFlagsConfig, DatadogFlagsSite;
 export 'src/datadog_flags.dart' show DatadogFlags;
-export 'src/datadog_openfeature_provider.dart' show DatadogOpenFeatureProvider;
-export 'src/flags_client.dart'
-    show
-        DatadogFlagsClient,
-        DatadogFlagsClientLifecycle,
-        DatadogFlagsClientStatus,
-        FlagDetails;
+export 'src/datadog_openfeature_provider.dart' show DatadogProvider;
+export 'src/flags_client.dart' show DatadogFlagsClient, FlagDetails;
 export 'src/flags_configuration.dart' show DatadogFlagsConfiguration;
 export 'src/flags_error.dart'
     show FlagEvaluationError, FlagsInitializationTimeoutException;
 export 'src/flags_store.dart' show DatadogFlagsStore, FlagsData;
-export 'src/evaluation_context.dart' show FlagsEvaluationContext;
+export 'src/evaluation_context.dart'
+    show FlagsEvaluationContext, strictContextSwitchingAttribute;
 export 'src/exposure_hook.dart'
     show ExposureCallback, ExposureEvaluation, ExposureHook;

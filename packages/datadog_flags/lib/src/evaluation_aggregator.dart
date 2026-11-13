@@ -30,21 +30,52 @@ class EvaluationAggregator {
   Future<bool>? _uploadInFlight;
   Future<void>? _shutdownInFlight;
   Timer? _periodicFlushTimer;
+  final Stopwatch _periodicFlushClock = Stopwatch();
+  Duration _periodicFlushDelay = Duration.zero;
   Timer? _retryFlushTimer;
+  final Stopwatch _retryFlushClock = Stopwatch();
+  Duration _retryFlushDelay = Duration.zero;
   bool _shutdownDrainActive = false;
   EvaluationAggregator? _successor;
   final Set<Future<void>> _inheritedUploads = {};
+  UploadBackoff _backoff = UploadBackoff();
 
   EvaluationAggregator(this.runtime) {
     if (runtime.configuration.trackEvaluations) {
-      _periodicFlushTimer = Timer.periodic(
-        runtime.configuration.evaluationFlushInterval,
-        (_) => unawaited(flush()),
-      );
+      _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
     }
   }
 
+  void _schedulePeriodicFlush(Duration delay) {
+    _periodicFlushTimer?.cancel();
+    _periodicFlushDelay = delay;
+    _periodicFlushClock
+      ..reset()
+      ..start();
+    _periodicFlushTimer = Timer(delay, () {
+      _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
+      unawaited(flush());
+    });
+  }
+
   void inheritPendingEvaluations(EvaluationAggregator previous) {
+    _backoff = previous._backoff;
+    if (runtime.configuration.trackEvaluations &&
+        previous._periodicFlushTimer != null) {
+      final remaining =
+          previous._periodicFlushDelay - previous._periodicFlushClock.elapsed;
+      final interval = runtime.configuration.evaluationFlushInterval;
+      _schedulePeriodicFlush(
+        remaining.isNegative
+            ? Duration.zero
+            : (remaining > interval ? interval : remaining),
+      );
+    }
+    final retryRemaining = previous._retryFlushTimer == null
+        ? null
+        : previous._retryFlushDelay - previous._retryFlushClock.elapsed;
+    previous._periodicFlushClock.stop();
+    previous._retryFlushClock.stop();
     previous._successor = this;
     previous._periodicFlushTimer?.cancel();
     previous._periodicFlushTimer = null;
@@ -52,6 +83,13 @@ class EvaluationAggregator {
     previous._retryFlushTimer = null;
     _restore(previous._aggregations.values.toList(), reschedule: false);
     previous._aggregations.clear();
+    if (runtime.configuration.trackEvaluations &&
+        retryRemaining != null &&
+        _aggregations.isNotEmpty) {
+      _scheduleRetryFlush(
+        retryRemaining.isNegative ? Duration.zero : retryRemaining,
+      );
+    }
     for (final upload in previous._inheritedUploads) {
       _inheritUpload(upload);
     }
@@ -71,7 +109,7 @@ class EvaluationAggregator {
   void recordEvaluation({
     required String flagKey,
     required FlagAssignment? assignment,
-    required FlagsEvaluationContext evaluationContext,
+    required FlagsEvaluationContext? evaluationContext,
     required String? error,
   }) {
     final configuration = runtime.configuration;
@@ -105,9 +143,11 @@ class EvaluationAggregator {
       flagKey: flagKey,
       variantKey: assignment?.variationKey,
       allocationKey: assignment?.allocationKey,
-      targetingKey: evaluationContext.targetingKey,
+      targetingKey: evaluationContext == null
+          ? null
+          : evaluationContext.targetingKey ?? '',
       error: error,
-      attributes: evaluationContext.attributes,
+      attributes: evaluationContext?.attributes ?? const {},
       features: features,
       firstEvaluation: now,
       lastEvaluation: now,
@@ -125,6 +165,8 @@ class EvaluationAggregator {
   }
 
   Future<void> shutdown() {
+    _periodicFlushClock.stop();
+    _retryFlushClock.stop();
     _periodicFlushTimer?.cancel();
     _periodicFlushTimer = null;
     _retryFlushTimer?.cancel();
@@ -165,7 +207,11 @@ class EvaluationAggregator {
   Future<void> _flushPendingEvaluations({
     required bool rescheduleOnFailure,
   }) async {
-    if (_uploadInFlight != null) {
+    if (_backoff.remaining > Duration.zero) {
+      _scheduleRetryFlush(_backoff.remaining);
+      return;
+    }
+    if (_uploadInFlight != null || _inheritedUploads.isNotEmpty) {
       if (rescheduleOnFailure) {
         _scheduleRetryFlush();
       }
@@ -219,13 +265,17 @@ class EvaluationAggregator {
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
+          _backoff.failed();
           _restore(evaluations, reschedule: rescheduleOnFailure);
           return false;
         }
+        _backoff.reset();
         return true;
       }
+      _backoff.reset();
       return true;
     } catch (_) {
+      _backoff.failed();
       _restore(evaluations, reschedule: rescheduleOnFailure);
       return false;
     }
@@ -307,12 +357,22 @@ class EvaluationAggregator {
     });
   }
 
-  void _scheduleRetryFlush() {
+  void _scheduleRetryFlush([Duration? remaining]) {
+    final delay =
+        remaining ??
+        (_backoff.remaining > Duration.zero
+            ? _backoff.remaining
+            : _evaluationFlushRetryDelay);
     if (_retryFlushTimer != null) {
       return;
     }
 
-    _retryFlushTimer = Timer(_evaluationFlushRetryDelay, () {
+    _retryFlushDelay = delay;
+    _retryFlushClock
+      ..reset()
+      ..start();
+    _retryFlushTimer = Timer(delay, () {
+      _retryFlushClock.stop();
       _retryFlushTimer = null;
       unawaited(_flushPendingEvaluations(rescheduleOnFailure: true));
     });
@@ -323,7 +383,7 @@ String _aggregationKey({
   required String flagKey,
   required String? allocationKey,
   required String? variantKey,
-  required FlagsEvaluationContext evaluationContext,
+  required FlagsEvaluationContext? evaluationContext,
   required String? error,
   required Map<String, Object> features,
 }) {
@@ -331,9 +391,11 @@ String _aggregationKey({
     'flagKey': flagKey,
     'variantKey': variantKey,
     'allocationKey': allocationKey,
-    'targetingKey': evaluationContext.targetingKey,
+    'targetingKey': evaluationContext == null
+        ? null
+        : evaluationContext.targetingKey ?? '',
     'error': error,
-    'context': _sortedJson(evaluationContext.attributes),
+    'context': _sortedJson(evaluationContext?.attributes ?? const {}),
     if (features.isNotEmpty) 'features': _sortedJson(features),
   });
 }

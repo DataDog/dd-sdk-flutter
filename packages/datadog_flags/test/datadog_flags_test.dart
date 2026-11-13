@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/flags_client.dart';
 import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/exposure_logger.dart';
 import 'package:datadog_flags/src/flags_store.dart';
@@ -74,37 +75,43 @@ void main() {
     },
   );
 
-  test('matching cache and failed refresh emit stale only once', () async {
-    final store = InMemoryDatadogFlagsStore();
-    final owner = DatadogFlags();
-    addTearDown(owner.disable);
-    var fail = false;
-    await owner.enable(
-      configuration: DatadogFlagsConfiguration(
-        datadogConfig: _datadogConfig(),
-        store: store,
-        httpClient: MockClient(
-          (_) async => fail
-              ? http.Response('', 503)
-              : http.Response(jsonEncode(_assignmentsResponse()), 200),
+  test(
+    'matching cache and failed refresh report both availability and failure',
+    () async {
+      final store = InMemoryDatadogFlagsStore();
+      final owner = DatadogFlags();
+      addTearDown(owner.disable);
+      var fail = false;
+      await owner.enable(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: _datadogConfig(),
+          store: store,
+          httpClient: MockClient(
+            (_) async => fail
+                ? http.Response('', 503)
+                : http.Response(jsonEncode(_assignmentsResponse()), 200),
+          ),
+          trackExposures: false,
+          trackEvaluations: false,
         ),
-        trackExposures: false,
-        trackEvaluations: false,
-      ),
-    );
-    await owner.sharedClient().initialize(
-      const FlagsEvaluationContext(targetingKey: 'a'),
-    );
-    await owner.sharedClient().shutdown();
-    fail = true;
-    final client = owner.sharedClient();
-    final statuses = <DatadogFlagsClientStatus>[];
-    final subscription = (client as DatadogFlagsClientLifecycle).statusChanges
-        .listen(statuses.add);
-    addTearDown(subscription.cancel);
-    await client.initialize(const FlagsEvaluationContext(targetingKey: 'a'));
-    expect(statuses, [DatadogFlagsClientStatus.stale]);
-  });
+      );
+      await owner.sharedClient().initialize(
+        const FlagsEvaluationContext(targetingKey: 'a'),
+      );
+      await owner.sharedClient().shutdown();
+      fail = true;
+      final client = owner.sharedClient();
+      final statuses = <DatadogFlagsClientStatus>[];
+      final subscription = (client as DatadogFlagsClientLifecycle).statusChanges
+          .listen(statuses.add);
+      addTearDown(subscription.cancel);
+      await client.initialize(const FlagsEvaluationContext(targetingKey: 'a'));
+      expect(statuses, [
+        DatadogFlagsClientStatus.stale,
+        DatadogFlagsClientStatus.stale,
+      ]);
+    },
+  );
 
   test('enable creates the default shared client', () async {
     final requests = <http.Request>[];
@@ -287,7 +294,13 @@ void main() {
         key: 'show-paywall',
         defaultValue: false,
       );
-      expect(success.flagMetadata, {'datadog.allocation_key': 'allocation-a'});
+      expect(success.flagMetadata, {
+        'allocationKey': 'allocation-a',
+        'doLog': true,
+        'variationType': 'boolean',
+        '__dd_allocation_key': 'allocation-a',
+        '__dd_do_log': true,
+      });
     },
   );
 
@@ -1401,6 +1414,7 @@ void main() {
       await store.write(
         DatadogFlags.defaultClientName,
         FlagsData.fromJson({
+          'scope': flagsDataScope(_datadogConfig()),
           'flags': {
             'show-paywall': _assignment(
               allocationKey: 'stale-allocation',
@@ -1599,35 +1613,40 @@ void main() {
     },
   );
 
-  test('unsupported context attributes miss cache without throwing', () async {
-    final store = InMemoryDatadogFlagsStore();
-    final requests = <http.Request>[];
-    final client = await _createClient(
-      requests: requests,
-      response: _assignmentsResponse(),
-      trackExposures: false,
-      trackEvaluations: false,
-      store: store,
-    );
-    await client.initialize(
-      const FlagsEvaluationContext(targetingKey: 'user-123'),
-    );
+  test(
+    'unsupported same-key attributes retain assignments without throwing',
+    () async {
+      final store = InMemoryDatadogFlagsStore();
+      final requests = <http.Request>[];
+      final client = await _createClient(
+        requests: requests,
+        response: _assignmentsResponse(),
+        trackExposures: false,
+        trackEvaluations: false,
+        store: store,
+      );
+      await client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
 
-    await expectLater(
-      client.initialize(
-        FlagsEvaluationContext(
-          targetingKey: 'user-123',
-          attributes: {'unsupported': Object()},
+      await expectLater(
+        client.initialize(
+          FlagsEvaluationContext(
+            targetingKey: 'user-123',
+            attributes: {'unsupported': Object()},
+          ),
         ),
-      ),
-      completes,
-    );
-    expect(
-      client.getBooleanDetails(key: 'show-paywall', defaultValue: false).error,
-      FlagEvaluationError.providerNotReady,
-    );
-    expect(requests, hasLength(1));
-  });
+        completes,
+      );
+      expect(
+        client
+            .getBooleanDetails(key: 'show-paywall', defaultValue: false)
+            .value,
+        isTrue,
+      );
+      expect(requests, hasLength(1));
+    },
+  );
 }
 
 Future<DatadogFlagsClient> _createClient({

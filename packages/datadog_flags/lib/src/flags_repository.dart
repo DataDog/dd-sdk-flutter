@@ -13,7 +13,6 @@ import 'flag_assignments_fetcher.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
-import 'json_value.dart';
 
 class FlagsRepository {
   static const defaultStoreReadTimeout = Duration(milliseconds: 100);
@@ -34,11 +33,14 @@ class FlagsRepository {
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
   final _CacheOperationQueue _cacheOperations;
+  final String _scope;
 
   @visibleForTesting
   final Timer Function(Duration, void Function()) scheduleInitializationTimeout;
 
   _InstalledFlagsState? _state;
+  bool _assignmentsWithheld = false;
+  bool _requiresFreshAssignments = false;
   DatadogFlagsClientStatus _status = DatadogFlagsClientStatus.notReady;
   final StreamController<DatadogFlagsClientStatus> _statusChanges =
       StreamController<DatadogFlagsClientStatus>.broadcast(sync: true);
@@ -53,16 +55,20 @@ class FlagsRepository {
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  }) : _cacheOperations = _cacheOperationQueue(store, clientName);
+  }) : _cacheOperations = _cacheOperationQueue(store, clientName),
+       _scope = flagsDataScope(fetcher.datadogConfig);
 
-  FlagsEvaluationContext? get context => _state?.data.context;
+  FlagsEvaluationContext? get context =>
+      _assignmentsWithheld ? null : _state?.data.context;
 
   DatadogFlagsClientStatus get status => _status;
+
+  Object? lastLoadError;
 
   Stream<DatadogFlagsClientStatus> get statusChanges => _statusChanges.stream;
 
   FlagAssignment? flagAssignment(String key) {
-    final data = _state?.data;
+    final data = _assignmentsWithheld ? null : _state?.data;
     if (data == null) return null;
     final encoding = data.obfuscation;
     final lookupKey = encoding == null ? key : encoding.encodeKey(key);
@@ -75,6 +81,16 @@ class FlagsRepository {
     _currentToken?.cancel();
     final token = _CancelToken();
     _currentToken = token;
+    final installed = _state?.data.context;
+    if (installed != null) {
+      if (!_eligible(installed, context)) {
+        _assignmentsWithheld = true;
+        _setStatus(DatadogFlagsClientStatus.notReady);
+      } else if (!_requiresFreshAssignments && _assignmentsWithheld) {
+        _assignmentsWithheld = false;
+        _setStatus(DatadogFlagsClientStatus.stale);
+      }
+    }
 
     final timeout = _takeInitializationTimeout();
     if (timeout == null) {
@@ -109,12 +125,23 @@ class FlagsRepository {
     }
 
     final matchingCached =
-        cached != null && _contextsMatch(cached.context, context)
+        cached != null &&
+            cached.scope == _scope &&
+            !_requiresFreshAssignments &&
+            targetingContextsMatch(cached.context, context)
         ? cached
         : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
+      _assignmentsWithheld = false;
+      _requiresFreshAssignments = false;
       _state = _InstalledFlagsState(
-        data: matchingCached,
+        data: FlagsData(
+          flags: matchingCached.flags,
+          context: matchingCached.context.targetingContext,
+          date: matchingCached.date,
+          obfuscation: matchingCached.obfuscation,
+          scope: matchingCached.scope,
+        ),
         restoredFromStore: true,
       );
       _setStatus(DatadogFlagsClientStatus.stale);
@@ -127,21 +154,32 @@ class FlagsRepository {
       }
       final data = FlagsData(
         flags: assignments.flags,
-        context: context,
+        context: context.targetingContext,
         date: dateProvider(),
         obfuscation: assignments.obfuscation,
+        scope: _scope,
       );
+      lastLoadError = null;
+      _assignmentsWithheld = false;
+      _requiresFreshAssignments = false;
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       _setStatus(DatadogFlagsClientStatus.ready);
       await _writeCached(data);
-    } catch (_) {
-      if (!token.isCanceled &&
-          matchingCached == null &&
-          !_hasCurrentStateForContext(context)) {
-        _state = null;
+    } on Object catch (error) {
+      if (!token.isCanceled) lastLoadError = error;
+      if (token.isCanceled) return;
+      final installed = _state?.data.context;
+      if (context.strictContextSwitching &&
+          (installed == null || _eligible(installed, context))) {
+        _assignmentsWithheld = true;
+        _requiresFreshAssignments = true;
+      }
+      if (_assignmentsWithheld ||
+          (matchingCached == null && !_hasCurrentStateForContext(context))) {
+        _assignmentsWithheld = true;
         _setStatus(DatadogFlagsClientStatus.error);
-      } else if (!token.isCanceled) {
-        _setStatus(DatadogFlagsClientStatus.stale);
+      } else {
+        _setStatus(DatadogFlagsClientStatus.stale, notifyUnchanged: true);
       }
     }
   }
@@ -177,13 +215,30 @@ class FlagsRepository {
 
   bool _hasCurrentStateForContext(FlagsEvaluationContext context) {
     final current = _state;
-    return current != null && _contextsMatch(current.data.context, context);
+    return !_assignmentsWithheld &&
+        current != null &&
+        _eligible(current.data.context, context);
+  }
+
+  bool _eligible(
+    FlagsEvaluationContext installed,
+    FlagsEvaluationContext requested,
+  ) =>
+      (installed.targetingKey ?? '') == (requested.targetingKey ?? '') &&
+      (!requested.strictContextSwitching ||
+          targetingContextsMatch(installed, requested));
+
+  /// Cancels an obsolete load while preserving installed assignments.
+  void cancelPendingLoad() {
+    _currentToken?.cancel();
+    _currentToken = null;
   }
 
   Future<void> clearMemory() async {
-    _currentToken?.cancel();
-    _currentToken = null;
+    cancelPendingLoad();
     _state = null;
+    _assignmentsWithheld = false;
+    _requiresFreshAssignments = false;
     _setStatus(DatadogFlagsClientStatus.notReady);
   }
 
@@ -200,8 +255,11 @@ class FlagsRepository {
     await _deleteCached();
   }
 
-  void _setStatus(DatadogFlagsClientStatus status) {
-    if (_status == status) {
+  void _setStatus(
+    DatadogFlagsClientStatus status, {
+    bool notifyUnchanged = false,
+  }) {
+    if (_status == status && !notifyUnchanged) {
       return;
     }
     _status = status;
@@ -278,52 +336,4 @@ class _CancelToken {
   void cancel() {
     _canceled = true;
   }
-}
-
-bool _contextsMatch(FlagsEvaluationContext left, FlagsEvaluationContext right) {
-  if (left.targetingKey != right.targetingKey) {
-    return false;
-  }
-
-  try {
-    return _jsonValuesMatch(
-      sanitizeJsonValue(left.attributes),
-      sanitizeJsonValue(right.attributes),
-    );
-  } catch (_) {
-    return false;
-  }
-}
-
-bool _jsonValuesMatch(Object? left, Object? right) {
-  if (left is Map<Object?, Object?> && right is Map<Object?, Object?>) {
-    if (left.length != right.length) {
-      return false;
-    }
-    for (final entry in left.entries) {
-      if (!right.containsKey(entry.key) ||
-          !_jsonValuesMatch(entry.value, right[entry.key])) {
-        return false;
-      }
-    }
-    return true;
-  }
-  if (left is Iterable<Object?> && right is Iterable<Object?>) {
-    final leftIterator = left.iterator;
-    final rightIterator = right.iterator;
-    while (true) {
-      final hasLeft = leftIterator.moveNext();
-      final hasRight = rightIterator.moveNext();
-      if (hasLeft != hasRight) {
-        return false;
-      }
-      if (!hasLeft) {
-        return true;
-      }
-      if (!_jsonValuesMatch(leftIterator.current, rightIterator.current)) {
-        return false;
-      }
-    }
-  }
-  return left == right;
 }

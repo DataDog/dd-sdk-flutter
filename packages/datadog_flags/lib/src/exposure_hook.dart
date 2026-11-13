@@ -12,7 +12,7 @@ import 'split_features.dart';
 
 const doLogMetadata = '__dd_do_log';
 const splitSerialIdMetadata = '__dd_split_serial_id';
-const datadogProviderName = 'Datadog';
+const datadogProviderName = 'datadog';
 
 enum _ExposureVerdict {
   none(isExposure: false, isCacheHit: false),
@@ -100,7 +100,7 @@ final class ExposureEvaluation {
 }
 
 /// An OpenFeature hook that passes each completed evaluation of a
-/// `DatadogOpenFeatureProvider` to a callback.
+/// `DatadogProvider` to a callback.
 ///
 /// Use it to record exposures in your own data store. The callback receives
 /// the same deduplication verdict that the SDK uses for Datadog, also when
@@ -110,7 +110,7 @@ final class ExposureEvaluation {
 ///
 /// The provider decides the exposure in its own `finallyAfter` hook, which
 /// OpenFeature runs before this one. Exposures need the
-/// `DatadogOpenFeatureProvider` as the OpenFeature provider, or a provider that
+/// `DatadogProvider` as the OpenFeature provider, or a provider that
 /// wraps it and returns its `hooks` and its `metadata`. The provider records
 /// exposures in its `hooks`, and this hook recognizes its evaluations by its
 /// `metadata`. Evaluations from a provider with other metadata are skipped.
@@ -155,7 +155,7 @@ final class ExposureHook extends HookAdapter {
         _warnedMissingHooks = true;
         _logger.warning(
           'ExposureHook received an evaluation that skipped the '
-          'DatadogOpenFeatureProvider hooks, so no exposure was recorded.',
+          'DatadogProvider hooks, so no exposure was recorded.',
         );
       }
       final metadata = details.flagMetadata;

@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/datadog_openfeature_provider.dart'
-    show DatadogOpenFeatureProviderTesting;
+    show DatadogProviderTesting;
 import 'package:datadog_flags/src/exposure_hook.dart'
     show exposureHookWithLogger;
 import 'package:datadog_flags/src/exposure_logger.dart';
@@ -110,14 +110,14 @@ void main() {
     return http.Response('{}', 202);
   });
 
-  Future<(OpenFeatureClient, DatadogOpenFeatureProvider)> start({
+  Future<(OpenFeatureClient, DatadogProvider)> start({
     bool trackExposures = true,
     bool trackEvaluations = true,
     DateTime Function() dateProvider = DateTime.now,
     ExposureHook? hook,
   }) async {
-    final provider = DatadogOpenFeatureProvider(
-      configuration: DatadogFlagsConfiguration(
+    final provider = DatadogProvider.fromConfiguration(
+      DatadogFlagsConfiguration(
         datadogConfig: datadogConfig,
         httpClient: httpClient(),
         trackExposures: trackExposures,
@@ -183,7 +183,7 @@ void main() {
   }
 
   FeatureProvider wrappingProvider(
-    DatadogOpenFeatureProvider delegate, {
+    DatadogProvider delegate, {
     required bool forwardHooks,
     required bool forwardMetadata,
   }) {
@@ -252,8 +252,10 @@ void main() {
     final details = client.getBooleanDetails('plain', false);
 
     expect(details.flagMetadata, {
-      'datadog.allocation_key': 'allocation-a',
-      'datadog.serial_id': 1,
+      'allocationKey': 'allocation-a',
+      'doLog': true,
+      'variationType': 'boolean',
+      '__dd_allocation_key': 'allocation-a',
       '__dd_do_log': true,
       '__dd_split_serial_id': 1,
     });
@@ -327,7 +329,7 @@ void main() {
   });
 
   final frameCases =
-      <String, void Function(OpenFeatureClient, DatadogOpenFeatureProvider)>{
+      <String, void Function(OpenFeatureClient, DatadogProvider)>{
         'a success': (client, _) => client.getBooleanValue('flag', false),
         'a type mismatch': (client, _) =>
             client.getStringValue('flag', 'default'),
@@ -661,7 +663,7 @@ void main() {
           defaultValue: false,
           flagValueType: FlagValueType.boolean,
           clientMetadata: const ClientMetadata(),
-          providerMetadata: const ProviderMetadata(name: 'Datadog'),
+          providerMetadata: const ProviderMetadata(name: 'datadog'),
           evaluationContext: EvaluationContext.empty,
         ),
         FlagEvaluationDetails(flagKey: 'flag', value: true),
@@ -824,8 +826,12 @@ void main() {
       await client.shutdown();
 
       expect(details.flagMetadata, {
-        'datadog.allocation_key': 'allocation-a',
-        'datadog.serial_id': 1,
+        'allocationKey': 'allocation-a',
+        'doLog': true,
+        'variationType': 'boolean',
+        '__dd_allocation_key': 'allocation-a',
+        '__dd_do_log': true,
+        '__dd_split_serial_id': 1,
         '__dd_feature.holdout.key': 'holdout-1',
         '__dd_feature.holdout.assignment_group': 'status_quo',
         '__dd_feature.holdout.should_include_in_holdout_analysis': false,

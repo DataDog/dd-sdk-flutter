@@ -34,7 +34,7 @@ final class PrecomputeRequest {
           ),
           subject: PrecomputeRequestSubject(
             targetingKey: evaluationContext.targetingKey ?? '',
-            targetingAttributes: evaluationContext.attributes,
+            targetingAttributes: evaluationContext.targetingContext.attributes,
           ),
         ),
       ),
