@@ -70,6 +70,10 @@ class FlagsData {
   }
 
   /// Converts this snapshot to persisted JSON.
+  ///
+  /// Numeric values retain their runtime JSON representation and exact token
+  /// metadata. Overflow and nonzero underflow use explicit token markers.
+  /// Older SDKs reject snapshots that contain these unsupported markers.
   Map<String, Object?> toJson() {
     return {
       // Older SDKs read only `flags`. Keep encoded assignments separate so a

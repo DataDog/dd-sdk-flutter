@@ -79,6 +79,11 @@ final class FlagAssignment {
     toJson: FlagVariationType.toWireName,
   )
   final FlagVariationType variationType;
+
+  /// Snapshot value using the runtime's JSON numeric representation.
+  ///
+  /// Numeric values can round. Typed getters validate [numericValue]. Overflow
+  /// and nonzero underflow use an explicit numeric-token marker.
   @JsonKey(toJson: sanitizeJsonValue)
   final Object variationValue;
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -109,7 +114,7 @@ final class FlagAssignment {
       variationKey: assignment.variationKey,
       variationType: assignment.variationType,
       variationValue: variationValue is NumericValue
-          ? variationValue.integer ?? variationValue.floating ?? 0
+          ? variationValue.snapshotValue
           : variationValue,
       numericValue: variationValue is NumericValue ? variationValue : null,
       reason: assignment.reason,
@@ -120,13 +125,18 @@ final class FlagAssignment {
 
   factory FlagAssignment.fromCacheJson(Map<String, Object?> json) {
     final value = json['variationValue'];
-    if (const ['number', 'integer', 'float'].contains(json['variationType']) &&
-        value is Map &&
-        value['_numericLiteral'] is String) {
-      json = {
-        ...json,
-        'variationValue': NumericValue(value['_numericLiteral'] as String),
-      };
+    if (const ['number', 'integer', 'float'].contains(json['variationType'])) {
+      final literal = json.containsKey('_numericLiteral')
+          ? json['_numericLiteral']
+          : value is Map
+          ? value['_numericLiteral']
+          : null;
+      if (literal != null) {
+        if (literal is! String) {
+          throw const FormatException('Invalid numeric cache metadata');
+        }
+        json = {...json, 'variationValue': NumericValue(literal)};
+      }
     }
     return FlagAssignment.fromJson(json);
   }
@@ -134,7 +144,7 @@ final class FlagAssignment {
   Map<String, Object?> toJson() {
     final json = _$FlagAssignmentToJson(this);
     if (numericValue case final numeric?) {
-      json['variationValue'] = {'_numericLiteral': numeric.literal};
+      json['_numericLiteral'] = numeric.literal;
     }
     return json;
   }

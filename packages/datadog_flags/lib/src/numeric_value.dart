@@ -16,6 +16,15 @@ final class NumericValue {
 
   NumericValue._(this.literal, this.integer, this.floating);
 
+  /// JSON-decoded value for snapshots, including the runtime's numeric rounding.
+  ///
+  /// Overflow and nonzero underflow retain their token in an explicit marker.
+  Object get snapshotValue {
+    final value = jsonDecode(literal) as num;
+    if (value.isFinite && (value != 0 || integer == 0)) return value;
+    return {'_numericLiteral': literal};
+  }
+
   factory NumericValue(String literal) {
     if (!RegExp(
       r'^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$',
