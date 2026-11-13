@@ -132,7 +132,9 @@ application ID, service, and version. The environment is sent as `dd_env`.
 - `httpClient` for an application-owned HTTP client.
 - `store` for a `DatadogFlagsStore` implementation.
 - `initializationTimeout` for the lifecycle budget described above.
-- `trackExposures` and `customExposureEndpoint` for exposure telemetry.
+- `trackExposures` and `customExposureEndpoint` for exposure telemetry. With
+  `trackExposures: false`, the SDK sends no exposures to Datadog, but it still
+  deduplicates exposures for `ExposureHook`.
 - `trackEvaluations`, `customEvaluationEndpoint`, and `evaluationFlushInterval`
   for evaluation telemetry. The interval must be between 1 and 60 seconds.
   The default is 10 seconds.
@@ -150,6 +152,54 @@ to evaluate obfuscated assignments.
 Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
 records successes, defaults, and errors. The provider does not implement
 OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
+
+## Exposures in your own data store
+
+To record exposures in your own data store, add an `ExposureHook`:
+
+```dart
+api.addHooks([
+  ExposureHook((evaluation) {
+    if (evaluation.shouldSend) {
+      myQueue.add({
+        'flag': evaluation.flagKey,
+        'variant': evaluation.variant,
+        'allocation': evaluation.allocationKey,
+        'subject': evaluation.targetingKey,
+        'features': evaluation.features,
+      });
+    }
+  }),
+]);
+```
+
+The callback receives every completed evaluation from `DatadogOpenFeatureProvider`:
+
+- `isExposure` is true for a successful evaluation of an allocation that logs
+  exposures, repeats included.
+- `isCacheHit` is true when the subject's most recent exposure to the flag had
+  the same allocation, variant, and assignment serial ID.
+- `shouldSend` is true for a new exposure. These are the exposures that the SDK
+  sends to Datadog when `trackExposures` is on.
+- `features` contains the features of the assignment's split that are
+  published to hooks, such as `holdout.key`, `holdout.assignment_group`, and
+  `holdout.should_include_in_holdout_analysis`.
+- `flagKey`, `variant`, `allocationKey`, `targetingKey`, and
+  `evaluationContext` describe the evaluation.
+
+The callback runs synchronously during the evaluation. Keep it fast and do not
+do I/O in it; queue the work instead. The SDK catches exceptions from the
+callback and writes them to the Dart developer log under the name
+`datadog_flags`. The evaluation result stays the same.
+
+The exposure deduplication cache is in memory. After a restart, the first
+evaluation of each assignment is a new exposure.
+
+The same features are also available in flag metadata under keys that start with
+`__dd_feature.`, for example `__dd_feature.holdout.key`. Other keys that start
+with `__dd_` are internal and can change.
+
+An evaluation counts as an exposure only if the whole evaluation succeeds.
 
 ## Migrate the legacy API
 

@@ -5,12 +5,15 @@
 
 import 'dart:async';
 
+import 'package:meta/meta.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
 import 'datadog_flags.dart';
+import 'assignment.dart';
 import 'default_flags_client.dart';
 import 'evaluation_context.dart';
+import 'exposure_hook.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
@@ -28,7 +31,8 @@ final class DatadogOpenFeatureProvider
         openfeature.ContextReconciliationProvider,
         openfeature.ShutdownProvider,
         openfeature.ProviderEventSource,
-        openfeature.DomainScopedProvider {
+        openfeature.DomainScopedProvider,
+        openfeature.ProviderHooks {
   /// OpenFeature flag metadata key containing the Datadog allocation key.
   static const allocationKeyMetadata = datadogAllocationKeyMetadata;
 
@@ -42,6 +46,7 @@ final class DatadogOpenFeatureProvider
   static const maxInitializationTimeout = Duration(seconds: 20);
 
   final Set<Future<void>> _retiring = {};
+  final List<_ExposureFrame> _exposureFrames = [];
   openfeature.EvaluationContext? _requestedContext;
 
   /// Datadog runtime configuration used by each context revision.
@@ -69,9 +74,20 @@ final class DatadogOpenFeatureProvider
   @override
   Stream<openfeature.ProviderEvent> get events => _events.stream;
 
+  /// Records exposures in `finallyAfter` when evaluation and all `before` and
+  /// `after` hooks succeeded. An exposure stands when a later `finallyAfter`
+  /// hook fails.
+  ///
+  /// Exposures need these hooks to run. Direct `resolve...Value` calls, and
+  /// wrappers that skip these hooks, leave the exposure unrecorded.
+  @override
+  late final List<openfeature.Hook> hooks = List.unmodifiable([
+    _ExposureAdmissionHook(_exposureFrames),
+  ]);
+
   @override
   openfeature.ProviderMetadata get metadata =>
-      const openfeature.ProviderMetadata(name: 'Datadog');
+      const openfeature.ProviderMetadata(name: datadogProviderName);
 
   @override
   Future<void> initialize(
@@ -168,7 +184,14 @@ final class DatadogOpenFeatureProvider
       return _notReady(defaultValue);
     }
     return _resolution(
-      client.getBooleanDetails(key: flagKey, defaultValue: defaultValue),
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.boolean,
+        ),
+      ),
       defaultValue,
     );
   }
@@ -184,7 +207,14 @@ final class DatadogOpenFeatureProvider
       return _notReady(defaultValue);
     }
     return _resolution(
-      client.getStringDetails(key: flagKey, defaultValue: defaultValue),
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.string,
+        ),
+      ),
       defaultValue,
     );
   }
@@ -200,7 +230,14 @@ final class DatadogOpenFeatureProvider
       return _notReady(defaultValue);
     }
     return _resolution(
-      client.getIntegerDetails(key: flagKey, defaultValue: defaultValue),
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.integer,
+        ),
+      ),
       defaultValue,
     );
   }
@@ -216,7 +253,14 @@ final class DatadogOpenFeatureProvider
       return _notReady(defaultValue);
     }
     return _resolution(
-      client.getDoubleDetails(key: flagKey, defaultValue: defaultValue),
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.float,
+        ),
+      ),
       defaultValue,
     );
   }
@@ -232,9 +276,14 @@ final class DatadogOpenFeatureProvider
       return _notReady(defaultValue);
     }
 
-    final details = client.getStructureDetails(
-      key: flagKey,
-      defaultValue: defaultValue,
+    final details = _admit(
+      flagKey,
+      client.resolveDeferringExposure(
+        key: flagKey,
+        defaultValue: defaultValue,
+        requestedType: FlagVariationType.object,
+        valueGuard: (value) => value is Map<String, Object?>,
+      ),
     );
     final errorCode = details.error?.openFeatureCode;
     if (errorCode != null) {
@@ -568,6 +617,32 @@ final class DatadogOpenFeatureProvider
     );
   }
 
+  FlagDetails<T> _admit<T>(
+    String flagKey,
+    ({FlagDetails<T> details, PendingExposure? exposure}) resolution,
+  ) {
+    final exposure = resolution.exposure;
+    final details = resolution.details;
+    if (exposure == null) return details;
+    // Without a frame from the provider hook, nothing records the exposure.
+    if (_exposureFrames.lastOrNull case final frame?
+        when frame.flagKey == flagKey) {
+      frame.exposure = exposure;
+    }
+    return FlagDetails(
+      key: details.key,
+      value: details.value,
+      variant: details.variant,
+      reason: details.reason,
+      error: details.error,
+      flagMetadata: {
+        ...details.flagMetadata,
+        doLogMetadata: true,
+        splitSerialIdMetadata: ?exposure.assignment.serialId,
+      },
+    );
+  }
+
   static openfeature.ResolutionDetails<T> _resolution<T extends Object>(
     FlagDetails<T> details,
     T defaultValue,
@@ -623,6 +698,50 @@ final class _ProviderRuntime {
   }
 }
 
+final class _ExposureFrame {
+  final String flagKey;
+  PendingExposure? exposure;
+
+  _ExposureFrame(this.flagKey);
+}
+
+final class _ExposureAdmissionHook extends openfeature.HookAdapter {
+  static const _frameKey = 'datadog.exposureFrame';
+
+  final List<_ExposureFrame> _frames;
+
+  _ExposureAdmissionHook(this._frames);
+
+  @override
+  void before(openfeature.HookContext context, openfeature.HookHints hints) {
+    final frame = _ExposureFrame(context.flagKey);
+    _frames.add(frame);
+    context.hookData[_frameKey] = frame;
+  }
+
+  @override
+  void finallyAfter(
+    openfeature.HookContext context,
+    openfeature.FlagEvaluationDetails<Object> details,
+    openfeature.HookHints hints,
+  ) {
+    markDatadogEvaluation(details);
+    final frame = context.hookData.remove(_frameKey);
+    if (frame is! _ExposureFrame) return;
+    _frames.remove(frame);
+    final exposure = frame.exposure;
+    if (exposure == null || details.errorCode != null) return;
+    // record() returns before any code that can throw, so a throw means a
+    // new exposure.
+    var isCacheHit = false;
+    try {
+      isCacheHit = exposure.record();
+    } finally {
+      recordExposureDecision(details, isCacheHit: isCacheHit);
+    }
+  }
+}
+
 extension _DatadogContext on openfeature.EvaluationContext {
   FlagsEvaluationContext get datadogContext => FlagsEvaluationContext(
     targetingKey: targetingKey,
@@ -639,4 +758,10 @@ extension _OpenFeatureError on FlagEvaluationError {
   };
 
   String get message => 'Datadog flag evaluation failed with $code.';
+}
+
+/// Test access to the exposure frames of a [DatadogOpenFeatureProvider].
+@visibleForTesting
+extension DatadogOpenFeatureProviderTesting on DatadogOpenFeatureProvider {
+  int get openExposureFrames => _exposureFrames.length;
 }
