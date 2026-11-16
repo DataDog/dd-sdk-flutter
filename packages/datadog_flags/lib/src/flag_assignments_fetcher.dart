@@ -17,11 +17,13 @@ import 'flags_error.dart';
 import 'flags_log.dart';
 import 'precompute_request.dart';
 import 'precompute_response.dart';
+import 'split_features.dart';
 
 class FlagAssignmentsFetcher {
   final DatadogFlagsConfig datadogConfig;
   final DatadogFlagsConfiguration configuration;
   final http.Client httpClient;
+  final UnknownDestinationWarnings _unknownDestinations;
 
   /// Canonical selection sent with every request, or null when none is sent.
   final FlagSelection? flagSelection;
@@ -32,7 +34,8 @@ class FlagAssignmentsFetcher {
     required this.httpClient,
     FlagsLogger logger = const FlagsLogger(),
     FlagSelectionDropLog? dropLog,
-  }) : flagSelection = resolveFlagSelection(
+  }) : _unknownDestinations = UnknownDestinationWarnings(logger),
+       flagSelection = resolveFlagSelection(
          configuration.flagSelection,
          logger,
          dropLog: dropLog,
@@ -75,6 +78,9 @@ class FlagAssignmentsFetcher {
         _asObject(jsonDecode(response.body), 'response'),
       );
       final attributes = decoded.data.attributes;
+      for (final assignment in attributes.flags.values) {
+        _unknownDestinations.check(assignment.features);
+      }
       return PrecomputedAssignments(
         flags: attributes.flags,
         createdAt: attributes.createdAt,

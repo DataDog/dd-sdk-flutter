@@ -11,4 +11,10 @@ class FlagsLogger {
 
   void error(String message, {Object? error}) =>
       developer.log(message, name: 'datadog_flags', level: 1000, error: error);
+
+  void warning(String message, {Object? error}) =>
+      developer.log(message, name: 'datadog_flags', level: 900, error: error);
+
+  void debug(String message, {Object? error}) =>
+      developer.log(message, name: 'datadog_flags', level: 500, error: error);
 }
