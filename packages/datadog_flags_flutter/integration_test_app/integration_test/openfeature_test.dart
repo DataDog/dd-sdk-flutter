@@ -220,7 +220,7 @@ void main() {
           );
           late Future<void> Function(String, String) change;
           late String Function() read;
-          final policy = {'dd_strict_evaluation_context_switching': strict};
+          final policy = {strictContextSwitchingAttribute: strict};
           if (direct) {
             await owner.enable(configuration: configuration);
             final client = owner.sharedClient();

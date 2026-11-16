@@ -21,7 +21,8 @@ export 'package:datadog_flags/datadog_flags.dart'
         FlagEvaluationError,
         FlagsInitializationTimeoutException,
         FlagsData,
-        FlagsEvaluationContext;
+        FlagsEvaluationContext,
+        strictContextSwitchingAttribute;
 
 export 'src/datadog_flags_plugin.dart';
 
