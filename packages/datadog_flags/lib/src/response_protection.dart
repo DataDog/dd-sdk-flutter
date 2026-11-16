@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
 import 'assignment_transport.dart';
+import 'datadog_tls_certificates.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
 import 'flags_log.dart';
@@ -68,36 +69,66 @@ final class TlsPinningResponseProtection extends ResponseProtection {
   }) : super._(mode);
 }
 
+/// Certificate in the server chain that [TlsPinningProfile] pins.
+enum TlsPinTarget {
+  /// The server's leaf certificate.
+  ///
+  /// The SDK accepts a connection after normal TLS validation when the leaf
+  /// certificate SPKI matches a pin. A leaf key change requires a profile
+  /// that already contains the new pin.
+  leaf,
+
+  /// The CA certificates that issue the server certificate.
+  ///
+  /// The assignment connection trusts only
+  /// [TlsPinningProfile.issuerCertificates], instead of the platform trust
+  /// store. A connection succeeds when the server chain validates to one of
+  /// these certificates. Leaf keys can change on renewal without a profile
+  /// update.
+  issuer,
+}
+
 /// Versioned TLS pinning policy for an assignment endpoint.
 ///
 /// A profile contains exact host names and base64-encoded SHA-256 digests of
-/// DER-encoded `SubjectPublicKeyInfo` (SPKI) structures. The SDK compares the
-/// pins with the SPKI of the server's leaf certificate after normal TLS
-/// validation succeeds. A connection is accepted when any pin matches, so a
-/// profile with the current key and the next key supports a key rotation
-/// without an application update.
+/// DER-encoded `SubjectPublicKeyInfo` (SPKI) structures. [target] selects the
+/// certificate that the pins apply to. A connection is accepted when any pin
+/// matches, so a profile with the current key and the next key supports a key
+/// rotation without an application update.
 ///
 /// A profile requires at least two distinct pins. Host names match exactly;
 /// the SDK does not apply wildcard or suffix matching.
 @immutable
 final class TlsPinningProfile {
-  /// Proposed Datadog staging profile.
+  /// Datadog staging profile for `protected.ff-cdn.datad0g.com`.
   ///
-  /// **Unverified placeholder.** The pins in this profile are not the public
-  /// keys of any Datadog certificate. They are placeholder digests that never
-  /// match a server, so every assignment request that uses this profile fails.
-  /// The host name is also a placeholder until a dedicated staging host name is
-  /// provisioned. Replace both with a reviewed pin policy before activation.
-  static const datadogStagingV1 = TlsPinningProfile._(
+  /// This profile pins the Certainly CAs that issue the endpoint's Fastly
+  /// managed certificates. Fastly renews and rekeys the leaf certificates, so
+  /// the profile pins issuers, not leaves.
+  ///
+  /// Select the endpoint with [DatadogFlagsConfiguration.customFlagsEndpoint]
+  /// set to `https://protected.ff-cdn.datad0g.com/precompute-assignments`.
+  // The endpoint is pending provisioning and live validation
+  // (ddoghq/terraform-config PR 62220).
+  static const datadogStagingV1 = TlsPinningProfile.issuer(
     name: 'datadogStagingV1',
-    hosts: {'preview.ff-cdn.datad0g.com'},
+    hosts: {'protected.ff-cdn.datad0g.com'},
     spkiSha256Pins: {
-      // SHA-256 of "datadog_flags unverified placeholder pin datadogStagingV1-a".
-      'xB1ueNJyEgtwbIPFUkgvHd6RiriujFIR15GNtYN4qLk=',
-      // SHA-256 of "datadog_flags unverified placeholder pin datadogStagingV1-b".
-      'oN9O+mYi8ngW8iJms8E5+hy2OgMLxo3Y6o/6YI49z1g=',
+      // Certainly Root R1.
+      'P5Pz/PedIl0hPu9qSj9Yhc+E/j16ejwRVTUXaIwOIQA=',
+      // Certainly Intermediate R1.
+      'oW7smChMJRcnzTObF7K+HzInReAPTxB/L1h6eZTmw9Q=',
+      // Certainly Root E1.
+      'HvZGJdqi5dQz10Sa4xogDRAl4AEqj+z6cJMvi1mbdd0=',
+      // Certainly Intermediate E1.
+      'XkxTESlVMF59ZsGRFSBQJyCYjYJYNYkLwv/sqaDnMJA=',
     },
-    isPlaceholder: true,
+    issuerCertificates: [
+      certainlyRootR1Pem,
+      certainlyIntermediateR1Pem,
+      certainlyRootE1Pem,
+      certainlyIntermediateE1Pem,
+    ],
   );
 
   /// Minimum number of distinct pins in a profile.
@@ -109,12 +140,20 @@ final class TlsPinningProfile {
   /// Exact host names that this profile covers.
   final Set<String> hosts;
 
-  /// Base64-encoded SHA-256 digests of DER-encoded leaf certificate SPKI.
+  /// Base64-encoded SHA-256 digests of DER-encoded SPKI for [target].
   final Set<String> spkiSha256Pins;
 
-  final bool _isPlaceholder;
+  /// Certificate in the server chain that [spkiSha256Pins] apply to.
+  final TlsPinTarget target;
 
-  /// Creates a custom pinning profile for a custom assignment endpoint.
+  /// PEM-encoded CA certificates for [TlsPinTarget.issuer].
+  ///
+  /// The SPKI pin of each certificate must be in [spkiSha256Pins], and each
+  /// pin must belong to one of these certificates. Empty for
+  /// [TlsPinTarget.leaf].
+  final List<String> issuerCertificates;
+
+  /// Creates a custom leaf pinning profile for a custom assignment endpoint.
   ///
   /// Use [DatadogFlagsConfiguration.customFlagsEndpoint] to select an endpoint
   /// whose host is in [hosts].
@@ -122,14 +161,21 @@ final class TlsPinningProfile {
     required this.name,
     required this.hosts,
     required this.spkiSha256Pins,
-  }) : _isPlaceholder = false;
+  }) : target = TlsPinTarget.leaf,
+       issuerCertificates = const [];
 
-  const TlsPinningProfile._({
+  /// Creates an issuer pinning profile.
+  ///
+  /// [issuerCertificates] become the only trusted certificates for the
+  /// assignment connection. Include each CA certificate that the server chain
+  /// must reach, including cross-signed intermediates that link the served
+  /// chain to a pinned root.
+  const TlsPinningProfile.issuer({
     required this.name,
     required this.hosts,
     required this.spkiSha256Pins,
-    required bool isPlaceholder,
-  }) : _isPlaceholder = isPlaceholder;
+    required this.issuerCertificates,
+  }) : target = TlsPinTarget.issuer;
 }
 
 /// Error raised when an assignment connection cannot satisfy a TLS pinning
@@ -154,7 +200,18 @@ final class TlsPinningPolicy {
   /// Canonical base64 SHA-256 SPKI pins.
   final Set<String> pins;
 
-  const TlsPinningPolicy._({required this.hosts, required this.pins});
+  /// Certificate in the server chain that [pins] apply to.
+  final TlsPinTarget target;
+
+  /// PEM-encoded trusted certificates for [TlsPinTarget.issuer].
+  final List<String> issuerCertificates;
+
+  const TlsPinningPolicy._({
+    required this.hosts,
+    required this.pins,
+    required this.target,
+    required this.issuerCertificates,
+  });
 
   /// Validates [profile] for [endpoint].
   ///
@@ -203,6 +260,38 @@ final class TlsPinningPolicy {
       );
     }
 
+    switch (profile.target) {
+      case TlsPinTarget.leaf:
+        if (profile.issuerCertificates.isNotEmpty) {
+          throw invalid('leaf pinning does not use issuer certificates.');
+        }
+      case TlsPinTarget.issuer:
+        if (profile.issuerCertificates.isEmpty) {
+          throw invalid('issuer pinning requires issuer certificates.');
+        }
+        final certificatePins = <String>{};
+        for (final (index, pem) in profile.issuerCertificates.indexed) {
+          final String pin;
+          try {
+            pin = spkiPin(subjectPublicKeyInfoFromCertificate(derFromPem(pem)));
+          } on FormatException {
+            throw invalid(
+              'issuer certificate $index is not a PEM certificate.',
+            );
+          }
+          if (!pins.contains(pin)) {
+            throw invalid('issuer certificate $index ($pin) is not pinned.');
+          }
+          certificatePins.add(pin);
+        }
+        final missing = pins.difference(certificatePins);
+        if (missing.isNotEmpty) {
+          throw invalid(
+            'pins ${missing.join(', ')} have no issuer certificate.',
+          );
+        }
+    }
+
     if (!endpoint.isScheme('https')) {
       throw invalid('the assignment endpoint $endpoint must use HTTPS.');
     }
@@ -211,10 +300,15 @@ final class TlsPinningPolicy {
         'the assignment endpoint host "${endpoint.host}" is not in the profile.',
       );
     }
-    return TlsPinningPolicy._(hosts: hosts, pins: pins);
+    return TlsPinningPolicy._(
+      hosts: hosts,
+      pins: pins,
+      target: profile.target,
+      issuerCertificates: List.unmodifiable(profile.issuerCertificates),
+    );
   }
 
-  /// Whether the SPKI of the DER-encoded [certificate] matches a pin.
+  /// Whether the SPKI of the DER-encoded leaf [certificate] matches a pin.
   bool matchesCertificate(Uint8List certificate) {
     final Uint8List spki;
     try {
@@ -222,7 +316,7 @@ final class TlsPinningPolicy {
     } on FormatException {
       return false;
     }
-    return pins.contains(base64.encode(sha256.convert(spki).bytes));
+    return pins.contains(spkiPin(spki));
   }
 }
 
@@ -265,12 +359,6 @@ final class AssignmentProtection {
         );
       }
       final policy = TlsPinningPolicy.forEndpoint(profile, endpoint);
-      if (profile._isPlaceholder) {
-        logger.warning(
-          'TLS pinning profile "${profile.name}" contains unverified '
-          'placeholder pins. Assignment requests fail until it is replaced.',
-        );
-      }
       return AssignmentProtection(
         policyId: policyId,
         client: createTlsPinningClient(policy),
@@ -298,10 +386,34 @@ final class AssignmentProtection {
       'profile': profile.name,
       'hosts': [for (final host in profile.hosts) host.toLowerCase()]..sort(),
       'pins': profile.spkiSha256Pins.toList()..sort(),
+      'target': profile.target.name,
+      'issuerCertificates': [
+        for (final pem in profile.issuerCertificates)
+          sha256.convert(utf8.encode(pem)).toString(),
+      ],
       'endpoint': endpoint.toString(),
     });
     return 'tlsPinning:${sha256.convert(utf8.encode(canonical))}';
   }
+}
+
+/// Returns the base64 SHA-256 digest of a DER-encoded [spki].
+@internal
+String spkiPin(Uint8List spki) => base64.encode(sha256.convert(spki).bytes);
+
+/// Decodes one PEM `CERTIFICATE` block.
+///
+/// Throws [FormatException] when [pem] does not contain exactly one
+/// certificate.
+@internal
+Uint8List derFromPem(String pem) {
+  final match = RegExp(
+    r'^\s*-----BEGIN CERTIFICATE-----([A-Za-z0-9+/=\s]+)-----END CERTIFICATE-----\s*$',
+  ).firstMatch(pem);
+  if (match == null) {
+    throw const FormatException('Expected one PEM certificate');
+  }
+  return base64.decode(match.group(1)!.replaceAll(RegExp(r'\s'), ''));
 }
 
 /// Returns the DER-encoded `SubjectPublicKeyInfo` of an X.509 [certificate].

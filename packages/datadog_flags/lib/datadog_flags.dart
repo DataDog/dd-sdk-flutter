@@ -27,6 +27,7 @@ export 'src/response_protection.dart'
     show
         ResponseProtection,
         ResponseProtectionMode,
+        TlsPinTarget,
         TlsPinningProfile,
         TlsPinningResponseProtection;
 export 'src/evaluation_context.dart' show FlagsEvaluationContext;

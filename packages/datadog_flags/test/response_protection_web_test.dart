@@ -39,26 +39,44 @@ void main() {
     trackEvaluations: false,
   );
 
-  test('reports required TLS pinning as unsupported on web', () {
-    final protection = AssignmentProtection.resolve(
-      configuration: configuration,
-      endpoint: DatadogFlagsSite.us1.flagsEndpoint.replace(
-        path: '/precompute-assignments',
+  final stagingEndpoint = Uri.parse(
+    'https://protected.ff-cdn.datad0g.com/precompute-assignments',
+  );
+  final profiles = {
+    'leaf': (configuration, DatadogFlagsSite.us1.flagsEndpoint),
+    'issuer': (
+      DatadogFlagsConfiguration(
+        datadogConfig: datadogConfig,
+        customFlagsEndpoint: stagingEndpoint,
+        responseProtection: const ResponseProtection.tlsPinning(
+          mode: ResponseProtectionMode.required,
+          profile: TlsPinningProfile.datadogStagingV1,
+        ),
       ),
-    )!;
+      stagingEndpoint,
+    ),
+  };
+  for (final MapEntry(key: target, value: (configuration, endpoint))
+      in profiles.entries) {
+    test('reports required $target TLS pinning as unsupported on web', () {
+      final protection = AssignmentProtection.resolve(
+        configuration: configuration,
+        endpoint: endpoint,
+      )!;
 
-    expect(protection.client, isNull);
-    expect(
-      protection.error,
-      isA<FlagsException>()
-          .having(
-            (error) => error.type,
-            'type',
-            FlagsErrorType.invalidConfiguration,
-          )
-          .having((error) => error.message, 'message', contains('web')),
-    );
-  });
+      expect(protection.client, isNull);
+      expect(
+        protection.error,
+        isA<FlagsException>()
+            .having(
+              (error) => error.type,
+              'type',
+              FlagsErrorType.invalidConfiguration,
+            )
+            .having((error) => error.message, 'message', contains('web')),
+      );
+    });
+  }
 
   test('fails the assignment fetch before sending a request', () async {
     final requests = <http.BaseRequest>[];

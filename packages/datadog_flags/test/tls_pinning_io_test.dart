@@ -50,10 +50,13 @@ void main() {
   Future<_TlsServer> startServer({
     required String certificatePem,
     required String privateKeyPem,
+    String intermediatesPem = '',
   }) async {
     final server = await _TlsServer.start(
       SecurityContext()
-        ..useCertificateChainBytes(utf8.encode(certificatePem))
+        ..useCertificateChainBytes(
+          utf8.encode(certificatePem + intermediatesPem),
+        )
         ..usePrivateKeyBytes(utf8.encode(privateKeyPem)),
       assignmentsResponse,
     );
@@ -63,20 +66,24 @@ void main() {
 
   Future<PrecomputedAssignments> fetch(
     _TlsServer server, {
-    required Set<String> pins,
+    Set<String> pins = const {},
+    TlsPinningProfile? profile,
     SecurityContext? context,
-    Set<String> hosts = const {'localhost'},
-    String host = 'localhost',
   }) {
     final endpoint = Uri.parse(
-      'https://$host:${server.port}/precompute-assignments',
+      'https://localhost:${server.port}/precompute-assignments',
     );
     final configuration = DatadogFlagsConfiguration(
       datadogConfig: datadogConfig,
       customFlagsEndpoint: endpoint,
     );
     final policy = TlsPinningPolicy.forEndpoint(
-      TlsPinningProfile(name: 'test', hosts: hosts, spkiSha256Pins: pins),
+      profile ??
+          TlsPinningProfile(
+            name: 'test',
+            hosts: const {'localhost'},
+            spkiSha256Pins: pins,
+          ),
       endpoint,
     );
     final client = createTlsPinningHttpClient(
@@ -161,6 +168,94 @@ void main() {
     );
     await server.connectionsClosed;
     expect(server.requestBytes.where((bytes) => bytes.isNotEmpty), isEmpty);
+  });
+
+  group('issuer pinning', () {
+    const issuerProfile = TlsPinningProfile.issuer(
+      name: 'test',
+      hosts: {'localhost'},
+      spkiSha256Pins: {issuerRootASpkiPin, issuerIntermediateSpkiPin},
+      issuerCertificates: [issuerRootAPem, issuerIntermediateByRootAPem],
+    );
+
+    final renewedLeaves = {
+      'leaf 1': (issuerLeaf1CertificatePem, issuerLeaf1PrivateKeyPem),
+      'leaf 2 with a new key': (
+        issuerLeaf2CertificatePem,
+        issuerLeaf2PrivateKeyPem,
+      ),
+    };
+    for (final MapEntry(key: name, value: (certificate, key))
+        in renewedLeaves.entries) {
+      test('accepts $name through the cross-signed intermediate', () async {
+        // The server sends the root B intermediate. The client trusts only
+        // root A and the root A intermediate for the same key.
+        final server = await startServer(
+          certificatePem: certificate,
+          privateKeyPem: key,
+          intermediatesPem: issuerIntermediateByRootBPem,
+        );
+
+        final assignments = await fetch(server, profile: issuerProfile);
+
+        expect(assignments.flags['flag']?.variationValue, true);
+        expect(server.requestBytes, hasLength(1));
+      });
+    }
+
+    test('rejects a leaf from an interception root', () async {
+      final server = await startServer(
+        certificatePem: interceptionLeafCertificatePem,
+        privateKeyPem: issuerLeaf1PrivateKeyPem,
+      );
+
+      await expectLater(
+        fetch(server, profile: issuerProfile),
+        throwsA(failedWith<HandshakeException>()),
+      );
+      await server.connectionsClosed;
+      expect(server.requestBytes.where((bytes) => bytes.isNotEmpty), isEmpty);
+    });
+
+    test('does not use the platform trust store or the test context', () async {
+      // The context trusts the leaf pinning CA, but issuer pinning ignores it.
+      final server = await startServer(
+        certificatePem: leafBRsaCertificatePem,
+        privateKeyPem: leafBRsaPrivateKeyPem,
+      );
+
+      await expectLater(
+        fetch(server, profile: issuerProfile, context: trustingTestCa()),
+        throwsA(failedWith<HandshakeException>()),
+      );
+    });
+
+    test('requires the root A intermediate to reach root A', () async {
+      final server = await startServer(
+        certificatePem: issuerLeaf1CertificatePem,
+        privateKeyPem: issuerLeaf1PrivateKeyPem,
+        intermediatesPem: issuerIntermediateByRootBPem,
+      );
+      // Leaf A only satisfies the minimum pin count.
+      final rootAOnly = TlsPinningProfile.issuer(
+        name: 'test',
+        hosts: const {'localhost'},
+        spkiSha256Pins: {
+          issuerRootASpkiPin,
+          spkiPin(
+            subjectPublicKeyInfoFromCertificate(
+              derFromPem(leafAEcCertificatePem),
+            ),
+          ),
+        },
+        issuerCertificates: const [issuerRootAPem, leafAEcCertificatePem],
+      );
+
+      await expectLater(
+        fetch(server, profile: rootAOnly),
+        throwsA(failedWith<HandshakeException>()),
+      );
+    });
   });
 
   test('rejects a request host outside the profile', () async {

@@ -24,6 +24,7 @@ export 'package:datadog_flags/datadog_flags.dart'
         FlagsEvaluationContext,
         ResponseProtection,
         ResponseProtectionMode,
+        TlsPinTarget,
         TlsPinningProfile,
         TlsPinningResponseProtection;
 

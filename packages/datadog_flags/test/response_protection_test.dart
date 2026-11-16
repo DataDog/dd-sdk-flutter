@@ -9,7 +9,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
 import 'package:datadog_flags/src/flags_error.dart';
@@ -22,16 +21,8 @@ import 'package:test/test.dart';
 import 'tls_test_certificates.dart';
 
 void main() {
-  Uint8List derFromPem(String pem) => base64.decode(
-    pem
-        .split('\n')
-        .where((line) => line.isNotEmpty && !line.startsWith('-----'))
-        .join(),
-  );
-
-  String spkiPin(Uint8List certificate) => base64.encode(
-    sha256.convert(subjectPublicKeyInfoFromCertificate(certificate)).bytes,
-  );
+  String certificatePin(String pem) =>
+      spkiPin(subjectPublicKeyInfoFromCertificate(derFromPem(pem)));
 
   group('subjectPublicKeyInfoFromCertificate', () {
     final vectors = {
@@ -41,7 +32,7 @@ void main() {
     };
     for (final MapEntry(key: name, value: (pem, pin)) in vectors.entries) {
       test('matches the OpenSSL SPKI digest for the $name', () {
-        expect(spkiPin(derFromPem(pem)), pin);
+        expect(certificatePin(pem), pin);
       });
     }
 
@@ -171,14 +162,106 @@ void main() {
       expect(policy.matchesCertificate(Uint8List(8)), isFalse);
     });
 
-    test('datadogStagingV1 is valid for the staging assignment host', () {
+    final issuerProfiles = <String, (List<String>, Set<String>)>{
+      'a certificate that is not pinned': (
+        [issuerRootAPem, issuerIntermediateByRootAPem],
+        {issuerRootASpkiPin, leafAEcSpkiPin},
+      ),
+      'a pin without a certificate': (
+        [issuerRootAPem, issuerIntermediateByRootAPem],
+        {issuerRootASpkiPin, issuerIntermediateSpkiPin, leafAEcSpkiPin},
+      ),
+      'no certificates': ([], {issuerRootASpkiPin, issuerIntermediateSpkiPin}),
+      'a malformed certificate': (
+        [issuerRootAPem, 'not a certificate'],
+        {issuerRootASpkiPin, issuerIntermediateSpkiPin},
+      ),
+      'two certificates in one entry': (
+        [issuerRootAPem + issuerIntermediateByRootAPem],
+        {issuerRootASpkiPin, issuerIntermediateSpkiPin},
+      ),
+    };
+    for (final MapEntry(key: name, value: (certificates, pins))
+        in issuerProfiles.entries) {
+      test('rejects an issuer profile with $name', () {
+        expect(
+          () => TlsPinningPolicy.forEndpoint(
+            TlsPinningProfile.issuer(
+              name: 'test',
+              hosts: const {'flags.example.com'},
+              spkiSha256Pins: pins,
+              issuerCertificates: certificates,
+            ),
+            endpoint,
+          ),
+          throwsA(
+            isA<FlagsException>().having(
+              (error) => error.type,
+              'type',
+              FlagsErrorType.invalidConfiguration,
+            ),
+          ),
+        );
+      });
+    }
+
+    test('accepts an issuer profile whose certificates match its pins', () {
       final policy = TlsPinningPolicy.forEndpoint(
-        TlsPinningProfile.datadogStagingV1,
-        DatadogFlagsSite.us1Staging.flagsEndpoint.replace(
-          path: '/precompute-assignments',
+        const TlsPinningProfile.issuer(
+          name: 'test',
+          hosts: {'flags.example.com'},
+          spkiSha256Pins: {issuerRootASpkiPin, issuerIntermediateSpkiPin},
+          issuerCertificates: [issuerRootAPem, issuerIntermediateByRootAPem],
         ),
+        endpoint,
       );
-      expect(policy.pins, hasLength(2));
+      expect(policy.target, TlsPinTarget.issuer);
+      expect(policy.issuerCertificates, hasLength(2));
+    });
+
+    test('custom profiles pin the leaf certificate', () {
+      expect(profile().target, TlsPinTarget.leaf);
+      expect(profile().issuerCertificates, isEmpty);
+    });
+
+    group('datadogStagingV1', () {
+      const staging = TlsPinningProfile.datadogStagingV1;
+      final stagingEndpoint = Uri.parse(
+        'https://protected.ff-cdn.datad0g.com/precompute-assignments',
+      );
+
+      test('pins the Certainly issuers of the protected staging host', () {
+        final policy = TlsPinningPolicy.forEndpoint(staging, stagingEndpoint);
+        expect(policy.target, TlsPinTarget.issuer);
+        expect(policy.hosts, {'protected.ff-cdn.datad0g.com'});
+        expect(
+          policy.pins,
+          containsAll(const {
+            // Certainly Intermediate R1.
+            'oW7smChMJRcnzTObF7K+HzInReAPTxB/L1h6eZTmw9Q=',
+            // Certainly Root R1.
+            'P5Pz/PedIl0hPu9qSj9Yhc+E/j16ejwRVTUXaIwOIQA=',
+            // Certainly Root E1.
+            'HvZGJdqi5dQz10Sa4xogDRAl4AEqj+z6cJMvi1mbdd0=',
+          }),
+        );
+      });
+
+      test('bundles one certificate for each pin', () {
+        expect({
+          for (final pem in staging.issuerCertificates) certificatePin(pem),
+        }, staging.spkiSha256Pins);
+      });
+
+      test('does not cover the preview staging host', () {
+        expect(
+          () => TlsPinningPolicy.forEndpoint(
+            staging,
+            DatadogFlagsSite.us1Staging.flagsEndpoint,
+          ),
+          throwsA(isA<FlagsException>()),
+        );
+      });
     });
   });
 

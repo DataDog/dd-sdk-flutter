@@ -131,3 +131,152 @@ iYKkqCzNvaSOWe+26+wAfo4=
 
 /// SPKI pin of [leafBRsaCertificatePem].
 const leafBRsaSpkiPin = 'kXU5bVDLYU9DPDMQi5AlXyr3UdYkwnEry2Tv4dqyiK4=';
+
+// Issuer pinning PKI. It imitates a cross-signed intermediate:
+//
+// - `issuerRootA` and `issuerRootB` are self-signed EC P-256 roots.
+// - Intermediate key K has two certificates with the same subject: one issued
+//   by root A and one issued by root B.
+// - `issuerLeaf1` and `issuerLeaf2` are `localhost` leaves with different
+//   keys, issued by K. The server sends each leaf with the root B
+//   intermediate. The client trusts only root A and the root A intermediate.
+// - `interceptionLeaf` is a `localhost` leaf issued by an unrelated root.
+//
+// Generated with OpenSSL. int.ext contains basicConstraints=CA:TRUE,pathlen:0
+// and keyUsage=keyCertSign,cRLSign:
+//
+//   openssl req -x509 -new -key rootA.key -sha256 -days 36500 \
+//     -subj "/O=datadog_flags test/CN=Test rootA" \
+//     -addext "basicConstraints=critical,CA:TRUE" \
+//     -addext "keyUsage=critical,keyCertSign,cRLSign" \
+//     -addext "subjectKeyIdentifier=hash" -out rootA.pem    # same for rootB, rootX
+//   openssl req -new -key intK.key \
+//     -subj "/O=datadog_flags test/CN=Test Intermediate K" -out intK.csr
+//   openssl x509 -req -in intK.csr -CA rootA.pem -CAkey rootA.key \
+//     -set_serial 101 -days 36500 -sha256 -extfile int.ext -out int-by-rootA.pem
+//   openssl x509 -req -in intK.csr -CA rootB.pem -CAkey rootB.key \
+//     -set_serial 102 -days 36500 -sha256 -extfile int.ext -out int-by-rootB.pem
+//   openssl x509 -req -in leaf1.csr -CA int-by-rootB.pem -CAkey intK.key \
+//     -set_serial <n> -days 825 -sha256 -extfile leaf.ext -out leaf1.pem
+//   openssl x509 -req -in leaf1.csr -CA rootX.pem -CAkey rootX.key \
+//     -set_serial 7 -days 825 -sha256 -extfile leaf.ext -out leafX.pem
+
+/// Self-signed issuer root A.
+const issuerRootAPem = '''
+-----BEGIN CERTIFICATE-----
+MIIBqjCCAVCgAwIBAgIUf2iQd99rDFl32Hznz95iMmHX5WAwCgYIKoZIzj0EAwIw
+MjEbMBkGA1UECgwSZGF0YWRvZ19mbGFncyB0ZXN0MRMwEQYDVQQDDApUZXN0IHJv
+b3RBMCAXDTI2MTExNjIxMjAzMFoYDzIxMjYxMDIzMjEyMDMwWjAyMRswGQYDVQQK
+DBJkYXRhZG9nX2ZsYWdzIHRlc3QxEzARBgNVBAMMClRlc3Qgcm9vdEEwWTATBgcq
+hkjOPQIBBggqhkjOPQMBBwNCAARTjJWhr4AL/Sqfefru4GzOwtWBRHCTlZYdSo+V
+30W4YUGNzpt79FyxGqjNzdtGv8JrtZ8uXcHaBI20VRdUuFJqo0IwQDAPBgNVHRMB
+Af8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUQGkz6+tr/pI2v7S5
+IGVBHlabtKgwCgYIKoZIzj0EAwIDSAAwRQIhAK92UUR39gWH2VdoGgY/AQ9rFydL
+ODHzbZ7Zqb95OxcNAiBCFjTiLG6vugk/nki1vlwkVE2j4z6K+oi2ubdtkgBy3w==
+-----END CERTIFICATE-----
+''';
+
+/// SPKI pin of [issuerRootAPem].
+const issuerRootASpkiPin = 'plwzdp3IlbeN4Y6Bv83ZVuUbk/3ECXi8F/My3sM9yq4=';
+
+/// Intermediate K issued by root A.
+const issuerIntermediateByRootAPem = '''
+-----BEGIN CERTIFICATE-----
+MIIBxTCCAWqgAwIBAgIBZTAKBggqhkjOPQQDAjAyMRswGQYDVQQKDBJkYXRhZG9n
+X2ZsYWdzIHRlc3QxEzARBgNVBAMMClRlc3Qgcm9vdEEwIBcNMjYxMTE2MjEyMDMw
+WhgPMjEyNjEwMjMyMTIwMzBaMDsxGzAZBgNVBAoMEmRhdGFkb2dfZmxhZ3MgdGVz
+dDEcMBoGA1UEAwwTVGVzdCBJbnRlcm1lZGlhdGUgSzBZMBMGByqGSM49AgEGCCqG
+SM49AwEHA0IABKeAHE2vJqlNwgI+kTNeGewmurw8/qLKuuQjO0NfdjJORoPY0syh
+Lz6iugXSyLKLW0Sq+xJzFUFNH5yFDZM3c7ejZjBkMBIGA1UdEwEB/wQIMAYBAf8C
+AQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBRm5bVgoe3amDYJ4ir11Ggu/t+p
+PDAfBgNVHSMEGDAWgBRAaTPr62v+kja/tLkgZUEeVpu0qDAKBggqhkjOPQQDAgNJ
+ADBGAiEAvJRHzw4F0wXCa5ZH5CkxE2fOlcrYgVfEkx58qru0AtQCIQCi02Z08IbD
+YDBNYh5DEBOiZI8fdOpXoQk7nAyOQ9FcGA==
+-----END CERTIFICATE-----
+''';
+
+/// Intermediate K issued by root B. Servers send this certificate.
+const issuerIntermediateByRootBPem = '''
+-----BEGIN CERTIFICATE-----
+MIIBxDCCAWqgAwIBAgIBZjAKBggqhkjOPQQDAjAyMRswGQYDVQQKDBJkYXRhZG9n
+X2ZsYWdzIHRlc3QxEzARBgNVBAMMClRlc3Qgcm9vdEIwIBcNMjYxMTE2MjEyMDMw
+WhgPMjEyNjEwMjMyMTIwMzBaMDsxGzAZBgNVBAoMEmRhdGFkb2dfZmxhZ3MgdGVz
+dDEcMBoGA1UEAwwTVGVzdCBJbnRlcm1lZGlhdGUgSzBZMBMGByqGSM49AgEGCCqG
+SM49AwEHA0IABKeAHE2vJqlNwgI+kTNeGewmurw8/qLKuuQjO0NfdjJORoPY0syh
+Lz6iugXSyLKLW0Sq+xJzFUFNH5yFDZM3c7ejZjBkMBIGA1UdEwEB/wQIMAYBAf8C
+AQAwDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBRm5bVgoe3amDYJ4ir11Ggu/t+p
+PDAfBgNVHSMEGDAWgBT9gRe0jvjVfgjeidilNd/SY1hU8zAKBggqhkjOPQQDAgNI
+ADBFAiAwigiW3YPyXx/dQzF7pEADI954pCuVYLhpGA6xlM/EDAIhAPxP1UcKaQC/
+hWRG/F346E63DhqjLS2/3sxAIPE8C97A
+-----END CERTIFICATE-----
+''';
+
+/// SPKI pin of intermediate key K.
+const issuerIntermediateSpkiPin =
+    'c2juiiHOGsDYxPJmmXizW9sXI6TSQDr1exHA67o3JbQ=';
+
+/// Leaf 1 for `localhost`, issued by intermediate K.
+const issuerLeaf1CertificatePem = '''
+-----BEGIN CERTIFICATE-----
+MIIByzCCAXKgAwIBAgICEI8wCgYIKoZIzj0EAwIwOzEbMBkGA1UECgwSZGF0YWRv
+Z19mbGFncyB0ZXN0MRwwGgYDVQQDDBNUZXN0IEludGVybWVkaWF0ZSBLMB4XDTI2
+MTExNjIxMjAzMFoXDTI5MDIxODIxMjAzMFowFDESMBAGA1UEAwwJbG9jYWxob3N0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmuMoGuZSmC61Um8KJmEfF/hl6cK3
+mflet97o8ZPI2/JuUhAXpcWDYt22fLrdA8VaFhb2N1uVorgD7GkizBVOwqOBjDCB
+iTAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIFoDATBgNVHSUEDDAKBggrBgEF
+BQcDATAdBgNVHQ4EFgQUNAyyW2uqDX1al1CvXM6L0VbvOBcwHwYDVR0jBBgwFoAU
+ZuW1YKHt2pg2CeIq9dRoLv7fqTwwFAYDVR0RBA0wC4IJbG9jYWxob3N0MAoGCCqG
+SM49BAMCA0cAMEQCICTy7Hx7K2/QFDu2HNQabr7lCRYMV1kzXKv5RoYyMKrnAiAC
+Dz/konIVTU2EwMz5dxpetAfPpAsDOuJK3nJ5xJAs7w==
+-----END CERTIFICATE-----
+''';
+
+/// PKCS #8 private key of [issuerLeaf1CertificatePem] and [interceptionLeafCertificatePem].
+const issuerLeaf1PrivateKeyPem = '''
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQglMPvEggZSmrfh1mY
+Pv4zaRMDQPvNdhYn6y2eu3CZySuhRANCAASa4yga5lKYLrVSbwomYR8X+GXpwreZ
++V633ujxk8jb8m5SEBelxYNi3bZ8ut0DxVoWFvY3W5WiuAPsaSLMFU7C
+-----END PRIVATE KEY-----
+''';
+
+/// Leaf 2 for `localhost`, issued by intermediate K with a different key.
+const issuerLeaf2CertificatePem = '''
+-----BEGIN CERTIFICATE-----
+MIIBzDCCAXKgAwIBAgICKagwCgYIKoZIzj0EAwIwOzEbMBkGA1UECgwSZGF0YWRv
+Z19mbGFncyB0ZXN0MRwwGgYDVQQDDBNUZXN0IEludGVybWVkaWF0ZSBLMB4XDTI2
+MTExNjIxMjAzMFoXDTI5MDIxODIxMjAzMFowFDESMBAGA1UEAwwJbG9jYWxob3N0
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEum/Q+kHl+bc9YsYOtV4sWHLRLdau
+aJwW3YKDXHO4d6IXXg8vtejsUXu6/0ZxFGfytQ5sU/qeAYGUPDqee8JPM6OBjDCB
+iTAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIFoDATBgNVHSUEDDAKBggrBgEF
+BQcDATAdBgNVHQ4EFgQUmPsGkBCtfRPLFbXQIjJmPjye7KowHwYDVR0jBBgwFoAU
+ZuW1YKHt2pg2CeIq9dRoLv7fqTwwFAYDVR0RBA0wC4IJbG9jYWxob3N0MAoGCCqG
+SM49BAMCA0gAMEUCIQD9FFLJv5KrQaAW8593dAEBwSdrIdH8W6Tx2KUc6ckqfAIg
+LkZluZcnEF6a9YuOGd1gVDGJ/Osm3y1dpM14Iud+y58=
+-----END CERTIFICATE-----
+''';
+
+/// PKCS #8 private key of [issuerLeaf2CertificatePem].
+const issuerLeaf2PrivateKeyPem = '''
+-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgXjq+WgoL1ovLA7g4
+EZw/HgeM1UDV4yx2yPs+hnIbOVahRANCAAS6b9D6QeX5tz1ixg61XixYctEt1q5o
+nBbdgoNcc7h3ohdeDy+16OxRe7r/RnEUZ/K1DmxT+p4BgZQ8Op57wk8z
+-----END PRIVATE KEY-----
+''';
+
+/// Leaf for `localhost` issued by an unrelated interception root.
+const interceptionLeafCertificatePem = '''
+-----BEGIN CERTIFICATE-----
+MIIBwTCCAWigAwIBAgIBBzAKBggqhkjOPQQDAjAyMRswGQYDVQQKDBJkYXRhZG9n
+X2ZsYWdzIHRlc3QxEzARBgNVBAMMClRlc3Qgcm9vdFgwHhcNMjYxMTE2MjEyMDMw
+WhcNMjkwMjE4MjEyMDMwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjO
+PQIBBggqhkjOPQMBBwNCAASa4yga5lKYLrVSbwomYR8X+GXpwreZ+V633ujxk8jb
+8m5SEBelxYNi3bZ8ut0DxVoWFvY3W5WiuAPsaSLMFU7Co4GMMIGJMAwGA1UdEwEB
+/wQCMAAwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQMMAoGCCsGAQUFBwMBMB0GA1Ud
+DgQWBBQ0DLJba6oNfVqXUK9czovRVu84FzAfBgNVHSMEGDAWgBRYtNxqYZHSA0UK
+ZMQ0BgaYl+/p/jAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwIDRwAw
+RAIgSYl7euN4znYFYJPKvpg3DQFbRnU/aN5uXy1uMnFJkbgCIFQgpJxQOtAyXCKJ
+NY0i/quYDGUXX1tzdfaw5iEf43j4
+-----END CERTIFICATE-----
+''';
