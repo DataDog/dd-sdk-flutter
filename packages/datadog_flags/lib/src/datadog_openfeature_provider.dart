@@ -18,6 +18,7 @@ import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
+import 'flags_log.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -45,6 +46,13 @@ final class DatadogOpenFeatureProvider
   /// The budget must expire before OpenFeature's 30-second lifecycle deadline.
   /// An isolated API with a shorter deadline must use a smaller budget.
   static const maxInitializationTimeout = Duration(seconds: 20);
+
+  /// Prints SDK diagnostics at this level and above, including in release
+  /// builds. The default is `null`, which prints nothing.
+  static FlagsLoggerLevel? get verbosity => FlagsLogger.printLevel;
+
+  static set verbosity(FlagsLoggerLevel? level) =>
+      FlagsLogger.printLevel = level;
 
   final Set<Future<void>> _retiring = {};
   final List<_ExposureFrame> _exposureFrames = [];

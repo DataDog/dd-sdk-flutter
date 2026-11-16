@@ -20,6 +20,7 @@ export 'package:datadog_flags/datadog_flags.dart'
         FlagDetails,
         FlagEvaluationError,
         FlagsInitializationTimeoutException,
+        FlagsLoggerLevel,
         FlagsData,
         FlagSelection,
         FlagsEvaluationContext;

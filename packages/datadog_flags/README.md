@@ -194,6 +194,10 @@ do I/O in it; queue the work instead. The SDK catches exceptions from the
 callback and writes them to the Dart developer log under the name
 `datadog_flags`. The evaluation result stays the same.
 
+To also print SDK diagnostics such as this one, including in release builds, set
+`DatadogOpenFeatureProvider.verbosity` to the lowest level to print, for example
+`FlagsLoggerLevel.warning`. Nothing is printed by default.
+
 The exposure deduplication cache is in memory. After a restart, the first
 evaluation of each assignment is a new exposure.
 
