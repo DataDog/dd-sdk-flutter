@@ -25,7 +25,7 @@ String get _flagKey => dotenv.get('DD_FLAG_KEY', fallback: 'checkout.enabled');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   final flagsConfiguration = flagsExampleConfiguration(
     site: _datadogSiteFor(_site),
@@ -121,7 +121,7 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
       setState(() {
         _status =
             widget.configurationError ??
-            'Set DD_CLIENT_TOKEN in .env to evaluate flags.';
+            'Set DD_CLIENT_TOKEN in dd.env to evaluate flags.';
       });
       return;
     }

@@ -686,6 +686,109 @@ void main() {
     },
   );
 
+  group('error type resolution', () {
+    late DatadogRum rum;
+
+    /// Returns the errorType sent to the platform for [error].
+    String? capturedPlatformErrorType(Object error) {
+      final captured = verify(
+        () => mockRumPlatform.addError(
+          any(),
+          any(that: same(error)),
+          any(that: equals(RumErrorSource.source)),
+          any(),
+          captureAny(),
+          any(),
+        ),
+      ).captured;
+      return captured.single as String?;
+    }
+
+    setUp(() async {
+      registerFallbackValue(DateTime.now());
+      registerFallbackValue(Object());
+      registerFallbackValue(Exception());
+      DdRumPlatform.instance = mockRumPlatform;
+      when(
+        () => mockRumPlatform.enable(any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () =>
+            mockRumPlatform.addError(any(), any(), any(), any(), any(), any()),
+      ).thenAnswer((_) => Future.value());
+      when(
+        () => mockRumPlatform.stopResourceWithErrorInfo(
+          any(),
+          any(),
+          any(),
+          any(),
+          any(),
+        ),
+      ).thenAnswer((_) => Future.value());
+      rum = (await DatadogRum.enable(
+        mockDatadogSdk,
+        DatadogRumConfiguration(
+          applicationId: 'applicationId',
+          detectLongTasks: false,
+        ),
+      ))!;
+    });
+
+    test('addError sends resolved type to platform', () {
+      final error = StateError('error');
+      when(
+        () => mockDatadogSdk.tryResolveErrorType(error),
+      ).thenReturn('ResolvedType');
+
+      rum.addError(error, RumErrorSource.source);
+
+      expect(capturedPlatformErrorType(error), 'ResolvedType');
+    });
+
+    test('addError sends null type to platform when unresolved', () {
+      final error = StateError('error');
+      when(() => mockDatadogSdk.tryResolveErrorType(error)).thenReturn(null);
+
+      rum.addError(error, RumErrorSource.source);
+
+      expect(capturedPlatformErrorType(error), isNull);
+    });
+
+    test('addError prefers explicit errorType', () {
+      final error = StateError('error');
+      when(
+        () => mockDatadogSdk.tryResolveErrorType(error),
+      ).thenReturn('ResolvedType');
+
+      rum.addError(error, RumErrorSource.source, errorType: 'ExplicitType');
+
+      expect(capturedPlatformErrorType(error), 'ExplicitType');
+      verifyNever(() => mockDatadogSdk.tryResolveErrorType(any()));
+    });
+
+    test('stopResourceWithError sends resolved type to platform', () {
+      const error = SocketException('socket error');
+      when(
+        () => mockDatadogSdk.resolveErrorType(error),
+      ).thenReturn('SocketException');
+
+      rum.stopResourceWithError('resource-key', error, {'attr': 'value'});
+
+      verify(
+        () => mockRumPlatform.stopResourceWithErrorInfo(
+          any(),
+          'resource-key',
+          error.toString(),
+          'SocketException',
+          {'attr': 'value'},
+        ),
+      );
+      verifyNever(
+        () => mockRumPlatform.stopResourceWithError(any(), any(), any(), any()),
+      );
+    });
+  });
+
   group('markViewFirstBuildComplete', () {
     late DatadogRum rum;
     final random = Random();

@@ -30,7 +30,8 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
-  final environment = DotEnv(includePlatformEnvironment: true)..load();
+  final environment = DotEnv(includePlatformEnvironment: true)
+    ..load(['dd.env']);
   final attributes = _targetingAttributes(
     results.option('targeting-attributes'),
   );

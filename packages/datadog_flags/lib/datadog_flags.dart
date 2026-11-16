@@ -27,3 +27,5 @@ export 'src/evaluation_context.dart' show FlagsEvaluationContext;
 
 export 'src/flags_client_event.dart'
     show FlagsClientEvent, FlagsClientEventType, FlagsClientEventListener;
+export 'src/exposure_hook.dart'
+    show ExposureCallback, ExposureEvaluation, ExposureHook;

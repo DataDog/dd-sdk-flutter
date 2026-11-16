@@ -104,6 +104,7 @@ class FlutterSdkTests: XCTestCase {
 class MockFlutterPluginRegistrar: NSObject, FlutterPluginRegistrar {
     var viewController: UIViewController?
     var publishedValue: NSObject?
+    var engineIdentifier: Int64 = 0
 
     func publish(_ value: NSObject) {
         publishedValue = value

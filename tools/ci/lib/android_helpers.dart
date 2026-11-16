@@ -3,15 +3,21 @@
 // Copyright 2023-Present Datadog, Inc.
 
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ci_helpers/shell_helpers.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as path;
 
-// Assume tag and abi for now
 const avdTag = 'google_apis';
-const avdAbi = 'arm64-v8a';
+
+/// The system image ABI that matches the host, so the emulator can use
+/// hardware acceleration.
+final avdAbi = switch (Abi.current()) {
+  Abi.macosArm64 || Abi.linuxArm64 || Abi.windowsArm64 => 'arm64-v8a',
+  _ => 'x86_64',
+};
 
 final yesList = List.filled(10, 'yes\n');
 final noList = List.filled(10, 'no\n');
@@ -179,16 +185,36 @@ Future<Map<String, String>> _getRunningDevices() async {
   return result;
 }
 
-Future<bool> _startEmulator(String emulatorName) async {
-  print("Starting device");
+/// The file the emulator's output is written to, relative to the working
+/// directory.
+const emulatorLogFile = 'emulator.log';
 
+Future<bool> _startEmulator(String emulatorName) async {
+  final accelCheck = await Process.run(emulatorCmd, ['-accel-check']);
+  print('Emulator acceleration check (exit code ${accelCheck.exitCode}):');
+  print(accelCheck.stdout);
+  print(accelCheck.stderr);
+  if (accelCheck.exitCode != 0) {
+    final kvmInfo = await Process.run('sh', ['-c', 'id; ls -ln /dev/kvm']);
+    print(kvmInfo.stdout);
+    print(kvmInfo.stderr);
+  }
+
+  print("Starting device, logging to $emulatorLogFile");
+
+  // The emulator outlives this process, so its output goes to a file rather
+  // than a pipe.
   await Process.start(
-      emulatorCmd,
+      'sh',
       [
+        '-c',
+        'exec "\$0" "\$@" > $emulatorLogFile 2>&1',
+        emulatorCmd,
         "@$emulatorName",
         '-verbose',
         '-show-kernel',
         '-no-audio',
+        '-no-window',
         '-netdelay',
         'none',
         '-no-snapshot',
@@ -213,6 +239,10 @@ Future<bool> _startEmulator(String emulatorName) async {
   // time to boot.
   if (launched) {
     await Future.delayed(Duration(seconds: 10));
+  } else {
+    print('Emulator failed to start. Output from $emulatorLogFile:');
+    final log = File(emulatorLogFile);
+    print(log.existsSync() ? log.readAsStringSync() : '(no log written)');
   }
 
   return launched;

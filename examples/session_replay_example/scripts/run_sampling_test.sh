@@ -209,8 +209,8 @@ echo "Launches: $LAUNCHES (~$(( (LAUNCHES * (SECONDS_PER_LAUNCH + 2) + 90 + 59) 
 echo "Output:   $OUT"
 
 if $BUILD; then
-  if [[ ! -f "$APP_DIR/.env" ]]; then
-    echo "Missing $APP_DIR/.env. Generate it first with generate_env.sh at the repo root." >&2
+  if [[ ! -f "$APP_DIR/dd.env" ]]; then
+    echo "Missing $APP_DIR/dd.env. Generate it first with generate_env.sh at the repo root." >&2
     exit 1
   fi
   echo "Building and installing..."

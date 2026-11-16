@@ -89,7 +89,10 @@ void main() {
         }
       }
       final allSessions = RumSessionDecoder.fromEvents(rumLog);
-      return allSessions.isNotEmpty && allSessions.last.visits.length >= 4;
+      if (allSessions.isEmpty) return false;
+      final visits = allSessions.last.visits;
+      return visits.length >= 4 &&
+          isRequestsVisitComplete(visits[2], scenarioConfig);
     });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;

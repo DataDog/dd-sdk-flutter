@@ -39,7 +39,7 @@ Future<void> main(List<String> arguments) async {
     )
     ..addOption(
       'startup-timeout-minutes',
-      defaultsTo: '5',
+      defaultsTo: '3',
       help:
           'Treat the app launch as hung when no test has started after this long.',
     );
@@ -79,6 +79,8 @@ Future<void> main(List<String> arguments) async {
           !platform.excludedFiles.contains(path.basename(entity.path)))
         entity.path,
   ]..sort();
+
+  if (files.isNotEmpty) await runner.warmUp(files.first);
 
   for (final file in files) {
     final testName = path

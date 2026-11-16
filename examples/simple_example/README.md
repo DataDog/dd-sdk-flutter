@@ -11,7 +11,7 @@ This is a more realistic example of how you use the Datadog Flutter Plugin in a 
 
 ## Setup
 
-Generate the local `.env` file before running this example:
+Generate the local `dd.env` file before running this example:
 
 ```bash
 # From the repository root:
@@ -20,7 +20,7 @@ cd examples/simple_example
 flutter run
 ```
 
-Runtime credentials and optional flag overrides come from `.env`, which is
+Runtime credentials and optional flag overrides come from `dd.env`, which is
 ignored by git. Do not commit real client tokens, application IDs, customer
 names, org names, or customer-owned flag keys.
 
@@ -38,7 +38,7 @@ OpenFeature provider owns the Flags runtime and its assignment lifecycle.
 `DatadogRumHook` associates successful evaluations with the active RUM view.
 The Refresh button calls `DatadogOpenFeatureProvider.refresh()`.
 
-To test feature flags in your own organization, customize the generated `.env`
+To test feature flags in your own organization, customize the generated `dd.env`
 file:
 
 ```dotenv

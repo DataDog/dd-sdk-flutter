@@ -24,7 +24,7 @@ TestingConfiguration? testingConfiguration;
 
 Future<void> main() async {
   final merge = kIsWeb ? <String, String>{} : Platform.environment;
-  await dotenv.load(mergeWith: merge);
+  await dotenv.load(fileName: 'dd.env', mergeWith: merge);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');

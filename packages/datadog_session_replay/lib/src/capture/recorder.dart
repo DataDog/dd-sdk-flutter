@@ -27,6 +27,7 @@ import 'element_recorders/material_widgets/radio_recorder.dart';
 import 'element_recorders/material_widgets/slider_recorder.dart';
 import 'element_recorders/material_widgets/switch_recorder.dart';
 import 'element_recorders/privacy_recorder.dart';
+import 'element_recorders/raster_resources.dart';
 import 'element_recorders/text_recorder.dart';
 import 'element_recorders/webview_recorder.dart';
 import 'pointer_capture.dart';
@@ -148,7 +149,7 @@ class KeyGenerator {
   }
 
   /// Allocates a resource key that isn't tied to a [ui.Image], for resources
-  /// the caller caches itself.
+  /// the caller caches itself, such as in a [RasterResourceCache].
   int nextResourceKey() {
     final value = _nextResourceKey;
     _nextResourceKey = _nextResourceKey + 1;
@@ -194,6 +195,7 @@ class SessionReplayRecorder {
     required TouchPrivacyLevel touchPrivacyLevel,
     ImageDownscaling imageDownscaling = ImageDownscaling.disabled,
     int maxImagePixelBudget = defaultMaxImagePixelBudget,
+    TextCaptureMode textCaptureMode = TextCaptureMode.standard,
   }) : this._(
          KeyGenerator(),
          timeProvider,
@@ -201,6 +203,7 @@ class SessionReplayRecorder {
          touchPrivacyLevel,
          imageDownscaling,
          maxImagePixelBudget,
+         textCaptureMode,
        );
 
   SessionReplayRecorder._(
@@ -210,11 +213,20 @@ class SessionReplayRecorder {
     this._touchPrivacyLevel,
     ImageDownscaling imageDownscaling,
     int maxImagePixelBudget,
+    TextCaptureMode textCaptureMode,
   ) : _webViewSlotTracker = WebViewSlotTracker(keyGenerator) {
     _elementRecorders.addAll([
       ContainerRecorder(keyGenerator),
-      TextElementRecorder(keyGenerator),
-      IconRecorder(keyGenerator),
+      TextElementRecorder(
+        keyGenerator,
+        textCaptureMode: textCaptureMode,
+        maxImagePixelBudget: maxImagePixelBudget,
+      ),
+      IconRecorder(
+        keyGenerator,
+        imageDownscaling: imageDownscaling,
+        maxImagePixelBudget: maxImagePixelBudget,
+      ),
       EditableTextRecorder(keyGenerator),
       InputDecoratorRecorder(keyGenerator),
       ImageRecorder(

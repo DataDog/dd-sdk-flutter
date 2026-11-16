@@ -61,6 +61,12 @@ If you create your own `DatadogSdk` instance, pass it with
 Flutter RUM requires the main isolate. For background evaluation, initialize a
 separate pure-Dart OpenFeature provider in that isolate.
 
+## Exposures in your own data store
+
+This package exports `ExposureHook` from `datadog_flags`. Use it to record
+exposures in your own data store, even when `trackExposures` is `false`. See
+[Exposures in your own data store](https://pub.dev/packages/datadog_flags#exposures-in-your-own-data-store).
+
 ## Legacy API migration
 
 `DatadogFlagsPluginConfiguration`, `DatadogFlagsPlugin`,
@@ -110,7 +116,7 @@ final unregister = client.onFirstFlags((event) {
 
 If no usable configuration is installed, the callback remains pending until
 you unregister it. See the [example app](example/lib/first_flags.dart) for registration,
-evaluation and widget disposal. Configure its `.env` using `melos generate_env`
+evaluation and widget disposal. Configure its `dd.env` using `melos generate_env`
 and set `DD_CLIENT_TOKEN`, `DD_ENV`, and optionally `DD_APPLICATION_ID` for RUM.
 Run this entrypoint with `flutter run -t lib/first_flags.dart` from `example`.
 
