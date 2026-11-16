@@ -19,14 +19,31 @@ import 'precompute_response.dart';
 import 'response_protection.dart';
 import 'split_features.dart';
 
-/// Returns the precompute assignments endpoint for [datadogConfig].
+/// Returns the precompute assignments endpoint.
+///
+/// [DatadogFlagsConfiguration.customFlagsEndpoint] takes precedence. Otherwise,
+/// a TLS pinning profile with one host selects that host, and other
+/// configurations use the [datadogConfig] site.
 Uri flagAssignmentsEndpoint({
   required DatadogFlagsConfig datadogConfig,
   required DatadogFlagsConfiguration configuration,
 }) {
-  return configuration.customFlagsEndpoint ??
-      datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
+  if (configuration.customFlagsEndpoint case final endpoint?) {
+    return endpoint;
+  }
+  if (configuration.responseProtection case TlsPinningResponseProtection(
+    :final profile,
+  ) when profile.hosts.length == 1) {
+    return Uri(
+      scheme: 'https',
+      host: profile.hosts.single.toLowerCase(),
+      path: _assignmentsPath,
+    );
+  }
+  return datadogConfig.flagsEndpoint().replace(path: _assignmentsPath);
 }
+
+const _assignmentsPath = '/precompute-assignments';
 
 class FlagAssignmentsFetcher {
   final DatadogFlagsConfig datadogConfig;

@@ -83,6 +83,16 @@ keep the configured or default `http.Client`.
 The SDK does not use `badCertificateCallback`. That callback runs only after
 normal validation fails, so it cannot enforce pins on valid connections.
 
+Under TLS pinning, `flagAssignmentsEndpoint` selects the assignment URL:
+
+- `customFlagsEndpoint`, when set. Its host must be in the profile.
+- Otherwise, `https://<profile host>/precompute-assignments` for a profile with
+  one host. The site endpoint is not used. Because `customFlagsEndpoint` is
+  null, the request keeps the automatic `X-DD-FEATURE-FLAGS-CAPABILITIES`
+  header, like the site endpoint.
+- A profile with more than one host and no `customFlagsEndpoint` is an invalid
+  configuration.
+
 A custom `httpClient` with TLS pinning is an invalid configuration. The SDK
 logs a warning, keeps the custom client for telemetry, and fails assignment
 fetches. Invalid profiles follow the same path.

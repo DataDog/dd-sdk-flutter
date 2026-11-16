@@ -29,6 +29,10 @@ final class DatadogFlagsConfiguration {
 
   /// Overrides the precompute assignments endpoint.
   ///
+  /// When omitted, a [responseProtection] TLS pinning profile with one host
+  /// selects that host. Otherwise, the [datadogConfig] site selects the
+  /// endpoint.
+  ///
   /// Custom endpoints do not receive automatic capability headers.
   /// To opt in, add `X-DD-FEATURE-FLAGS-CAPABILITIES` through [customFlagsHeaders].
   /// For web clients, the endpoint must also allow this header in CORS.

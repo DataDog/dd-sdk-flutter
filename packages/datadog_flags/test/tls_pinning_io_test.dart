@@ -170,6 +170,31 @@ void main() {
     expect(server.requestBytes.where((bytes) => bytes.isNotEmpty), isEmpty);
   });
 
+  test('datadogStagingV1 on the staging site creates a protected client', () {
+    const configuration = DatadogFlagsConfiguration(
+      datadogConfig: DatadogFlagsConfig(
+        clientToken: 'client-token',
+        env: 'staging',
+        site: DatadogFlagsSite.us1Staging,
+      ),
+      responseProtection: ResponseProtection.tlsPinning(
+        mode: ResponseProtectionMode.required,
+        profile: TlsPinningProfile.datadogStagingV1,
+      ),
+    );
+    final protection = AssignmentProtection.resolve(
+      configuration: configuration,
+      endpoint: flagAssignmentsEndpoint(
+        datadogConfig: configuration.datadogConfig!,
+        configuration: configuration,
+      ),
+    )!;
+    addTearDown(protection.close);
+
+    expect(protection.error, isNull);
+    expect(protection.client, isNotNull);
+  });
+
   group('issuer pinning', () {
     const issuerProfile = TlsPinningProfile.issuer(
       name: 'test',

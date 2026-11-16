@@ -12,6 +12,7 @@ import 'package:meta/meta.dart';
 
 import 'assignment_transport.dart';
 import 'datadog_tls_certificates.dart';
+import 'datadog_flags_config.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
 import 'flags_log.dart';
@@ -106,8 +107,9 @@ final class TlsPinningProfile {
   /// managed certificates. Fastly renews and rekeys the leaf certificates, so
   /// the profile pins issuers, not leaves.
   ///
-  /// Select the endpoint with [DatadogFlagsConfiguration.customFlagsEndpoint]
-  /// set to `https://protected.ff-cdn.datad0g.com/precompute-assignments`.
+  /// Assignment requests go to
+  /// `https://protected.ff-cdn.datad0g.com/precompute-assignments`, whatever
+  /// the configured [DatadogFlagsSite].
   // The endpoint is pending provisioning and live validation
   // (ddoghq/terraform-config PR 62220).
   static const datadogStagingV1 = TlsPinningProfile.issuer(
@@ -138,6 +140,13 @@ final class TlsPinningProfile {
   final String name;
 
   /// Exact host names that this profile covers.
+  ///
+  /// With one host and no [DatadogFlagsConfiguration.customFlagsEndpoint],
+  /// assignment requests go to `https://<host>/precompute-assignments` and
+  /// keep the automatic capability header of Datadog endpoints. A profile with
+  /// more than one host requires a
+  /// [DatadogFlagsConfiguration.customFlagsEndpoint] on one of the hosts.
+  /// A custom endpoint must always use a host in this set.
   final Set<String> hosts;
 
   /// Base64-encoded SHA-256 digests of DER-encoded SPKI for [target].
@@ -155,8 +164,7 @@ final class TlsPinningProfile {
 
   /// Creates a custom leaf pinning profile for a custom assignment endpoint.
   ///
-  /// Use [DatadogFlagsConfiguration.customFlagsEndpoint] to select an endpoint
-  /// whose host is in [hosts].
+  /// See [hosts] for endpoint selection.
   const TlsPinningProfile({
     required this.name,
     required this.hosts,
@@ -356,6 +364,13 @@ final class AssignmentProtection {
         throw FlagsException.invalidConfiguration(
           'Required TLS pinning cannot be enforced through a custom httpClient. '
           'Remove DatadogFlagsConfiguration.httpClient to use TLS pinning.',
+        );
+      }
+      if (configuration.customFlagsEndpoint == null &&
+          profile.hosts.length > 1) {
+        throw FlagsException.invalidConfiguration(
+          'TLS pinning profile "${profile.name}" has more than one host. '
+          'Set DatadogFlagsConfiguration.customFlagsEndpoint to one of them.',
         );
       }
       final policy = TlsPinningPolicy.forEndpoint(profile, endpoint);

@@ -11,6 +11,7 @@ import 'dart:typed_data';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/assignment.dart';
+import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flags_error.dart';
 import 'package:datadog_flags/src/flags_store.dart';
 import 'package:datadog_flags/src/response_protection.dart';
@@ -263,6 +264,136 @@ void main() {
         );
       });
     });
+  });
+
+  group('assignment endpoint under TLS pinning', () {
+    const stagingConfig = DatadogFlagsConfig(
+      clientToken: 'client-token',
+      env: 'staging',
+      site: DatadogFlagsSite.us1Staging,
+    );
+    const staging = ResponseProtection.tlsPinning(
+      mode: ResponseProtectionMode.required,
+      profile: TlsPinningProfile.datadogStagingV1,
+    );
+    final protectedEndpoint = Uri.parse(
+      'https://protected.ff-cdn.datad0g.com/precompute-assignments',
+    );
+
+    test('uses the profile host instead of the site host', () {
+      expect(
+        flagAssignmentsEndpoint(
+          datadogConfig: stagingConfig,
+          configuration: const DatadogFlagsConfiguration(
+            responseProtection: staging,
+          ),
+        ),
+        protectedEndpoint,
+      );
+    });
+
+    test('posts to the profile host with the capabilities header', () async {
+      final requests = <http.Request>[];
+      final client = MockClient((request) async {
+        requests.add(request);
+        return http.Response(
+          jsonEncode({
+            'data': {
+              'attributes': {'flags': <String, Object?>{}},
+            },
+          }),
+          200,
+        );
+      });
+      const configuration = DatadogFlagsConfiguration(
+        datadogConfig: stagingConfig,
+        responseProtection: staging,
+      );
+
+      await FlagAssignmentsFetcher(
+        datadogConfig: stagingConfig,
+        configuration: configuration,
+        httpClient: MockClient((_) async => http.Response('', 500)),
+        protection: AssignmentProtection(policyId: 'test', client: client),
+      ).fetch(const FlagsEvaluationContext(targetingKey: 'user'));
+
+      expect(requests.single.url, protectedEndpoint);
+      expect(
+        requests.single.headers['X-DD-FEATURE-FLAGS-CAPABILITIES'],
+        isNotEmpty,
+      );
+    });
+
+    test('rejects a custom endpoint on another host', () {
+      final protection = AssignmentProtection.resolve(
+        configuration: DatadogFlagsConfiguration(
+          datadogConfig: stagingConfig,
+          customFlagsEndpoint: DatadogFlagsSite.us1Staging.flagsEndpoint,
+          responseProtection: staging,
+        ),
+        endpoint: DatadogFlagsSite.us1Staging.flagsEndpoint,
+      )!;
+
+      expect(
+        protection.error,
+        isA<FlagsException>().having(
+          (error) => error.message,
+          'message',
+          contains('is not in the profile'),
+        ),
+      );
+    });
+
+    final multiHost = ResponseProtection.tlsPinning(
+      mode: ResponseProtectionMode.required,
+      profile: TlsPinningProfile(
+        name: 'test',
+        hosts: const {'a.example.com', 'b.example.com'},
+        spkiSha256Pins: const {leafAEcSpkiPin, leafBRsaSpkiPin},
+      ),
+    );
+    final multiHostCases = {
+      'requires a custom endpoint for a profile with several hosts': (
+        null,
+        isA<FlagsException>().having(
+          (error) => error.message,
+          'message',
+          contains('more than one host'),
+        ),
+      ),
+      'accepts a custom endpoint on one of several profile hosts': (
+        Uri.parse('https://b.example.com/precompute-assignments'),
+        // Web reports TLS pinning as unsupported instead.
+        anyOf(
+          isNull,
+          isA<FlagsException>().having(
+            (error) => error.message,
+            'message',
+            contains('web'),
+          ),
+        ),
+      ),
+    };
+    for (final MapEntry(key: name, value: (customEndpoint, matcher))
+        in multiHostCases.entries) {
+      test(name, () {
+        final configuration = DatadogFlagsConfiguration(
+          datadogConfig: stagingConfig,
+          customFlagsEndpoint: customEndpoint,
+          responseProtection: multiHost,
+        );
+        final protection = AssignmentProtection.resolve(
+          configuration: configuration,
+          endpoint: flagAssignmentsEndpoint(
+            datadogConfig: stagingConfig,
+            configuration: configuration,
+          ),
+        )!;
+        addTearDown(protection.close);
+
+        expect(protection.error, matcher);
+      });
+    }
   });
 
   group('DatadogFlags with required TLS pinning', () {
