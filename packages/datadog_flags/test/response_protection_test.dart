@@ -1,0 +1,318 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0. This product includes software
+// developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2019-Present Datadog, Inc.
+
+// Legacy API coverage until the next major release.
+// ignore_for_file: deprecated_member_use_from_same_package
+
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart';
+import 'package:datadog_flags/datadog_flags.dart';
+import 'package:datadog_flags/src/assignment.dart';
+import 'package:datadog_flags/src/flags_error.dart';
+import 'package:datadog_flags/src/flags_store.dart';
+import 'package:datadog_flags/src/response_protection.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:test/test.dart';
+
+import 'tls_test_certificates.dart';
+
+void main() {
+  Uint8List derFromPem(String pem) => base64.decode(
+    pem
+        .split('\n')
+        .where((line) => line.isNotEmpty && !line.startsWith('-----'))
+        .join(),
+  );
+
+  String spkiPin(Uint8List certificate) => base64.encode(
+    sha256.convert(subjectPublicKeyInfoFromCertificate(certificate)).bytes,
+  );
+
+  group('subjectPublicKeyInfoFromCertificate', () {
+    final vectors = {
+      'EC P-256 leaf': (leafAEcCertificatePem, leafAEcSpkiPin),
+      'RSA 2048 leaf': (leafBRsaCertificatePem, leafBRsaSpkiPin),
+      'EC P-256 self-signed CA': (caCertificatePem, caSpkiPin),
+    };
+    for (final MapEntry(key: name, value: (pem, pin)) in vectors.entries) {
+      test('matches the OpenSSL SPKI digest for the $name', () {
+        expect(spkiPin(derFromPem(pem)), pin);
+      });
+    }
+
+    final certificate = derFromPem(leafAEcCertificatePem);
+    final malformed = {
+      'empty input': Uint8List(0),
+      'truncated certificate': Uint8List.sublistView(
+        certificate,
+        0,
+        certificate.length - 1,
+      ),
+      'trailing data': Uint8List.fromList([...certificate, 0]),
+      'indefinite length': Uint8List.fromList([0x30, 0x80, 0x00, 0x00]),
+      'non-minimal length': Uint8List.fromList([0x30, 0x81, 0x01, 0x00]),
+      'wrong outer tag': Uint8List.fromList([0x31, ...certificate.skip(1)]),
+    };
+    for (final MapEntry(key: name, value: bytes) in malformed.entries) {
+      test('rejects $name', () {
+        expect(
+          () => subjectPublicKeyInfoFromCertificate(bytes),
+          throwsFormatException,
+        );
+      });
+    }
+  });
+
+  group('TlsPinningPolicy', () {
+    final endpoint = Uri.parse('https://flags.example.com/precompute');
+    TlsPinningProfile profile({
+      Set<String> hosts = const {'flags.example.com'},
+      Set<String> pins = const {leafAEcSpkiPin, leafBRsaSpkiPin},
+    }) => TlsPinningProfile(name: 'test', hosts: hosts, spkiSha256Pins: pins);
+
+    final invalid = <String, (TlsPinningProfile, Uri)>{
+      'one pin': (profile(pins: {leafAEcSpkiPin}), endpoint),
+      'no pins': (profile(pins: {}), endpoint),
+      'pins equal after decoding': (
+        profile(
+          pins: {
+            leafAEcSpkiPin,
+            // The same digest in the URL-safe base64 alphabet.
+            leafAEcSpkiPin.replaceAll('/', '_').replaceAll('+', '-'),
+          },
+        ),
+        endpoint,
+      ),
+      'a pin that is not base64': (
+        profile(pins: {leafAEcSpkiPin, 'not base64!'}),
+        endpoint,
+      ),
+      'a pin that is not 32 bytes': (
+        profile(pins: {leafAEcSpkiPin, base64.encode(List.filled(20, 1))}),
+        endpoint,
+      ),
+      'no hosts': (profile(hosts: {}), endpoint),
+      'a wildcard host': (profile(hosts: {'*.example.com'}), endpoint),
+      'a host with a port': (
+        profile(hosts: {'flags.example.com:443'}),
+        endpoint,
+      ),
+      'a host with a scheme': (
+        profile(hosts: {'https://flags.example.com'}),
+        endpoint,
+      ),
+      'an HTTP endpoint': (
+        profile(),
+        Uri.parse('http://flags.example.com/precompute'),
+      ),
+      'an endpoint host outside the profile': (
+        profile(),
+        Uri.parse('https://other.example.com/precompute'),
+      ),
+      'an endpoint on a subdomain of a profile host': (
+        profile(hosts: {'example.com'}),
+        endpoint,
+      ),
+    };
+    for (final MapEntry(key: name, value: (profile, endpoint))
+        in invalid.entries) {
+      test('rejects a profile with $name', () {
+        expect(
+          () => TlsPinningPolicy.forEndpoint(profile, endpoint),
+          throwsA(
+            isA<FlagsException>().having(
+              (error) => error.type,
+              'type',
+              FlagsErrorType.invalidConfiguration,
+            ),
+          ),
+        );
+      });
+    }
+
+    test('matches hosts without case sensitivity', () {
+      final policy = TlsPinningPolicy.forEndpoint(
+        profile(hosts: {'FLAGS.Example.com'}),
+        endpoint,
+      );
+      expect(policy.hosts, {'flags.example.com'});
+    });
+
+    test('accepts a certificate that matches any pin', () {
+      final policy = TlsPinningPolicy.forEndpoint(profile(), endpoint);
+      expect(
+        policy.matchesCertificate(derFromPem(leafAEcCertificatePem)),
+        isTrue,
+      );
+      expect(
+        policy.matchesCertificate(derFromPem(leafBRsaCertificatePem)),
+        isTrue,
+      );
+    });
+
+    test('compares pins with the leaf certificate, not its issuer', () {
+      final policy = TlsPinningPolicy.forEndpoint(
+        profile(pins: {caSpkiPin, leafAEcSpkiPin}),
+        endpoint,
+      );
+      expect(
+        policy.matchesCertificate(derFromPem(leafBRsaCertificatePem)),
+        isFalse,
+      );
+    });
+
+    test('rejects a certificate that cannot be parsed', () {
+      final policy = TlsPinningPolicy.forEndpoint(profile(), endpoint);
+      expect(policy.matchesCertificate(Uint8List(8)), isFalse);
+    });
+
+    test('datadogStagingV1 is valid for the staging assignment host', () {
+      final policy = TlsPinningPolicy.forEndpoint(
+        TlsPinningProfile.datadogStagingV1,
+        DatadogFlagsSite.us1Staging.flagsEndpoint.replace(
+          path: '/precompute-assignments',
+        ),
+      );
+      expect(policy.pins, hasLength(2));
+    });
+  });
+
+  group('DatadogFlags with required TLS pinning', () {
+    const datadogConfig = DatadogFlagsConfig(
+      clientToken: 'client-token',
+      env: 'test',
+      site: DatadogFlagsSite.us1,
+    );
+    const context = FlagsEvaluationContext(targetingKey: 'user');
+    final protection = ResponseProtection.tlsPinning(
+      mode: ResponseProtectionMode.required,
+      profile: TlsPinningProfile(
+        name: 'test',
+        hosts: {DatadogFlagsSite.us1.flagsEndpoint.host},
+        spkiSha256Pins: {leafAEcSpkiPin, leafBRsaSpkiPin},
+      ),
+    );
+
+    FlagsData storedData({String? responseProtectionPolicy}) => FlagsData(
+      flags: {
+        'flag': FlagAssignment.fromJson({
+          'variationType': 'boolean',
+          'variationValue': true,
+          'variationKey': 'on',
+          'allocationKey': 'allocation',
+          'reason': 'TARGETING_MATCH',
+          'doLog': false,
+        }),
+      },
+      context: context,
+      date: DateTime.utc(2026),
+      responseProtectionPolicy: responseProtectionPolicy,
+    );
+
+    test(
+      'rejects a custom httpClient without sending an assignment request',
+      () async {
+        final requests = <http.Request>[];
+        final flags = DatadogFlags();
+        addTearDown(flags.disable);
+        await flags.enable(
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: datadogConfig,
+            httpClient: MockClient((request) async {
+              requests.add(request);
+              return http.Response('{}', 200);
+            }),
+            responseProtection: protection,
+            trackExposures: false,
+            trackEvaluations: false,
+          ),
+        );
+        final client = flags.sharedClient();
+
+        await client.initialize(context);
+
+        expect(
+          (client as DatadogFlagsClientLifecycle).status,
+          DatadogFlagsClientStatus.error,
+        );
+        expect(requests, isEmpty);
+      },
+    );
+
+    final cacheCases = {
+      'assignments fetched without protection': (
+        null,
+        DatadogFlagsClientStatus.error,
+        false,
+      ),
+      'assignments fetched under another policy': (
+        'tlsPinning:other',
+        DatadogFlagsClientStatus.error,
+        false,
+      ),
+      'assignments fetched under the same policy': (
+        AssignmentProtection.resolve(
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: datadogConfig,
+            httpClient: MockClient((_) async => http.Response('{}', 200)),
+            responseProtection: protection,
+          ),
+          endpoint: DatadogFlagsSite.us1.flagsEndpoint.replace(
+            path: '/precompute-assignments',
+          ),
+        )!.policyId,
+        DatadogFlagsClientStatus.stale,
+        true,
+      ),
+    };
+    for (final MapEntry(key: name, value: (policy, status, restored))
+        in cacheCases.entries) {
+      test('${restored ? 'restores' : 'ignores'} stored $name', () async {
+        final store = InMemoryDatadogFlagsStore();
+        await store.write(
+          DatadogFlags.defaultClientName,
+          storedData(responseProtectionPolicy: policy),
+        );
+        final flags = DatadogFlags();
+        addTearDown(flags.disable);
+        await flags.enable(
+          configuration: DatadogFlagsConfiguration(
+            datadogConfig: datadogConfig,
+            // A custom client makes every protected fetch fail locally.
+            httpClient: MockClient((_) async => http.Response('{}', 200)),
+            responseProtection: protection,
+            store: store,
+            trackExposures: false,
+            trackEvaluations: false,
+          ),
+        );
+        final client = flags.sharedClient();
+
+        await client.initialize(context);
+
+        expect((client as DatadogFlagsClientLifecycle).status, status);
+        expect(
+          client.getBooleanDetails(key: 'flag', defaultValue: false).value,
+          restored,
+        );
+      });
+    }
+
+    test('stores the policy identifier with stored assignments', () {
+      final data = storedData(responseProtectionPolicy: 'tlsPinning:abc');
+      expect(
+        FlagsData.fromJson(data.toJson()).responseProtectionPolicy,
+        'tlsPinning:abc',
+      );
+      expect(
+        storedData().toJson(),
+        isNot(contains('responseProtectionPolicy')),
+      );
+    });
+  });
+}

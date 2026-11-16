@@ -23,6 +23,12 @@ export 'src/flags_configuration.dart' show DatadogFlagsConfiguration;
 export 'src/flags_error.dart'
     show FlagEvaluationError, FlagsInitializationTimeoutException;
 export 'src/flags_store.dart' show DatadogFlagsStore, FlagsData;
+export 'src/response_protection.dart'
+    show
+        ResponseProtection,
+        ResponseProtectionMode,
+        TlsPinningProfile,
+        TlsPinningResponseProtection;
 export 'src/evaluation_context.dart' show FlagsEvaluationContext;
 export 'src/exposure_hook.dart'
     show ExposureCallback, ExposureEvaluation, ExposureHook;

@@ -156,6 +156,10 @@ void main() {
       service: 'flags-service',
       version: '9.9.9',
     );
+    const responseProtection = ResponseProtection.tlsPinning(
+      mode: ResponseProtectionMode.required,
+      profile: TlsPinningProfile.datadogStagingV1,
+    );
     final configuration = DatadogConfiguration(
       clientToken: 'sdk-token',
       env: 'prod',
@@ -176,6 +180,7 @@ void main() {
         customEvaluationEndpoint: Uri.parse('https://eval.example.com'),
         trackEvaluations: false,
         evaluationFlushInterval: const Duration(seconds: 2),
+        responseProtection: responseProtection,
         datadogConfig: flagsDatadogConfig,
         dateProvider: () => date,
       ),
@@ -209,6 +214,7 @@ void main() {
       flagsConfiguration.evaluationFlushInterval,
       const Duration(seconds: 2),
     );
+    expect(flagsConfiguration.responseProtection, same(responseProtection));
     expect(flagsConfiguration.dateProvider(), date);
   });
 

@@ -55,3 +55,46 @@ Older SDKs cannot use an encoded snapshot after a downgrade. They return default
 until a successful plaintext network response provides assignments.
 Invalid encoding metadata follows the normal initialization failure path.
 Valid stored assignments remain available only for the same evaluation context.
+
+## Response protection
+
+`DatadogFlagsConfiguration.responseProtection` applies only to the precompute
+assignment POST in `FlagAssignmentsFetcher`. Exposure and evaluation telemetry
+keep the configured or default `http.Client`.
+
+`ResponseProtection.tlsPinning` uses an SDK-owned client from
+`assignment_transport.dart`. A conditional export selects the platform code:
+
+- On Dart IO, `HttpClient.connectionFactory` opens a `SecureSocket` with normal
+  certificate validation for the exact request host. The factory hashes the
+  leaf certificate SPKI with SHA-256 and compares it with the profile pins.
+  On a mismatch, it destroys the socket before `HttpClient` writes the request.
+  The factory rejects proxies and hosts that are not in the profile.
+- On web, the transport reports an unsupported configuration. Assignment
+  fetches fail before the SDK sends a request.
+
+The SDK does not use `badCertificateCallback`. That callback runs only after
+normal validation fails, so it cannot enforce pins on valid connections.
+`SecureSocket.peerCertificate` exposes only the leaf certificate, so profiles
+contain leaf SPKI pins.
+
+A custom `httpClient` with TLS pinning is an invalid configuration. The SDK
+logs a warning, keeps the custom client for telemetry, and fails assignment
+fetches. Invalid profiles follow the same path.
+
+Assignments fetched under a policy store a `responseProtectionPolicy`
+identifier. The identifier is a SHA-256 digest of the method, mode, profile
+name, hosts, pins, and assignment endpoint. When a policy is configured, the
+repository restores stored assignments only when their identifier matches.
+Assignments fetched without protection have no identifier, so a required
+policy does not restore them. Custom stores that rebuild `FlagsData` must keep
+this field. Otherwise, stored assignments are not restored under a policy.
+
+`TlsPinningProfile.datadogStagingV1` contains unverified placeholder pins and a
+placeholder host. Assignment requests that use it fail until a reviewed pin
+policy replaces it.
+
+`test/tls_pinning_io_test.dart` runs a local TLS server with test
+certificates from `test/tls_test_certificates.dart`. Apple platforms reject TLS
+server certificates that are valid for more than 825 days. The file describes
+how to renew the leaf certificates without changing their SPKI pins.
