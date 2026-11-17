@@ -166,19 +166,6 @@ void main() {
     },
   );
 
-  test('attachToExisting sends the trace sample rate', () async {
-    await ddSdkPlatform.attachToExisting(
-      DatadogAttachConfiguration(traceSampleRate: 37),
-    );
-
-    expect(log, [
-      isMethodCall(
-        'attachToExisting',
-        arguments: <String, Object?>{'traceSampleRate': 37.0},
-      ),
-    ]);
-  });
-
   test('attachToExisting response properly deserializes response', () async {
     ambiguate(TestDefaultBinaryMessengerBinding.instance)
         ?.defaultBinaryMessenger

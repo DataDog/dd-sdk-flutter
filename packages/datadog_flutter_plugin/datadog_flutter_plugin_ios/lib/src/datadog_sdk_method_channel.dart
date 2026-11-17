@@ -197,11 +197,10 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
     DatadogAttachConfiguration attachConfig,
   ) async {
     final channelResponse = await methodChannel
-        .invokeMapMethod<String, Object?>('attachToExisting', <String, Object?>{
-          // Published natively when no native tracing does, so RUM reports the
-          // rate Flutter samples its traces with.
-          'traceSampleRate': attachConfig.traceSampleRate,
-        });
+        .invokeMapMethod<String, Object?>(
+          'attachToExisting',
+          <String, Object?>{},
+        );
 
     AttachResponse? response;
     if (channelResponse != null) {

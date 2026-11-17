@@ -43,9 +43,13 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         // from the plugin to warn about reinitialization.
         var previousConfiguration: Map<String, Any?>? = null
 
+        // RUM supplies the session ID and session sample rate; tracing supplies the trace sample
+        // rate, from native tracing or Flutter's [TracingContextFeature] stand-in.
+        private val CORE_CONTEXT_FEATURES = setOf(Feature.RUM_FEATURE_NAME, Feature.TRACING_FEATURE_NAME)
+
         fun getCoreContext(): DatadogContext? {
             val sdkCore = Datadog.getInstance() as? InternalSdkCore
-            return sdkCore?.getDatadogContext(setOf(Feature.RUM_FEATURE_NAME))
+            return sdkCore?.getDatadogContext(CORE_CONTEXT_FEATURES)
         }
     }
 

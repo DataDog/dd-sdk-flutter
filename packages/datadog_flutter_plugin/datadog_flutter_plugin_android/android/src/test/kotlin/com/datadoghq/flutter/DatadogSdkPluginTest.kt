@@ -23,6 +23,7 @@ import com.datadog.android.api.context.AccountInfo
 import com.datadog.android.api.context.UserInfo
 import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureSdkCore
+import com.datadog.android.core.InternalSdkCore
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.UploadFrequency
@@ -490,6 +491,28 @@ class DatadogSdkPluginTest {
         io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
     }
 
+
+    @Test
+    fun `M request the RUM and tracing contexts W getCoreContext`() {
+        // GIVEN
+        val mockCore = mockk<InternalSdkCore>(relaxed = true)
+        mockkStatic(Datadog::class)
+        every { Datadog.getInstance() } returns mockCore
+
+        // WHEN
+        try {
+            DatadogSdkPlugin.getCoreContext()
+
+            // THEN - Dart reads the session from RUM and the trace sample rate from tracing
+            mockkVerify {
+                mockCore.getDatadogContext(
+                    setOf(Feature.RUM_FEATURE_NAME, Feature.TRACING_FEATURE_NAME)
+                )
+            }
+        } finally {
+            unmockkStatic(Datadog::class)
+        }
+    }
 
     @Test
     fun `M publish the trace sample rate W attachToExisting { RUM enabled natively }`() {
