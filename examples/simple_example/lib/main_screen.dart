@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2023-Present Datadog, Inc.
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +16,14 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  // webview_flutter has no Windows, Linux or web implementation. macOS can
+  // show WebViews, but Datadog doesn't track them there yet.
+  static final _supportsWebViews =
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
   void _goToPage(String page) {
     context.push(page);
   }
@@ -40,6 +49,7 @@ class _MainScreenState extends State<MainScreen> {
             _paddedNavButton('Network', '/network'),
             _paddedNavButton('GraphQl', '/graphql'),
             _paddedNavButton('Flags', '/flags'),
+            if (_supportsWebViews) _paddedNavButton('WebView', '/webview'),
             _paddedNavButton('Crash', '/crash'),
           ],
         ),

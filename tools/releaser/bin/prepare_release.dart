@@ -292,6 +292,7 @@ Future<void> prepareRelease(
   bool commitHeadless = false,
   bool skipPublishValidation = false,
   PublishedVersionsGateway? publishedVersions,
+  CocoaPodsVersionLookup podVersionExists = cocoaPodVersionExists,
 }) async {
   // Mainline always PRs into `main`; running it from anywhere but `develop`
   // -- e.g. an ordinary feature branch, if `--trigger=auto` resolved to
@@ -366,6 +367,11 @@ Future<void> prepareRelease(
       );
     }
   }
+
+  await validateIosPodAvailability([
+    for (final package in plan.packages) ...package.nativeSdkDeltas,
+    ...plan.unshippedNativeSdkPins,
+  ], lookup: podVersionExists);
 
   final target = _ReleaseTarget.forTrigger(ctx);
   final contentBranch = target.contentBranchName;

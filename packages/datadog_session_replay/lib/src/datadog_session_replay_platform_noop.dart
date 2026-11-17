@@ -29,6 +29,9 @@ class DatadogSessionReplayPlatformNoop extends DatadogSessionReplayPlatform {
   FutureOr<void> setHasReplay(String viewId, bool hasReplay) {}
 
   @override
+  FutureOr<void> setSessionSampled(String sessionId, bool sampled) {}
+
+  @override
   FutureOr<void> setRecordCount(String viewId, int count) {}
 
   @override

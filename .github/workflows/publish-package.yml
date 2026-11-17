@@ -37,6 +37,21 @@ jobs:
       working-directory: ${{ steps.resolve.outputs.path }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch release branches
+        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+      # The publish job needs resolve-package, so a tag on a commit outside
+      # the release branches never reaches the OIDC publish step.
+      - name: Verify tagged commit is on a release branch
+        if: github.ref_type == 'tag'
+        run: tools/ci/scripts/verify_tag_provenance.sh "$GITHUB_SHA"
+      - name: Reject non-tag ref
+        if: github.ref_type != 'tag'
+        run: |
+          echo "::error::This workflow only publishes from tag pushes." >&2
+          exit 1
       - uses: dart-lang/setup-dart@v1
       - name: Resolve package directory from tag
         id: resolve

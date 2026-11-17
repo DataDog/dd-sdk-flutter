@@ -82,9 +82,9 @@ extension DatadogInAppWebViewControllerExtension on InAppWebViewController {
   void trackDatadogEvents(DatadogSdk datadog, {double logSampleRate = 100.0}) {
     addJavaScriptHandler(
       handlerName: handlerName,
-      callback: (data) {
-        if (data.isNotEmpty) {
-          final message = data[0];
+      callback: (JavaScriptHandlerFunctionData data) {
+        if (data.args.isNotEmpty) {
+          final message = data.args.first;
           if (message is String) {
             // ignore: invalid_use_of_internal_member
             wrap('handleWebMessage', datadog.internalLogger, {}, () {

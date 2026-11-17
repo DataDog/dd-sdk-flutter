@@ -32,16 +32,46 @@ extension DatadogWebview on WebViewController {
       webViewIdentifier = localPlatform.webViewIdentifier;
     } else if (localPlatform is AndroidWebViewController) {
       webViewIdentifier = localPlatform.webViewIdentifier;
+      WebViewSlotRegistry.instance.identifierResolver ??=
+          androidWebViewIdentifier;
     }
 
     if (webViewIdentifier != null) {
+      final identifier = webViewIdentifier;
       // ignore: invalid_use_of_internal_member
       wrap('initWebView', datadog.internalLogger, {}, () {
-        methodChannel.invokeMethod('initWebView', {
-          'webViewIdentifier': webViewIdentifier,
-          'allowedHosts': hosts,
-        });
+        methodChannel
+            .invokeMethod<String>('initWebView', {
+              'webViewIdentifier': identifier,
+              'allowedHosts': hosts,
+            })
+            .then((slotId) {
+              // Lets Session Replay emit the placeholder the player draws this
+              // WebView's replay into. Owned by the platform controller, which
+              // owns the WebView behind the identifier.
+              if (slotId != null) {
+                WebViewSlotRegistry.instance.register(
+                  identifier,
+                  slotId,
+                  owner: localPlatform,
+                );
+              }
+            });
       });
     }
   }
+}
+
+/// The identifier of the Android WebView [element] belongs to, read from the
+/// controller of the [WebViewWidget] above it.
+@visibleForTesting
+int? androidWebViewIdentifier(Element element) {
+  final controller = element
+      .findAncestorWidgetOfExactType<WebViewWidget>()
+      ?.platform
+      .params
+      .controller;
+  return controller is AndroidWebViewController
+      ? controller.webViewIdentifier
+      : null;
 }

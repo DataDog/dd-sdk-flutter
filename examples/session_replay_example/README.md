@@ -9,14 +9,14 @@ This example shows two Session Replay features:
 
 ## Setup
 
-Generate the local `.env` file, then run this example:
+Generate the local `dd.env` file, then run this example:
 
 ```bash
 ../../generate_env.sh
 flutter run
 ```
 
-Runtime credentials come from `.env`, which is ignored by Git. Do not commit
+Runtime credentials come from `dd.env`, which is ignored by Git. Do not commit
 real client tokens or application IDs.
 
 ## Sampling
@@ -32,7 +32,7 @@ only record sessions that RUM tracks. This example sets both to 50%, so about
 25% of all sessions have a replay. Restart the app a few times to see some
 sessions recorded and others not.
 
-To try a different Session Replay rate, add this line to `.env`:
+To try a different Session Replay rate, add this line to `dd.env`:
 
 ```dotenv
 DD_SESSION_REPLAY_SAMPLE_RATE=100

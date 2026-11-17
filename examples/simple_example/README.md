@@ -7,10 +7,11 @@ This is a more realistic example of how you use the Datadog Flutter Plugin in a 
     * User interaction tracking with RumUserActionDetector
     * Error/Crash handling with manually reported errors
     * OpenFeature initialization and typed evaluation with the Datadog provider
+    * WebView tracking with `datadog_webview_tracking`, including Session Replay of the web content on iOS
 
 ## Setup
 
-Generate the local `.env` file before running this example:
+Generate the local `dd.env` file before running this example:
 
 ```bash
 # From the repository root:
@@ -19,7 +20,7 @@ cd examples/simple_example
 flutter run
 ```
 
-Runtime credentials and optional flag overrides come from `.env`, which is
+Runtime credentials and optional flag overrides come from `dd.env`, which is
 ignored by git. Do not commit real client tokens, application IDs, customer
 names, org names, or customer-owned flag keys.
 
@@ -37,7 +38,7 @@ OpenFeature provider owns the Flags runtime and its assignment lifecycle.
 `DatadogRumHook` associates successful evaluations with the active RUM view.
 The Refresh button calls `DatadogOpenFeatureProvider.refresh()`.
 
-To test feature flags in your own organization, customize the generated `.env`
+To test feature flags in your own organization, customize the generated `dd.env`
 file:
 
 ```dotenv
@@ -50,6 +51,25 @@ FLAGS_INTEGER_KEYS=checkout.limit
 FLAGS_DOUBLE_KEYS=checkout.ratio
 FLAGS_OBJECT_KEYS=checkout.config
 ```
+
+## WebView
+
+The `WebView` screen (iOS and Android) loads a page running the Datadog Browser
+SDK in a WebView tracked with `trackDatadogEvents`. The page's RUM events join
+the app's RUM session and, on iOS, its replay records join the app's Session
+Replay, played back inside the WebView's area.
+
+The bar above the page shows what the native bridge advertises. For the web
+content to be recorded, `capabilities` must be `["records"]`. `privacy` is the
+web privacy level matching the Session Replay privacy levels: this app uses the
+defaults, so web content is masked. The Browser SDK doesn't own the session in
+bridge mode, so the `session` and `replay link` it shows are placeholders: find
+the replay from the app's RUM session instead.
+
+Whether the Browser SDK sends replay records is decided when
+`trackDatadogEvents` runs, so Session Replay must be enabled before a WebView
+is tracked. If the page reports `capabilities: []`, check that Session Replay
+is enabled.
 
 ## Integration tests
 

@@ -9,6 +9,16 @@ import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:grpc/grpc.dart';
 import 'package:uuid/uuid.dart';
 
+/// An [ErrorTypeResolver] for [GrpcError], so its type is not obfuscated in
+/// apps built with `--obfuscate`. [DatadogGrpcInterceptor] registers it
+/// automatically.
+String? grpcErrorTypeResolver(Object error) {
+  return switch (error.runtimeType) {
+    const (GrpcError) => 'GrpcError',
+    _ => null,
+  };
+}
+
 /// A client GrpcInterceptor which enables automatic resource tracking and
 /// distributed tracing
 ///
@@ -22,6 +32,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
   late String _hostPath;
 
   DatadogGrpcInterceptor(this._datadog, this._channel) {
+    _datadog.addIntegrationErrorTypeResolver(grpcErrorTypeResolver);
     final host = _channel.host;
     final scheme = _channel.options.credentials.isSecure ? 'https' : 'http';
     // Add http / https scheme. This scheme is a lie but needed to connect
@@ -102,7 +113,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
         _datadog.rum?.stopResourceWithErrorInfo(
           rumKey,
           e.toString(),
-          e.runtimeType.toString(),
+          _datadog.resolveErrorType(e),
         );
       },
     );

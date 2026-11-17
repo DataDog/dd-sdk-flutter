@@ -11,11 +11,13 @@ import 'src/rum/ddrum.dart';
 
 export 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 export 'src/datadog_sdk.dart';
+export 'src/error_type_resolver.dart' show defaultErrorTypeResolver;
 export 'src/helpers.dart';
 export 'src/sampler.dart';
 export 'src/tracing/baggage_helpers.dart';
 export 'src/tracing/tracing_headers.dart';
 export 'src/version.dart';
+export 'src/webview_slot_registry.dart';
 
 extension DatadogRumInternal on DatadogRum {
   TraceContextInjection get contextInjectionSetting => traceContextInjection;

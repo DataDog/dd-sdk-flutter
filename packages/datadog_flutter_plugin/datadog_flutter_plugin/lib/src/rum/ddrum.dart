@@ -91,6 +91,7 @@ class DatadogRum {
   DatadogTimeProvider timeProvider = DefaultTimeProvider();
 
   final InternalLogger logger;
+  final DatadogSdk _core;
   RumLongTaskObserver? _longTaskObserver;
 
   // Used for FBC and INV vitals.
@@ -117,7 +118,8 @@ class DatadogRum {
       _sessionSampleRate = null,
       traceContextInjection = config.traceContextInjection,
       resourceHeadersExtractor = config.trackResourceHeaders,
-      logger = core.internalLogger {
+      logger = core.internalLogger,
+      _core = core {
     _init(
       core: core,
       detectLongTasks: config.detectLongTasks,
@@ -133,7 +135,8 @@ class DatadogRum {
     this.resourceHeadersExtractor,
   ) : _traceSampler = DeterministicSampler(traceSampleRate),
       _sessionSampleRate = null,
-      logger = core.internalLogger {
+      logger = core.internalLogger,
+      _core = core {
     _init(
       core: core,
       detectLongTasks: false,
@@ -148,7 +151,8 @@ class DatadogRum {
       _sessionSampleRate = configuration.sessionSamplingRate,
       traceContextInjection = configuration.traceContextInjection,
       resourceHeadersExtractor = configuration.trackResourceHeaders,
-      logger = core.internalLogger {
+      logger = core.internalLogger,
+      _core = core {
     _init(
       core: core,
       detectLongTasks: configuration.detectLongTasks,
@@ -279,6 +283,9 @@ class DatadogRum {
   /// presented View, with an origin of [source]. You can optionally set
   /// additional [attributes] for this error, an [errorType] and a
   /// [stackTrace]
+  ///
+  /// If [errorType] is not set, it is resolved with the resolvers registered
+  /// with [DatadogSdk.addErrorTypeResolver], if one of them knows [error].
   void addError(
     Object error,
     RumErrorSource source, {
@@ -301,7 +308,9 @@ class DatadogRum {
         error,
         source,
         stackTrace,
-        errorType,
+        // Don't fall back to `runtimeType` here, platforms have their own
+        // default for errors without a type.
+        errorType ?? _core.tryResolveErrorType(error),
         {DatadogPlatformAttributeKey.errorSourceType: 'flutter', ...attributes},
       );
     });
@@ -409,6 +418,8 @@ class DatadogRum {
   /// Notifies that the Resource identified by [key] stopped being loaded with an
   /// Exception specified by [error]. You can optionally supply custom
   /// [attributes] to attach to this Resource.
+  ///
+  /// The type of [error] is resolved with [DatadogSdk.resolveErrorType].
   void stopResourceWithError(
     String key,
     Exception error, [
@@ -416,10 +427,11 @@ class DatadogRum {
   ]) {
     wrap('rum.stopResourceWithError', logger, attributes, () {
       final currentTime = timeProvider.now();
-      return _platform.stopResourceWithError(
+      return _platform.stopResourceWithErrorInfo(
         currentTime,
         key,
-        error,
+        error.toString(),
+        _core.resolveErrorType(error),
         attributes,
       );
     });

@@ -246,6 +246,64 @@ internal class DefaultFlutterSessionReplayFeatureTest {
     }
 
     @Test
+    fun `M publish the privacy levels W registerSessionReplayContext {name free}`(
+        @StringForgery customEndpoint: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            privacyLevels = PrivacyLevels(
+                textAndInput = "mask_sensitive_inputs",
+                image = "mask_none",
+                touch = "show"
+            ),
+            mainThreadHandler = mockHandler
+        )
+        val context = mutableMapOf<String, Any?>()
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
+            lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+
+        // When
+        feature.registerSessionReplayContext()
+
+        // Then - native WebView tracking reads these when a WebView is tracked
+        assertThat(context["session_replay_text_and_input_privacy"]).isEqualTo("mask_sensitive_inputs")
+        assertThat(context["session_replay_image_privacy"]).isEqualTo("mask_none")
+        assertThat(context["session_replay_touch_privacy"]).isEqualTo("show")
+    }
+
+    @Test
+    fun `M set session_replay_is_enabled W setSessionSampled`(
+        @StringForgery customEndpoint: String,
+        @StringForgery sessionId: String,
+        @BoolForgery sampled: Boolean
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        val context = mutableMapOf<String, Any?>()
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
+            lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+        feature.registerSessionReplayContext()
+
+        // When
+        feature.setSessionSampled(sessionId, sampled)
+
+        // Then - native WebView tracking only writes WebView records while this is true
+        assertThat(context["session_replay_is_enabled"]).isEqualTo(sampled)
+    }
+
+    @Test
     fun `M not register nor publish W registerSessionReplayContext {native Session Replay present}`(
         @StringForgery customEndpoint: String,
         @StringForgery viewId: String
@@ -266,7 +324,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         feature.registerSessionReplayContext()
         feature.setHasReplay(viewId, true)
         feature.setRecordCount(viewId, 1)
-        feature.setReplayConfiguration(50.0, true)
+        feature.setSessionSampled(viewId, true)
 
         // Then
         verify(exactly = 0) { mockCore.registerFeature(any()) }
@@ -288,7 +346,8 @@ internal class DefaultFlutterSessionReplayFeatureTest {
 
     @Test
     fun `M publish without registering again W registerSessionReplayContext {already registered by Flutter}`(
-        @StringForgery customEndpoint: String
+        @StringForgery customEndpoint: String,
+        @StringForgery viewId: String
     ) {
         // Given
         val feature = DefaultFlutterSessionReplayFeature(
@@ -304,7 +363,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
 
         // When
         feature.registerSessionReplayContext()
-        feature.setReplayConfiguration(50.0, true)
+        feature.setHasReplay(viewId, true)
 
         // Then
         verify(exactly = 0) { mockCore.registerFeature(any()) }

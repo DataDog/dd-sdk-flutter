@@ -334,6 +334,8 @@ SWIFT_CLASS_NAMED("FlutterSessionReplay")
 - (nonnull instancetype)init;
 - (void)enableWith:(FlutterSessionReplayConfiguration * _Nonnull)configuration;
 - (void)setHasReplayWithHasReplay:(BOOL)hasReplay;
+/// Reports whether <code>replaySampleRate</code> selected the RUM session <code>sessionId</code>, for WebView records.
+- (void)setSessionSampledFor:(NSString * _Nonnull)sessionId sampled:(BOOL)sampled;
 - (void)setRecordCountFor:(NSString * _Nonnull)viewId count:(NSInteger)count;
 /// Publishes the Session Replay configuration RUM reports on its view events
 /// (<code>session_replay_sample_rate</code>, <code>start_session_replay_recording_manually</code>). Called by Dart
@@ -354,6 +356,9 @@ SWIFT_CLASS_NAMED("FlutterSessionReplay")
 SWIFT_CLASS_NAMED("FlutterSessionReplayConfiguration")
 @interface FlutterSessionReplayConfiguration : NSObject
 @property (nonatomic, copy) NSURL * _Nullable customEndpoint;
+@property (nonatomic, copy) NSString * _Nullable textAndInputPrivacyLevel;
+@property (nonatomic, copy) NSString * _Nullable imagePrivacyLevel;
+@property (nonatomic, copy) NSString * _Nullable touchPrivacyLevel;
 - (nonnull instancetype)initWithCustomEndpoint:(NSURL * _Nullable)customEndpoint onContextChanged:(void (^ _Nullable)(FlutterRUMCoreContext * _Nullable))onContextChanged OBJC_DESIGNATED_INITIALIZER;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");

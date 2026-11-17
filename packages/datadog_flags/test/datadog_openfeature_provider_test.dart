@@ -469,6 +469,8 @@ void main() {
     expect(details.flagMetadata, {
       DatadogOpenFeatureProvider.allocationKeyMetadata: 'allocation-a',
       DatadogOpenFeatureProvider.serialIdMetadata: 42,
+      '__dd_do_log': true,
+      '__dd_split_serial_id': 42,
     });
     expect(api.getClient().providerStatus, ProviderStatus.ready);
 
@@ -602,6 +604,8 @@ void main() {
     expect(boolean.flagMetadata, {
       DatadogOpenFeatureProvider.allocationKeyMetadata: 'allocation-a',
       DatadogOpenFeatureProvider.serialIdMetadata: 42,
+      '__dd_do_log': true,
+      '__dd_split_serial_id': 42,
     });
     expect(client.getStringValue('theme', 'light'), 'dark');
     expect(client.getIntegerValue('max-items', 1), 3);

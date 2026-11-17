@@ -39,26 +39,38 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
   ) {
     final listener = FlutterSessionReplayBridge$ContextListener.implement(
       $FlutterSessionReplayBridge$ContextListener(
-        onContextChanged: (context) {
-          onContextChanged(
-            RUMContext(
-              applicationId: context.applicationId?.toDartString() ?? '',
-              sessionId: context.sessionId?.toDartString() ?? '',
-              viewId: context.viewId?.toDartString(),
-              viewServerTimeOffset: context.viewServerTimeOffset?.doubleValue(),
-              sessionSampleRate: context.sessionSampleRate?.doubleValue(),
+        onContextChanged: (javaContext) {
+          final context = javaContext.use(
+            (c) => RUMContext(
+              applicationId:
+                  c.applicationId?.toDartString(releaseOriginal: true) ?? '',
+              sessionId: c.sessionId?.toDartString(releaseOriginal: true) ?? '',
+              viewId: c.viewId?.toDartString(releaseOriginal: true),
+              viewServerTimeOffset: c.viewServerTimeOffset
+                  ?.toDartInt(releaseOriginal: true)
+                  .toDouble(),
+              sessionSampleRate: c.sessionSampleRate?.use(
+                (rate) => rate.doubleValue(),
+              ),
             ),
           );
+          onContextChanged(context);
         },
         onContextChanged$async: false,
       ),
     );
+    final customEndpoint = configuration.customEndpoint?.toJString();
     final mappedConfig = FlutterSessionReplayBridge$Configuration(
-      configuration.customEndpoint?.toJString(),
+      customEndpoint,
       listener,
+      configuration.textAndInputPrivacyLevel.name.toJString(),
+      configuration.imagePrivacyLevel.name.toJString(),
+      configuration.touchPrivacyLevel.name.toJString(),
     );
 
     _bridge.enable(mappedConfig, null);
+    customEndpoint?.release();
+    mappedConfig.release();
 
     // Tell the bridge which path its segments take. Embedded records go to the native
     // recording, standalone records to the Flutter feature. The slotId is deliberately not
@@ -84,7 +96,7 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
     // ignore: unawaited_futures
     _engineChannel.invokeMethod<void>(
       'registerEngine',
-      _bridge.engineToken.toDartString(),
+      _bridge.engineToken.toDartString(releaseOriginal: true),
     );
 
     return true;
@@ -92,36 +104,47 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
 
   @override
   FutureOr<void> setHasReplay(String viewId, bool hasReplay) {
-    _bridge.setHasReplay(viewId.toJString(), hasReplay);
+    if (hasReplay && viewId.isNotEmpty) {
+      viewId.toJString().use((v) => _bridge.setHasReplay(v, hasReplay));
+    }
+  }
+
+  @override
+  FutureOr<void> setSessionSampled(String sessionId, bool sampled) {
+    _bridge.setSessionSampled(sessionId.toJString(), sampled);
   }
 
   @override
   FutureOr<void> setRecordCount(String viewId, int count) {
-    _bridge.setRecordCount(viewId.toJString(), count);
+    viewId.toJString().use((v) => _bridge.setRecordCount(v, count));
   }
 
   @override
   FutureOr<void> telemetryDebug(String id, String message) {
-    _bridge.telemetryDebug(message.toJString());
+    message.toJString().use(_bridge.telemetryDebug);
   }
 
   @override
   FutureOr<void> telemetryError(String message, String kind, String stack) {
-    _bridge.telemetryError(
-      message.toJString(),
-      stack.toJString(),
-      kind.toJString(),
+    using(
+      (arena) => _bridge.telemetryError(
+        message.toJString()..releasedBy(arena),
+        stack.toJString()..releasedBy(arena),
+        kind.toJString()..releasedBy(arena),
+      ),
     );
   }
 
   @override
   FutureOr<void> writeSegment(String record, String viewId) {
-    _bridge.writeSegment(record.toJString());
+    record.toJString().use(_bridge.writeSegment);
   }
 
   @override
   String? resourceIdForKey(int resourceKey) {
-    return _bridge.resourceIdForKey(resourceKey)?.toDartString();
+    return _bridge
+        .resourceIdForKey(resourceKey)
+        ?.toDartString(releaseOriginal: true);
   }
 
   @override
@@ -131,8 +154,9 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
     int height,
     ByteData byteData,
   ) {
-    final jbuffer = JByteBuffer.fromList(byteData.buffer.asUint8List());
-    _bridge.saveImageForProcessing(resourceKey, jbuffer, width, height);
-    jbuffer.release();
+    JByteBuffer.fromList(byteData.buffer.asUint8List()).use(
+      (jbuffer) =>
+          _bridge.saveImageForProcessing(resourceKey, jbuffer, width, height),
+    );
   }
 }

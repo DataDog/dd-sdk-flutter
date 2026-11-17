@@ -29,4 +29,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - .env
+    - dd.env

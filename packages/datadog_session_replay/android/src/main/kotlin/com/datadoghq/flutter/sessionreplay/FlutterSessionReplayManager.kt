@@ -13,6 +13,7 @@ import com.datadoghq.flutter.sessionreplay.embedded.DefaultEmbeddedSessionReplay
 import com.datadoghq.flutter.sessionreplay.embedded.EmbeddedSessionReplay
 import com.datadoghq.flutter.sessionreplay.embedded.SegmentParser
 import com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature
+import com.datadoghq.flutter.sessionreplay.feature.PrivacyLevels
 import io.flutter.plugin.common.BinaryMessenger
 import java.lang.ref.WeakReference
 import java.util.Collections
@@ -265,7 +266,8 @@ internal class FlutterSessionReplayManager(
      */
     fun enableFeature(
         sdkCore: FeatureSdkCore?,
-        customEndpointUrl: String?
+        customEndpointUrl: String?,
+        privacyLevels: PrivacyLevels = PrivacyLevels.MOST_RESTRICTIVE
     ): DefaultFlutterSessionReplayFeature? = synchronized(lock) {
         val featureSdkCore = sdkCore ?: defaultSdkCore() ?: return@synchronized null
         core = featureSdkCore
@@ -278,6 +280,7 @@ internal class FlutterSessionReplayManager(
                 broadcastContext(FlutterSessionReplayBridge.RumContext(context))
             },
             customEndpointUrl = customEndpointUrl,
+            privacyLevels = privacyLevels,
             embeddedResourceSink = { identifier, data, mimeType ->
                 sendToNative(identifier, data, mimeType)
             }

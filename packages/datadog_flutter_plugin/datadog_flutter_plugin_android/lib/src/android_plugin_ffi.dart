@@ -19,45 +19,32 @@ class AndroidDatadogFlutterPlugin {
       .toJString();
 
   static DatadogContext? getContext() {
-    final javaContext = bridge.DatadogSdkPlugin.Companion.coreContext;
-    if (javaContext == null) return null;
+    return using((arena) {
+      final companion = bridge.DatadogSdkPlugin.Companion..releasedBy(arena);
+      final javaContext = companion.coreContext?..releasedBy(arena);
+      if (javaContext == null) return null;
 
-    String? sessionId;
-    double? sessionSampleRate;
-    final rumContext = javaContext.featuresContext.get(_javaRumKey);
-    if (rumContext != null) {
-      final javaSessionId = rumContext.get(_javaSessionId);
-      if (javaSessionId != null) {
-        sessionId = javaSessionId.toString();
-        javaSessionId.release();
-      }
-      final javaSessionSampleRate = rumContext.get(_javaSessionSampleRate);
-      if (javaSessionSampleRate != null) {
-        // Stored by native RUM as a Float.
-        sessionSampleRate = (javaSessionSampleRate as JNumber).doubleValue();
-        javaSessionSampleRate.release();
-      }
-    }
+      final featuresContext = javaContext.featuresContext..releasedBy(arena);
+      final rumContext = featuresContext.get(_javaRumKey)?..releasedBy(arena);
+      final javaSessionId = rumContext?.get(_javaSessionId)?..releasedBy(arena);
+      // Stored by native RUM as a Float.
+      final javaSessionSampleRate = rumContext?.get(_javaSessionSampleRate)
+        ?..releasedBy(arena);
+      final tracingContext = featuresContext.get(_javaTracingKey)
+        ?..releasedBy(arena);
+      // Stored by native tracing (or Flutter's stand-in for it) as a Float.
+      final javaTraceSampleRate = tracingContext?.get(_javaTraceSampleRate)
+        ?..releasedBy(arena);
+      final accountInfo = javaContext.accountInfo?..releasedBy(arena);
+      final userInfo = javaContext.userInfo..releasedBy(arena);
 
-    double? traceSampleRate;
-    final tracingContext = javaContext.featuresContext.get(_javaTracingKey);
-    if (tracingContext != null) {
-      final javaTraceSampleRate = tracingContext.get(_javaTraceSampleRate);
-      if (javaTraceSampleRate != null) {
-        // Stored by native tracing (or Flutter's stand-in for it) as a Float.
-        traceSampleRate = (javaTraceSampleRate as JNumber).doubleValue();
-        javaTraceSampleRate.release();
-      }
-    }
-
-    final context = DatadogContext(
-      sessionId: sessionId,
-      accountId: javaContext.accountInfo?.id.toDartString(),
-      userId: javaContext.userInfo.id?.toDartString(),
-      sessionSampleRate: sessionSampleRate,
-      traceSampleRate: traceSampleRate,
-    );
-    javaContext.release();
-    return context;
+      return DatadogContext(
+        sessionId: javaSessionId?.toString(),
+        accountId: accountInfo?.id.toDartString(releaseOriginal: true),
+        userId: userInfo.id?.toDartString(releaseOriginal: true),
+        sessionSampleRate: (javaSessionSampleRate as JNumber?)?.doubleValue(),
+        traceSampleRate: (javaTraceSampleRate as JNumber?)?.doubleValue(),
+      );
+    });
   }
 }

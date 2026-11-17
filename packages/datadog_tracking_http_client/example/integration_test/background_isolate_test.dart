@@ -86,7 +86,14 @@ void main() {
       if (allSessions.isEmpty) return false;
       final rumSession = allSessions.last;
       return rumSession.visits.length > 1 &&
-          rumSession.visits[1].resourceEvents.length >= 2;
+          isVisitComplete(
+            rumSession.visits[1],
+            resourceUrls: [
+              scenarioConfig.firstPartyGetUrl,
+              ?scenarioConfig.firstPartyPostUrl,
+            ],
+            resourceCount: 2,
+          );
     });
 
     final session = RumSessionDecoder.fromEvents(rumLog).last;
