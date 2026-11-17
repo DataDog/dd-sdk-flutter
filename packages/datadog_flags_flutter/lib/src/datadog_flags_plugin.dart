@@ -172,6 +172,7 @@ class DatadogFlagsPlugin extends DatadogPlugin {
       trackEvaluations: _flagsConfiguration.trackEvaluations,
       evaluationFlushInterval: _flagsConfiguration.evaluationFlushInterval,
       httpClient: _flagsConfiguration.httpClient,
+      responseProtection: _flagsConfiguration.responseProtection,
       datadogConfig: flagsDatadogConfig,
       store: _flagsConfiguration.store,
       dateProvider: _flagsConfiguration.dateProvider,

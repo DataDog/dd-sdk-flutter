@@ -21,7 +21,12 @@ export 'package:datadog_flags/datadog_flags.dart'
         FlagEvaluationError,
         FlagsInitializationTimeoutException,
         FlagsData,
-        FlagsEvaluationContext;
+        FlagsEvaluationContext,
+        ResponseProtection,
+        ResponseProtectionMode,
+        TlsPinTarget,
+        TlsPinningProfile,
+        TlsPinningResponseProtection;
 
 export 'src/datadog_flags_plugin.dart';
 

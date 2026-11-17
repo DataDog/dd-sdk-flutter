@@ -14,6 +14,7 @@ import 'flags_configuration.dart';
 import 'flags_repository.dart';
 import 'flags_runtime.dart';
 import 'no_op_flags_client.dart';
+import 'response_protection.dart';
 
 /// Entry point for configuring and creating Datadog feature flag clients.
 ///
@@ -38,6 +39,7 @@ class DatadogFlags {
 
   http.Client? _httpClient;
   bool _ownsHttpClient = false;
+  AssignmentProtection? _assignmentProtection;
   DatadogFlagsConfiguration? _configuration;
   final Map<String, DatadogFlagsClient> _clients = {};
 
@@ -69,6 +71,13 @@ class DatadogFlags {
     final customHttpClient = configuration.httpClient;
     _httpClient = customHttpClient ?? http.Client();
     _ownsHttpClient = customHttpClient == null;
+    _assignmentProtection = AssignmentProtection.resolve(
+      configuration: configuration,
+      endpoint: flagAssignmentsEndpoint(
+        datadogConfig: datadogConfig,
+        configuration: configuration,
+      ),
+    );
     _configuration = configuration;
     sharedClient();
   }
@@ -98,6 +107,8 @@ class DatadogFlags {
     }
     _httpClient = null;
     _ownsHttpClient = false;
+    _assignmentProtection?.close();
+    _assignmentProtection = null;
     _configuration = null;
   }
 
@@ -121,6 +132,7 @@ class DatadogFlags {
       datadogConfig: datadogConfig,
       configuration: configuration,
       httpClient: httpClient,
+      protection: _assignmentProtection,
     );
     final runtime = FlagsRuntime(
       configuration: configuration,

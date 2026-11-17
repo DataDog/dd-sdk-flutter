@@ -108,8 +108,13 @@ class FlagsRepository {
       return;
     }
 
+    // Under response protection, restore only assignments that the same
+    // policy fetched.
+    final policy = fetcher.responseProtectionPolicy;
     final matchingCached =
-        cached != null && _contextsMatch(cached.context, context)
+        cached != null &&
+            _contextsMatch(cached.context, context) &&
+            (policy == null || cached.responseProtectionPolicy == policy)
         ? cached
         : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
@@ -130,6 +135,7 @@ class FlagsRepository {
         context: context,
         date: dateProvider(),
         obfuscation: assignments.obfuscation,
+        responseProtectionPolicy: policy,
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       _setStatus(DatadogFlagsClientStatus.ready);

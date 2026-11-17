@@ -10,6 +10,7 @@ import 'datadog_flags_config.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
+import 'response_protection.dart';
 
 /// Runtime configuration for Datadog feature flag clients.
 @immutable
@@ -27,6 +28,10 @@ final class DatadogFlagsConfiguration {
   static const maxEvaluationFlushInterval = Duration(seconds: 60);
 
   /// Overrides the precompute assignments endpoint.
+  ///
+  /// When omitted, a [responseProtection] TLS pinning profile with one host
+  /// selects that host. Otherwise, the [datadogConfig] site selects the
+  /// endpoint.
   ///
   /// Custom endpoints do not receive automatic capability headers.
   /// To opt in, add `X-DD-FEATURE-FLAGS-CAPABILITIES` through [customFlagsHeaders].
@@ -78,7 +83,19 @@ final class DatadogFlagsConfiguration {
   /// HTTP client used for assignments and telemetry.
   ///
   /// When omitted, [DatadogFlags] creates and owns a default client.
+  /// When [responseProtection] is set, assignment requests use an SDK-owned
+  /// protected client and this client sends only telemetry. A custom client
+  /// combined with [ResponseProtection.tlsPinning] is an invalid
+  /// configuration: assignment requests fail and the SDK logs a warning.
   final http.Client? httpClient;
+
+  /// Optional protection policy for precompute assignment responses.
+  ///
+  /// When omitted, assignment requests use [httpClient] or the default client.
+  /// With [ResponseProtectionMode.required], the SDK rejects assignments that
+  /// do not satisfy the policy. It also ignores stored assignments that a
+  /// different policy, or no policy, fetched.
+  final ResponseProtection? responseProtection;
 
   /// Datadog organization, environment, and site configuration.
   final DatadogFlagsConfig? datadogConfig;
@@ -100,6 +117,7 @@ final class DatadogFlagsConfiguration {
     this.trackEvaluations = true,
     Duration evaluationFlushInterval = defaultEvaluationFlushInterval,
     this.httpClient,
+    this.responseProtection,
     this.datadogConfig,
     this.store,
     this.dateProvider = DateTime.now,

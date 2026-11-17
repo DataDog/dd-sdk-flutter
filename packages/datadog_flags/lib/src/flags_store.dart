@@ -39,12 +39,20 @@ class FlagsData {
   /// Encoding metadata stored with these assignments. Null means legacy keys.
   final FlagKeyObfuscation? obfuscation;
 
+  /// Identifier of the response protection policy that fetched [flags].
+  ///
+  /// `null` means that the assignments were fetched without response
+  /// protection. A client that requires response protection restores stored
+  /// assignments only when this value matches its own policy.
+  final String? responseProtectionPolicy;
+
   /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
     required this.context,
     required this.date,
     this.obfuscation,
+    this.responseProtectionPolicy,
   });
 
   /// Creates a flag assignment snapshot from persisted JSON.
@@ -66,6 +74,7 @@ class FlagsData {
       ),
       date: DateTime.parse(json['date'] as String),
       obfuscation: obfuscation,
+      responseProtectionPolicy: json['responseProtectionPolicy'] as String?,
     );
   }
 
@@ -86,6 +95,7 @@ class FlagsData {
         'obfuscated': true,
         'obfuscation': obfuscation!.toJson(),
       },
+      'responseProtectionPolicy': ?responseProtectionPolicy,
     };
   }
 }

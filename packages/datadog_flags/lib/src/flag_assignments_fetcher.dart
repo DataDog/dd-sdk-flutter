@@ -16,30 +16,76 @@ import 'flags_error.dart';
 import 'flags_log.dart';
 import 'precompute_request.dart';
 import 'precompute_response.dart';
+import 'response_protection.dart';
 import 'split_features.dart';
+
+/// Returns the precompute assignments endpoint.
+///
+/// [DatadogFlagsConfiguration.customFlagsEndpoint] takes precedence. Otherwise,
+/// a TLS pinning profile with one host selects that host, and other
+/// configurations use the [datadogConfig] site.
+Uri flagAssignmentsEndpoint({
+  required DatadogFlagsConfig datadogConfig,
+  required DatadogFlagsConfiguration configuration,
+}) {
+  if (configuration.customFlagsEndpoint case final endpoint?) {
+    return endpoint;
+  }
+  if (configuration.responseProtection case TlsPinningResponseProtection(
+    :final profile,
+  ) when profile.hosts.length == 1) {
+    return Uri(
+      scheme: 'https',
+      host: profile.hosts.single.toLowerCase(),
+      path: _assignmentsPath,
+    );
+  }
+  return datadogConfig.flagsEndpoint().replace(path: _assignmentsPath);
+}
+
+const _assignmentsPath = '/precompute-assignments';
 
 class FlagAssignmentsFetcher {
   final DatadogFlagsConfig datadogConfig;
   final DatadogFlagsConfiguration configuration;
   final http.Client httpClient;
+
+  /// Protected assignment transport. When set, it replaces [httpClient] for
+  /// assignment requests.
+  final AssignmentProtection? protection;
   final UnknownDestinationWarnings _unknownDestinations;
 
   FlagAssignmentsFetcher({
     required this.datadogConfig,
     required this.configuration,
     required this.httpClient,
+    this.protection,
     FlagsLogger logger = const FlagsLogger(),
   }) : _unknownDestinations = UnknownDestinationWarnings(logger);
+
+  /// Policy identifier recorded with assignments that this fetcher returns.
+  ///
+  /// `null` means that assignments are fetched without response protection.
+  String? get responseProtectionPolicy => protection?.policyId;
 
   Future<PrecomputedAssignments> fetch(
     FlagsEvaluationContext evaluationContext,
   ) async {
-    final endpoint =
-        configuration.customFlagsEndpoint ??
-        datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
+    final endpoint = flagAssignmentsEndpoint(
+      datadogConfig: datadogConfig,
+      configuration: configuration,
+    );
+    final client = switch (protection) {
+      null => httpClient,
+      AssignmentProtection(error: final error?) => throw error,
+      AssignmentProtection(client: final client?) => client,
+      AssignmentProtection() => throw FlagsException.invalidConfiguration(
+        'Response protection has no assignment transport.',
+      ),
+    };
     final http.Response response;
     try {
-      response = await httpClient.post(
+      response = await client.post(
         endpoint,
         headers: _headers(),
         body: jsonEncode(
