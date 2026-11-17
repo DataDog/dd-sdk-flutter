@@ -1,0 +1,25 @@
+{
+  "title": "Document",
+  "definitions": {
+    "local": { "title": "Local" },
+    "a/b~c": { "title": "Escaped" }
+  },
+  "allOf": [{ "title": "First" }, "not an object"],
+  "required": ["sibling"],
+  "properties": {
+    "sibling": { "$ref": "sibling.json" },
+    "nested": { "$ref": "nested/child.json" },
+    "local": { "$ref": "#/definitions/local" },
+    "escaped": { "$ref": "#/definitions/a~1b~0c" },
+    "remote": { "$ref": "sibling.json#/definitions/remote" },
+    "indexed": { "$ref": "#/allOf/0" },
+    "root": { "$ref": "#" },
+    "chain": { "$ref": "nested/forward.json" },
+    "notAString": { "$ref": 42 },
+    "missingFile": { "$ref": "missing.json" },
+    "missingPointer": { "$ref": "#/definitions/missing" },
+    "outOfRange": { "$ref": "#/allOf/5" },
+    "anchor": { "$ref": "#anchor" },
+    "toArray": { "$ref": "#/required" }
+  }
+}
