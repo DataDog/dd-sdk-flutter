@@ -36,6 +36,16 @@ Map<String, dynamic> _viewUpdate(
   };
 }
 
+Map<String, dynamic> _vital(Map<String, dynamic> vital, {String? viewId}) {
+  return {
+    'type': 'vital',
+    'date': 2000,
+    'session': {'id': 'session-id'},
+    'view': {'id': viewId ?? 'view-id', 'url': 'ViewName'},
+    'vital': vital,
+  };
+}
+
 void main() {
   test('view_update events are applied on top of the previous view state', () {
     final events = [
@@ -138,5 +148,59 @@ void main() {
     final sessions = RumSessionDecoder.fromEvents(events);
 
     expect(sessions, isEmpty);
+  });
+
+  group('app_launch vitals', () {
+    test('app_launch vitals are not decoded as operation steps', () {
+      final events = [
+        _view(1, {'time_spent': 100}),
+        _vital({
+          'type': 'operation_step',
+          'name': 'onboarding',
+          'step_type': 'start',
+        }),
+        _vital({
+          'type': 'app_launch',
+          'name': 'time_to_full_display',
+          'app_launch_metric': 'ttfd',
+          'duration': 1500000000,
+        }),
+      ].map(RumEventDecoder.new).toList();
+
+      final visit = RumSessionDecoder.fromEvents(events).single.visits.single;
+
+      expect(visit.vitalStepEvents.length, 1);
+      expect(visit.vitalStepEvents[0].vitalName, 'onboarding');
+      expect(visit.vitalAppLaunchEvents.length, 1);
+      expect(visit.vitalAppLaunchEvents[0].appLaunchMetric, 'ttfd');
+      expect(visit.vitalAppLaunchEvents[0].vitalName, 'time_to_full_display');
+      expect(visit.vitalAppLaunchEvents[0].duration, 1500000000);
+    });
+
+    test('app_launch vitals are found on views discarded from sessions', () {
+      final events = [
+        _view(1, {'time_spent': 100}),
+        _vital({
+          'type': 'app_launch',
+          'name': 'time_to_initial_display',
+          'app_launch_metric': 'ttid',
+          'duration': 800000000,
+          'startup_type': 'cold_start',
+        }, viewId: 'application-launch-view-id'),
+        _vital({
+          'type': 'operation_step',
+          'name': 'onboarding',
+          'step_type': 'start',
+        }),
+      ].map(RumEventDecoder.new).toList();
+
+      final vitals = RumVitalAppLaunchEventDecoder.fromEvents(events);
+
+      expect(vitals.length, 1);
+      expect(vitals[0].appLaunchMetric, 'ttid');
+      expect(vitals[0].duration, 800000000);
+      expect(vitals[0].startupType, 'cold_start');
+      expect(vitals[0].view.id, 'application-launch-view-id');
+    });
   });
 }

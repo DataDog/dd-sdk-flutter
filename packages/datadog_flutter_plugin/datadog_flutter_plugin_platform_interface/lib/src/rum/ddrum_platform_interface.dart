@@ -123,6 +123,7 @@ abstract class DdRumPlatform extends PlatformInterface {
 
   Future<void> addFeatureFlagEvaluation(String name, Object value);
   Future<void> stopSession();
+  Future<void> reportAppFullyDisplayed();
 
   Future<void> startOperation(
     DateTime timestamp,

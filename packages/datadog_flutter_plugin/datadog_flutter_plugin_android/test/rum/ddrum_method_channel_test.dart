@@ -529,6 +529,14 @@ void main() {
     expect(log, [isMethodCall('stopSession', arguments: <String, Object?>{})]);
   });
 
+  test('reportAppFullyDisplayed calls to platform', () async {
+    await ddRumPlatform.reportAppFullyDisplayed();
+
+    expect(log, [
+      isMethodCall('reportAppFullyDisplayed', arguments: <String, Object?>{}),
+    ]);
+  });
+
   test('startOperation calls to platform', () async {
     final timestamp = randomTimestamp();
     final name = randomString();

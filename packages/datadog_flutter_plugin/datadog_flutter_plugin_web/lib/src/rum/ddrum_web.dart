@@ -454,6 +454,11 @@ class DdRumWeb extends DdRumPlatform {
   }
 
   @override
+  Future<void> reportAppFullyDisplayed() async {
+    // NOOP - Not supported by the Browser SDK
+  }
+
+  @override
   Future<void> startOperation(
     DateTime timestamp,
     String name,

@@ -196,7 +196,8 @@ class DatadogRumPluginTests: XCTestCase {
             "failureReason": .string,
             "attributes": .map
         ]),
-        Contract(methodName: "stopSession", requiredParameters: [:])
+        Contract(methodName: "stopSession", requiredParameters: [:]),
+        Contract(methodName: "reportAppFullyDisplayed", requiredParameters: [:])
     ]
 
     func testRumPlugin_ContractViolationsThrowErrors() {
@@ -423,6 +424,18 @@ class DatadogRumPluginTests: XCTestCase {
         }
 
         XCTAssertEqual(mock.callLog, [ .addViewLoadingTime(overwrite: true) ])
+        XCTAssertEqual(resultStatus, .called(value: nil))
+    }
+
+    func testReportAppFullyDisplayed_CallsRumMonitor() {
+        let call = FlutterMethodCall(methodName: "reportAppFullyDisplayed", arguments: [:])
+
+        var resultStatus = ResultStatus.notCalled
+        plugin.handle(call) { result in
+            resultStatus = .called(value: result)
+        }
+
+        XCTAssertEqual(mock.callLog, [ .reportAppFullyDisplayed ])
         XCTAssertEqual(resultStatus, .called(value: nil))
     }
 
@@ -1032,3 +1045,110 @@ class MockRUMMonitor: RUMMonitorProtocol, RUMCommandSubscriber {
         commands.append(command)
     }
 }
+
+// MARK: - FlutterFirstFrameTracker
+
+#if os(iOS)
+class FlutterFirstFrameTrackerTests: XCTestCase {
+    private let firstFrameDate = Date(timeIntervalSince1970: 1_000)
+    private var tracker: FlutterFirstFrameTracker! // swiftlint:disable:this implicitly_unwrapped_optional
+    private var reportedDates: [Date] = []
+
+    override func setUp() {
+        super.setUp()
+        reportedDates = []
+        let firstFrameDate = self.firstFrameDate
+        tracker = FlutterFirstFrameTracker(dateProvider: { firstFrameDate })
+    }
+
+    func testWithoutSource_CannotReport() {
+        tracker.observe(nil)
+
+        XCTAssertFalse(tracker.canReport)
+    }
+
+    func testWhenSourceAlreadyDisplaysFlutterUI_CannotReport() {
+        let source = FirstFrameSourceStub(isDisplayingFlutterUI: true)
+
+        tracker.observe(source)
+
+        XCTAssertFalse(tracker.canReport)
+        XCTAssertFalse(source.isObserved)
+    }
+
+    func testWhenObservingSource_CanReport() {
+        let source = FirstFrameSourceStub()
+
+        tracker.observe(source)
+
+        XCTAssertTrue(tracker.canReport)
+        XCTAssertTrue(source.isObserved)
+    }
+
+    func testWhenFirstFrameIsDisplayedBeforeReporting_ItIsReportedWhenReporting() {
+        let source = FirstFrameSourceStub()
+        tracker.observe(source)
+        source.displayFirstFrame()
+
+        tracker.report { self.reportedDates.append($0) }
+
+        XCTAssertTrue(tracker.canReport)
+        XCTAssertEqual(reportedDates, [firstFrameDate])
+    }
+
+    func testWhenFirstFrameIsDisplayedAfterReporting_ItIsReportedWhenDisplayed() {
+        let source = FirstFrameSourceStub()
+        tracker.observe(source)
+        tracker.report { self.reportedDates.append($0) }
+        XCTAssertEqual(reportedDates, [])
+
+        source.displayFirstFrame()
+
+        XCTAssertEqual(reportedDates, [firstFrameDate])
+    }
+
+    func testFirstFrameIsReportedOnlyOnce() {
+        let source = FirstFrameSourceStub()
+        tracker.observe(source)
+        source.displayFirstFrame()
+
+        tracker.report { self.reportedDates.append($0) }
+        tracker.report { self.reportedDates.append($0) }
+        source.displayFirstFrame()
+
+        XCTAssertEqual(reportedDates, [firstFrameDate])
+    }
+
+    func testWhenAlreadyObserving_ItDoesNotObserveAnotherSource() {
+        let firstSource = FirstFrameSourceStub()
+        let secondSource = FirstFrameSourceStub()
+
+        tracker.observe(firstSource)
+        tracker.observe(secondSource)
+
+        XCTAssertTrue(firstSource.isObserved)
+        XCTAssertFalse(secondSource.isObserved)
+    }
+}
+
+private final class FirstFrameSourceStub: FlutterFirstFrameSource {
+    var isDisplayingFlutterUI: Bool
+    private var onDisplay: (() -> Void)?
+
+    var isObserved: Bool { onDisplay != nil }
+
+    init(isDisplayingFlutterUI: Bool = false) {
+        self.isDisplayingFlutterUI = isDisplayingFlutterUI
+    }
+
+    func observeFirstDisplay(_ onDisplay: @escaping () -> Void) -> AnyObject {
+        self.onDisplay = onDisplay
+        return NSObject()
+    }
+
+    func displayFirstFrame() {
+        isDisplayingFlutterUI = true
+        onDisplay?()
+    }
+}
+#endif

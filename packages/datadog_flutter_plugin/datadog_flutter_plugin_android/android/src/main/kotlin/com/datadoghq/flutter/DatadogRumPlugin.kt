@@ -139,6 +139,7 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
                 "failOperation" -> failOperation(call, result)
                 "setInternalViewAttribute" -> setInternalViewAttribute(call, result)
                 "stopSession" -> stopSession(call, result)
+                "reportAppFullyDisplayed" -> reportAppFullyDisplayed(call, result)
                 else -> {
                     result.notImplemented()
                 }
@@ -562,6 +563,11 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
 
     private fun stopSession(call: MethodCall, result: Result) {
         rum?.stopSession()
+        result.success(null)
+    }
+
+    private fun reportAppFullyDisplayed(call: MethodCall, result: Result) {
+        rum?.reportAppFullyDisplayed()
         result.success(null)
     }
 }
