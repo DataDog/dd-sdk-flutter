@@ -18,28 +18,75 @@ import 'package:test/test.dart';
 
 class _MockFlagsLogger extends Mock implements FlagsLogger {}
 
-const _datadogConfig = DatadogFlagsConfig(
-  clientToken: 'client-token',
-  env: 'staging',
-  site: DatadogFlagsSite.us1,
-);
-const _context = FlagsEvaluationContext(targetingKey: 'user-1');
-const _ignoredHeader = 'dd-flag-selection-ignored';
-
 void main() {
+  const datadogConfig = DatadogFlagsConfig(
+    clientToken: 'client-token',
+    env: 'staging',
+    site: DatadogFlagsSite.us1,
+  );
+  const evaluationContext = FlagsEvaluationContext(targetingKey: 'user-1');
+  const ignoredHeader = 'dd-flag-selection-ignored';
+
+  FlagAssignmentsFetcher createFetcher(
+    FlagSelection? selection,
+    http.Client client,
+    FlagsLogger logger,
+  ) {
+    return FlagAssignmentsFetcher(
+      datadogConfig: datadogConfig,
+      configuration: DatadogFlagsConfiguration(flagSelection: selection),
+      httpClient: client,
+      logger: logger,
+    );
+  }
+
+  FlagsRepository createRepository(
+    FlagSelection? selection,
+    http.Client client,
+    FlagsLogger logger, {
+    DatadogFlagsStore? store,
+  }) {
+    return FlagsRepository(
+      clientName: 'default',
+      fetcher: createFetcher(selection, client, logger),
+      store: store,
+      dateProvider: () => DateTime.utc(2026),
+      logger: logger,
+    );
+  }
+
+  FlagsData snapshot(FlagSelection? selection) {
+    return FlagsData.fromJson({
+      'flags': {
+        'cached-flag': {
+          'allocationKey': 'allocation',
+          'variationKey': 'on',
+          'variationType': 'boolean',
+          'variationValue': true,
+          'reason': 'TARGETING_MATCH',
+          'doLog': true,
+        },
+      },
+      'context': evaluationContext.toJson(),
+      'date': DateTime.utc(2026).toIso8601String(),
+    }).withSelection(selection);
+  }
+
   group('canonicalizeFlagSelection', () {
-    test('drops unpaired surrogates as malformed_selection', () {
-      for (final value in ['a\uD800', '\uDC00a', 'a\uD800b', '\uDC00\uD800']) {
-        for (final selection in [
-          FlagSelection(tags: [value]),
-          FlagSelection(keyPatterns: [value]),
-        ]) {
+    for (final value in ['a\uD800', '\uDC00a', 'a\uD800b', '\uDC00\uD800']) {
+      final codeUnits = value.codeUnits.map(_unicodeLabel).join(' ');
+      for (final (field, selection) in [
+        ('tags', FlagSelection(tags: [value])),
+        ('keyPatterns', FlagSelection(keyPatterns: [value])),
+      ]) {
+        test('drops unpaired surrogates in $field ($codeUnits) as '
+            'malformed_selection', () {
           final result = canonicalizeFlagSelection(selection);
           expect(result.selection, isNull);
           expect(result.error, FlagSelectionError.malformedSelection);
-        }
+        });
       }
-    });
+    }
 
     test('malformed_selection takes precedence over too_many_values', () {
       final result = canonicalizeFlagSelection(
@@ -58,70 +105,77 @@ void main() {
       expect(result.selection?.tags, ['a', '～', '\u{1F600}']);
     });
 
-    test('trims exactly the 25 White_Space code points', () {
-      const whiteSpace = [
-        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680, 0x2000, //
-        0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, //
-        0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
-      ];
-      for (final codePoint in whiteSpace) {
+    // The 25 White_Space code points of the Unicode Character Database:
+    // https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt
+    const whiteSpace = [
+      0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680, 0x2000, //
+      0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, //
+      0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
+    ];
+    for (final codePoint in whiteSpace) {
+      test('trims White_Space ${_unicodeLabel(codePoint)}', () {
         final space = String.fromCharCode(codePoint);
         final result = canonicalizeFlagSelection(
           FlagSelection(tags: ['${space}a${space}b$space', space]),
         );
-        expect(result.selection?.tags, ['a${space}b'], reason: '$codePoint');
-      }
-      for (final codePoint in [0x1C, 0x1F, 0x180E, 0x200B, 0xFEFF]) {
+        expect(result.selection?.tags, ['a${space}b']);
+      });
+    }
+    for (final codePoint in [0x1C, 0x1F, 0x180E, 0x200B, 0xFEFF]) {
+      test('keeps non-White_Space ${_unicodeLabel(codePoint)}', () {
         final other = String.fromCharCode(codePoint);
         final result = canonicalizeFlagSelection(
           FlagSelection(tags: ['${other}a$other']),
         );
         expect(result.selection?.tags, ['${other}a$other']);
-      }
-    });
+      });
+    }
 
-    test('returns no selection for null and for empty lists', () {
-      for (final selection in [
-        null,
-        const FlagSelection(),
+    for (final (description, selection) in <(String, FlagSelection?)>[
+      ('null', null),
+      ('no lists', const FlagSelection()),
+      (
+        'lists that trim to empty',
         const FlagSelection(tags: [' ', ''], keyPatterns: ['　']),
-      ]) {
+      ),
+    ]) {
+      test('returns no selection for $description', () {
         final result = canonicalizeFlagSelection(selection);
         expect(result.selection, isNull);
         expect(result.error, isNull);
-      }
-    });
+      });
+    }
   });
 
   group('flagSelectionIgnoredReason', () {
-    test('reports the five known reasons', () {
-      for (final reason in [
-        'malformed_selection',
-        'too_many_values',
-        'invalid_key_pattern',
-        'invalid_tag',
-        'tag_load_failed',
-      ]) {
-        expect(flagSelectionIgnoredReason({_ignoredHeader: reason}), reason);
-      }
-    });
+    for (final reason in [
+      'malformed_selection',
+      'too_many_values',
+      'invalid_key_pattern',
+      'invalid_tag',
+      'tag_load_failed',
+    ]) {
+      test('reports the known reason $reason', () {
+        expect(flagSelectionIgnoredReason({ignoredHeader: reason}), reason);
+      });
+    }
 
-    test('reports other values as unknown', () {
-      for (final value in [
-        'Too_Many_Values',
-        ' too_many_values',
-        'too_many_values, too_many_values',
-        'unknown_reason',
-        'x' * 33,
-        'too_many_values${' ' * 30}',
-      ]) {
-        expect(flagSelectionIgnoredReason({_ignoredHeader: value}), 'unknown');
-      }
-    });
+    for (final value in [
+      'Too_Many_Values',
+      ' too_many_values',
+      'too_many_values, too_many_values',
+      'unknown_reason',
+      'x' * 33,
+      'too_many_values${' ' * 30}',
+    ]) {
+      test('reports ${jsonEncode(value)} as unknown', () {
+        expect(flagSelectionIgnoredReason({ignoredHeader: value}), 'unknown');
+      });
+    }
 
     test('treats a missing or empty header as absent', () {
       expect(flagSelectionIgnoredReason(const {}), isNull);
-      expect(flagSelectionIgnoredReason({_ignoredHeader: ''}), isNull);
+      expect(flagSelectionIgnoredReason({ignoredHeader: ''}), isNull);
     });
 
     test('matches the header name case-insensitively', () {
@@ -134,7 +188,7 @@ void main() {
       expect(
         flagSelectionIgnoredReason({
           'DD-Flag-Selection-Ignored': 'invalid_tag',
-          _ignoredHeader: 'invalid_tag',
+          ignoredHeader: 'invalid_tag',
         }),
         'unknown',
       );
@@ -148,7 +202,7 @@ void main() {
 
     test('sends exactly flag_selection with tags and key_patterns', () async {
       final requests = <http.Request>[];
-      final fetcher = _fetcher(
+      final fetcher = createFetcher(
         const FlagSelection(
           tags: [' team:b ', 'team:a', 'team:a'],
           keyPatterns: ['checkout.*'],
@@ -157,7 +211,7 @@ void main() {
         logger,
       );
 
-      await fetcher.fetch(_context);
+      await fetcher.fetch(evaluationContext);
 
       final attributes = _attributes(requests.single);
       expect(attributes['flag_selection'], {
@@ -168,30 +222,34 @@ void main() {
       verifyNever(() => logger.error(any()));
     });
 
-    test('sends no flag_selection without a selection to send', () async {
-      for (final selection in [
-        null,
-        const FlagSelection(tags: [' ']),
-        FlagSelection(tags: ['a' * 201]),
-      ]) {
+    for (final (description, selection) in <(String, FlagSelection?)>[
+      ('no selection', null),
+      ('a selection that trims to empty', const FlagSelection(tags: [' '])),
+      ('a dropped selection', FlagSelection(tags: ['a' * 201])),
+    ]) {
+      test('sends no flag_selection for $description', () async {
         final requests = <http.Request>[];
-        await _fetcher(selection, _client(requests), logger).fetch(_context);
+        await createFetcher(
+          selection,
+          _client(requests),
+          logger,
+        ).fetch(evaluationContext);
         expect(
           _attributes(requests.single).containsKey('flag_selection'),
           isFalse,
         );
-      }
-    });
+      });
+    }
 
     test('logs a dropped selection once per client', () async {
       final requests = <http.Request>[];
-      final fetcher = _fetcher(
+      final fetcher = createFetcher(
         FlagSelection(keyPatterns: [for (var i = 0; i < 32; i++) 'k$i']),
         _client(requests),
         logger,
       );
-      await fetcher.fetch(_context);
-      await fetcher.fetch(_context);
+      await fetcher.fetch(evaluationContext);
+      await fetcher.fetch(evaluationContext);
 
       verify(
         () => logger.error(
@@ -211,13 +269,13 @@ void main() {
         );
         for (var revision = 0; revision < 3; revision++) {
           final fetcher = FlagAssignmentsFetcher(
-            datadogConfig: _datadogConfig,
+            datadogConfig: datadogConfig,
             configuration: DatadogFlagsConfiguration(flagSelection: selection),
             httpClient: _client(<http.Request>[]),
             logger: logger,
             dropLog: dropLog,
           );
-          await fetcher.fetch(_context);
+          await fetcher.fetch(evaluationContext);
           expect(fetcher.flagSelection, isNull);
         }
 
@@ -238,61 +296,71 @@ void main() {
       expect(flagSelectionDropLogFor(owner), same(dropLog));
     });
 
-    test('logs the limit text for each dropped reason', () {
-      final cases = {
-        const FlagSelection(tags: ['\uD800']):
-            'malformed_selection: flagSelection must be an object with '
+    for (final (reason, selection, limit) in [
+      (
+        'malformed_selection',
+        const FlagSelection(tags: ['\uD800']),
+        'malformed_selection: flagSelection must be an object with '
             'optional tags and keyPatterns string arrays',
-        FlagSelection(keyPatterns: ['k' * 201]):
-            'invalid_key_pattern: each key pattern is at most 200 UTF-8 bytes',
-        FlagSelection(tags: ['t' * 201]):
-            'invalid_tag: each tag is at most 200 UTF-8 bytes',
-      };
-      for (final MapEntry(key: selection, value: limit) in cases.entries) {
-        _fetcher(selection, _client([]), logger);
+      ),
+      (
+        'invalid_key_pattern',
+        FlagSelection(keyPatterns: ['k' * 201]),
+        'invalid_key_pattern: each key pattern is at most 200 UTF-8 bytes',
+      ),
+      (
+        'invalid_tag',
+        FlagSelection(tags: ['t' * 201]),
+        'invalid_tag: each tag is at most 200 UTF-8 bytes',
+      ),
+    ]) {
+      test('logs the limit text for a $reason drop', () {
+        createFetcher(selection, _client([]), logger);
         verify(
           () => logger.error(
             'flagSelection was not sent ($limit). '
             'Loading the full flag configuration.',
           ),
         ).called(1);
-      }
-    });
+      });
+    }
 
     test('reads the ignored header only when a selection was sent', () async {
-      final headers = {_ignoredHeader: 'tag_load_failed'};
-      final selected = await _fetcher(
+      final headers = {ignoredHeader: 'tag_load_failed'};
+      final selected = await createFetcher(
         const FlagSelection(tags: ['team:a']),
         _client([], headers: headers),
         logger,
-      ).fetch(_context);
-      final unselected = await _fetcher(
+      ).fetch(evaluationContext);
+      final unselected = await createFetcher(
         null,
         _client([], headers: headers),
         logger,
-      ).fetch(_context);
+      ).fetch(evaluationContext);
 
       expect(selected.flagSelectionIgnoredReason, 'tag_load_failed');
       expect(unselected.flagSelectionIgnoredReason, isNull);
     });
 
-    test('does not report the header without a decoded 2xx body', () async {
-      for (final response in [
-        http.Response('{}', 500, headers: {_ignoredHeader: 'invalid_tag'}),
-        http.Response(
-          'not json',
-          200,
-          headers: {_ignoredHeader: 'invalid_tag'},
-        ),
-      ]) {
-        final fetcher = _fetcher(
+    for (final (description, response) in [
+      (
+        'a 500 response',
+        http.Response('{}', 500, headers: {ignoredHeader: 'invalid_tag'}),
+      ),
+      (
+        'a 200 response that is not JSON',
+        http.Response('not json', 200, headers: {ignoredHeader: 'invalid_tag'}),
+      ),
+    ]) {
+      test('does not report the header for $description', () async {
+        final fetcher = createFetcher(
           const FlagSelection(tags: ['team:a']),
           MockClient((_) async => response),
           logger,
         );
-        await expectLater(fetcher.fetch(_context), throwsA(anything));
-      }
-    });
+        await expectLater(fetcher.fetch(evaluationContext), throwsA(anything));
+      });
+    }
   });
 
   group('FlagsRepository with a flag selection', () {
@@ -306,13 +374,13 @@ void main() {
       when(() => logger.error(any())).thenAnswer((_) {
         statusesAtLog.add(repository.status);
       });
-      repository = _repository(
+      repository = createRepository(
         const FlagSelection(tags: ['team:a']),
-        _client([], headers: {_ignoredHeader: 'too_many_values'}),
+        _client([], headers: {ignoredHeader: 'too_many_values'}),
         logger,
       );
 
-      await repository.initialize(_context);
+      await repository.initialize(evaluationContext);
 
       verify(
         () => logger.error(
@@ -325,58 +393,60 @@ void main() {
 
     test('stores the canonical selection with fetched assignments', () async {
       final store = InMemoryDatadogFlagsStore();
-      await _repository(
+      await createRepository(
         const FlagSelection(tags: ['team:b', ' team:a ']),
         _client([]),
         logger,
         store: store,
-      ).initialize(_context);
+      ).initialize(evaluationContext);
 
       final stored = await store.read('default');
       expect(stored?.flagSelection?.tags, ['team:a', 'team:b']);
       expect(stored?.flagSelection?.keyPatterns, isEmpty);
     });
 
-    test('restores a snapshot only under the same selection', () async {
-      const selectionA = FlagSelection(tags: ['team:a']);
-      const selectionB = FlagSelection(tags: ['team:b']);
-      final cases = <(FlagSelection?, FlagSelection?, bool)>[
-        (selectionA, selectionA, true),
-        (selectionA, const FlagSelection(tags: [' team:a', 'team:a']), true),
-        (selectionA, selectionB, false),
-        (selectionA, null, false),
-        (null, selectionA, false),
-        (null, null, true),
-      ];
-      for (final (storedUnder, configured, restored) in cases) {
+    const selectionA = FlagSelection(tags: ['team:a']);
+    const selectionB = FlagSelection(tags: ['team:b']);
+    for (final (description, storedUnder, configured, restored)
+        in <(String, FlagSelection?, FlagSelection?, bool)>[
+          ('the same selection', selectionA, selectionA, true),
+          (
+            'an equivalent selection',
+            selectionA,
+            const FlagSelection(tags: [' team:a', 'team:a']),
+            true,
+          ),
+          ('a different selection', selectionA, selectionB, false),
+          ('no selection over a selected snapshot', selectionA, null, false),
+          ('a selection over an unselected snapshot', null, selectionA, false),
+          ('no selection over an unselected snapshot', null, null, true),
+        ]) {
+      test('${restored ? 'restores' : 'does not restore'} a snapshot under '
+          '$description', () async {
         final store = InMemoryDatadogFlagsStore();
         await store.write(
           'default',
-          _snapshot(canonicalizeFlagSelection(storedUnder).selection),
+          snapshot(canonicalizeFlagSelection(storedUnder).selection),
         );
-        final repository = _repository(
+        final repository = createRepository(
           configured,
           MockClient((_) async => http.Response('', 503)),
           logger,
           store: store,
         );
 
-        await repository.initialize(_context);
+        await repository.initialize(evaluationContext);
 
-        expect(
-          repository.flagAssignment('cached-flag') != null,
-          restored,
-          reason: '$storedUnder -> $configured',
-        );
-      }
-    });
+        expect(repository.flagAssignment('cached-flag') != null, restored);
+      });
+    }
   });
 
   group('FlagsData persistence with a flag selection', () {
     const selection = FlagSelection(tags: ['team:a'], keyPatterns: ['k*']);
 
     test('writes selected assignments under a key older SDKs do not read', () {
-      final json = _snapshot(selection).toJson();
+      final json = snapshot(selection).toJson();
 
       expect(json.containsKey('flags'), isFalse);
       expect(json.containsKey('encodedFlags'), isFalse);
@@ -395,61 +465,43 @@ void main() {
     });
 
     test('writes snapshots without a selection unchanged', () {
-      final json = _snapshot(null).toJson();
+      final json = snapshot(null).toJson();
       expect(json.keys, ['flags', 'context', 'date']);
       expect(FlagsData.fromJson(json).flagSelection, isNull);
     });
 
-    test('rejects a malformed stored selection', () {
-      final json = _snapshot(selection).toJson();
-      for (final value in [
-        'team:a',
+    for (final (description, value) in <(String, Object?)>[
+      ('a string', 'team:a'),
+      (
+        'tags that are not a list',
         {'tags': 'team:a', 'keyPatterns': <String>[]},
-        {'tags': <String>[]},
+      ),
+      ('missing keyPatterns', {'tags': <String>[]}),
+      (
+        'a tag that is not a string',
         {
           'tags': [1],
           'keyPatterns': <String>[],
         },
-      ]) {
+      ),
+    ]) {
+      test('rejects a stored selection with $description', () {
+        final json = snapshot(selection).toJson();
         expect(
           () => FlagsData.fromJson({...json, 'flagSelection': value}),
           throwsA(anything),
         );
-      }
+      });
+    }
+
+    test('rejects a selected snapshot without selectedFlags', () {
+      final json = snapshot(selection).toJson();
       expect(
         () => FlagsData.fromJson({...json}..remove('selectedFlags')),
         throwsA(anything),
       );
     });
   });
-}
-
-FlagAssignmentsFetcher _fetcher(
-  FlagSelection? selection,
-  http.Client client,
-  FlagsLogger logger,
-) {
-  return FlagAssignmentsFetcher(
-    datadogConfig: _datadogConfig,
-    configuration: DatadogFlagsConfiguration(flagSelection: selection),
-    httpClient: client,
-    logger: logger,
-  );
-}
-
-FlagsRepository _repository(
-  FlagSelection? selection,
-  http.Client client,
-  FlagsLogger logger, {
-  DatadogFlagsStore? store,
-}) {
-  return FlagsRepository(
-    clientName: 'default',
-    fetcher: _fetcher(selection, client, logger),
-    store: store,
-    dateProvider: () => DateTime.utc(2026),
-    logger: logger,
-  );
 }
 
 http.Client _client(
@@ -476,22 +528,8 @@ Map<String, Object?> _attributes(http.Request request) {
   return data['attributes'] as Map<String, Object?>;
 }
 
-FlagsData _snapshot(FlagSelection? selection) {
-  return FlagsData.fromJson({
-    'flags': {
-      'cached-flag': {
-        'allocationKey': 'allocation',
-        'variationKey': 'on',
-        'variationType': 'boolean',
-        'variationValue': true,
-        'reason': 'TARGETING_MATCH',
-        'doLog': true,
-      },
-    },
-    'context': _context.toJson(),
-    'date': DateTime.utc(2026).toIso8601String(),
-  }).withSelection(selection);
-}
+String _unicodeLabel(int codeUnit) =>
+    'U+${codeUnit.toRadixString(16).toUpperCase().padLeft(4, '0')}';
 
 extension on FlagsData {
   FlagsData withSelection(FlagSelection? selection) => FlagsData(
