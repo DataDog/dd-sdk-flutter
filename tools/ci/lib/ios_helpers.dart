@@ -62,12 +62,7 @@ Future<bool> launchIosSimulator(String sdk, String? deviceName) async {
       }
 
       print('Launching $deviceName');
-      await _xcrun('simctl boot ${device.udid}', timeout: _simulatorTimeout);
-      await _xcrun(
-        'simctl bootstatus ${device.udid} -b',
-        timeout: _simulatorTimeout,
-      );
-      return true;
+      return _bootWithRetry(device);
     } else {
       print('Found no devices matching $deviceName');
       print(sdkDevices);
@@ -77,6 +72,37 @@ Future<bool> launchIosSimulator(String sdk, String? deviceName) async {
   }
 
   return false;
+}
+
+/// Boots [device], and if it does not become ready, shuts it down and boots it
+/// once more. Returns whether it is ready.
+Future<bool> _bootWithRetry(IosSimulator device) async {
+  for (var attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await _boot(device);
+      return true;
+    } on Exception catch (e) {
+      print('Boot attempt $attempt of 2 for ${device.name} failed: $e');
+      if (attempt == 2) return false;
+      try {
+        await _xcrun(
+          'simctl shutdown ${device.udid}',
+          timeout: _simulatorTimeout,
+        );
+      } on Exception catch (e) {
+        print('Shutting down ${device.name} failed: $e');
+      }
+    }
+  }
+  return false;
+}
+
+Future<void> _boot(IosSimulator device) async {
+  await _xcrun('simctl boot ${device.udid}', timeout: _simulatorTimeout);
+  await _xcrun(
+    'simctl bootstatus ${device.udid} -b',
+    timeout: _simulatorTimeout,
+  );
 }
 
 /// Shuts down and re-boots every booted simulator, waiting until each is
@@ -89,11 +115,7 @@ Future<void> rebootBootedIosSimulators() async {
   for (final device in booted) {
     print('Rebooting ${device.name} (${device.udid})');
     await _xcrun('simctl shutdown ${device.udid}', timeout: _simulatorTimeout);
-    await _xcrun('simctl boot ${device.udid}', timeout: _simulatorTimeout);
-    await _xcrun(
-      'simctl bootstatus ${device.udid} -b',
-      timeout: _simulatorTimeout,
-    );
+    await _boot(device);
   }
 }
 
