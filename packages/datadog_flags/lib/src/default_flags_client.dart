@@ -11,6 +11,7 @@ import 'evaluation_context.dart';
 import 'exposure_logger.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
+import 'flags_client_event.dart';
 import 'flags_repository.dart';
 import 'split_features.dart';
 
@@ -51,6 +52,10 @@ class DefaultDatadogFlagsClient
 
   @override
   FlagsEvaluationContext? get evaluationContext => _repository.context;
+
+  @override
+  void Function() onFirstFlags(FlagsClientEventListener listener) =>
+      _repository.onFirstFlags(listener);
 
   @override
   Future<void> initialize(FlagsEvaluationContext context) async {

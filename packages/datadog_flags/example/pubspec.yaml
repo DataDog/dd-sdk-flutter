@@ -10,6 +10,7 @@ dependencies:
   args: ^2.5.0
   datadog_flags:
     path: ..
+  dotenv: ^4.2.0
 
 dev_dependencies:
   lints: '^6.1.0'
