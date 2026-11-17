@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'schema_source.dart';
+
 /// The generator configuration, read from `sr_models_generator.yaml`.
 class GeneratorConfig {
   GeneratorConfig({
@@ -131,7 +133,7 @@ class GeneratorConfig {
 
   /// The pin must be an exact commit, not a branch or tag that can move.
   static void _checkCommit(String commit, String file) {
-    if (!RegExp(r'^[0-9a-f]{40}$').hasMatch(commit)) {
+    if (!isFullCommitSha(commit)) {
       throw ConfigException(
         '"rum_events_format.commit" must be a full 40-character commit SHA, '
         'got "$commit"',
