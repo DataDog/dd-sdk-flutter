@@ -1,0 +1,4 @@
+{
+  "title": "Child",
+  "properties": { "up": { "$ref": "../sibling.json" } }
+}
