@@ -83,7 +83,7 @@ class SchemaLoader {
     return current;
   }
 
-  /// Walks the JSON [pointer] from [root]. 
+  /// Walks the JSON [pointer] from [root].
   /// An empty pointer is the root itself.
   SchemaNode _resolvePointer(
     SchemaNode root,
