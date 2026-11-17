@@ -228,6 +228,25 @@ class FlutterSdkTests: XCTestCase {
 //        XCTAssertEqual(callResult?["rumEnabled"] as? Bool, true)
 //    }
 
+    func testAttachToExisting_RegistersForTheCoreContext() {
+        // Given - the host app initialized the native SDK itself
+        Datadog.initialize(
+            with: Datadog.Configuration(clientToken: "fakeClientToken", env: "prod"),
+            trackingConsent: .granted
+        )
+        let plugin = DatadogSdkPlugin(channel: FlutterMethodChannel())
+        let methodCall = FlutterMethodCall(
+            methodName: "attachToExisting", arguments: [:] as [String: Any?]
+        )
+
+        // When
+        plugin.handle(methodCall) { _ in }
+
+        // Then - the plugin receives the core context, so Dart can read the native RUM session
+        let core = Datadog.sdkInstance(named: CoreRegistry.defaultInstanceName)
+        XCTAssertNotNil(core.get(feature: DatadogSdkPlugin.self))
+    }
+
     func testSetVerbosity_FromMethodChannel_SetsVerbosity() {
         let flutterConfig = Datadog.Configuration(
             clientToken: "fakeClientToken",
@@ -944,6 +963,39 @@ class DatadogContextBridgeTests: XCTestCase {
         // Then - Dart rebases trace sampling onto this rate
         XCTAssertEqual(bridge.sessionId, "session-id")
         XCTAssertEqual(bridge.sessionSampleRate?.doubleValue, 42.5)
+    }
+
+    func testCurrent_ExposesTheNativeTraceSampleRate() {
+        // Given
+        ContextMessageReceiver.shared.cachedContext = .init(
+            sessionId: "session-id",
+            accountId: nil,
+            userId: nil,
+            sessionSampleRate: 100,
+            traceSampleRate: 25
+        )
+
+        // When
+        let bridge = DatadogContextBridge.current()
+
+        // Then - Dart samples traces at the rate native RUM reports on its views
+        XCTAssertEqual(bridge.traceSampleRate?.doubleValue, 25)
+    }
+
+    func testCurrent_WithoutNativeTracing_HasNoTraceSampleRate() {
+        // Given
+        ContextMessageReceiver.shared.cachedContext = .init(
+            sessionId: "session-id",
+            accountId: nil,
+            userId: nil,
+            sessionSampleRate: 100
+        )
+
+        // When
+        let bridge = DatadogContextBridge.current()
+
+        // Then
+        XCTAssertNil(bridge.traceSampleRate)
     }
 
     func testCurrent_WithoutARumSession_HasNoSessionSampleRate() {

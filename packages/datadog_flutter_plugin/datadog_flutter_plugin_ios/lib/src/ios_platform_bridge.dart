@@ -66,6 +66,7 @@ class IosPlatformBridge {
       final accountId = _readNSString(obj, 'accountId', arena);
       final userId = _readNSString(obj, 'userId', arena);
       final sessionSampleRate = _readNSNumber(obj, 'sessionSampleRate', arena);
+      final traceSampleRate = _readNSNumber(obj, 'traceSampleRate', arena);
 
       if (sessionId == null && accountId == null && userId == null) return null;
       return DatadogContext(
@@ -73,6 +74,7 @@ class IosPlatformBridge {
         userId: userId,
         accountId: accountId,
         sessionSampleRate: sessionSampleRate,
+        traceSampleRate: traceSampleRate,
       );
     });
   }
