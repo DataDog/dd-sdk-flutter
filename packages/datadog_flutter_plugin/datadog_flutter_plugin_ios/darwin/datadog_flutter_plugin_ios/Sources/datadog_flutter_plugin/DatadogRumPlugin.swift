@@ -87,7 +87,18 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         let channel = FlutterMethodChannel(name: "datadog_sdk_flutter.rum", binaryMessenger: messenger)
         methodChannel = channel
         registrar.addMethodCallDelegate(self, channel: channel)
+        #if os(iOS)
+        firstFrameRegistrar = registrar
+        firstFrameTracker.observe(registrar.viewController as? FlutterViewController)
+        #endif
     }
+
+    #if os(iOS)
+    /// Kept to look up the Flutter view controller, which may only be attached after the plugin registers
+    /// (for example with UIScene and an implicit engine).
+    private weak var firstFrameRegistrar: FlutterPluginRegistrar?
+    private let firstFrameTracker = FlutterFirstFrameTracker()
+    #endif
 
     internal var rum: RUMMonitorProtocol?
     internal var trackMapperPerf = false
@@ -431,6 +442,9 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
         case "stopSession":
             rum?.stopSession()
             result(nil)
+        case "reportAppFullyDisplayed":
+            rum?.reportAppFullyDisplayed()
+            result(nil)
 
         default:
             result(FlutterMethodNotImplemented)
@@ -471,8 +485,27 @@ public class DatadogRumPlugin: NSObject, FlutterPlugin {
                     }
                 }
 
+                #if os(iOS)
+                // TTID ends at Flutter's first frame, which is drawn after the first native frame
+                firstFrameTracker.observe(firstFrameRegistrar?.viewController as? FlutterViewController)
+                let reportsFirstFrame = firstFrameTracker.canReport
+                if reportsFirstFrame {
+                    config._internal_mutation {
+                        $0.reportsAppDisplayInitializedManually = true
+                    }
+                }
+                #endif
+
                 RUM.enable(with: config)
-                rum = RUMMonitor.shared()
+                let monitor = RUMMonitor.shared()
+                rum = monitor
+                #if os(iOS)
+                if reportsFirstFrame {
+                    firstFrameTracker.report { date in
+                        monitor._internal?.reportAppDisplayInitialized(at: date)
+                    }
+                }
+                #endif
 
                 Self.previousConfiguration = configArg as [AnyHashable: Any]
             }

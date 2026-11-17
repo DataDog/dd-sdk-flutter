@@ -661,6 +661,19 @@ class DatadogRum {
     });
   }
 
+  /// Marks the moment the app's UI is considered fully displayed.
+  ///
+  /// The time between the application launch and this call is reported as the
+  /// Time to Full Display (TTFD) of the launch. Only the first call has any
+  /// effect for a given RUM session.
+  ///
+  /// This is not supported on Web.
+  void reportAppFullyDisplayed() {
+    wrap('rum.reportAppFullyDisplayed', logger, null, () {
+      return _platform.reportAppFullyDisplayed();
+    });
+  }
+
   /// Uses the configured [DatadogRumConfiguration.traceSampleRate] to determine if
   /// a sample should be traced.
   ///

@@ -355,6 +355,12 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   }
 
   @override
+  Future<void> reportAppFullyDisplayed() async {
+    final rum = _rum;
+    if (rum != null) _sdk.dd_rum_report_app_fully_displayed(rum);
+  }
+
+  @override
   Future<void> startOperation(
     DateTime timestamp,
     String name,

@@ -186,6 +186,28 @@ void main() {
     expect(view1.vitalStepEvents[2].vitalOperationKey, isNull);
     expect(view1.vitalStepEvents[2].vitalFailureReason, 'error');
 
+    if (!kIsWeb) {
+      // TTFD is attached to the view active when it was reported
+      expect(view1.vitalAppLaunchEvents.length, 1);
+      final ttfd = view1.vitalAppLaunchEvents[0];
+      expect(ttfd.appLaunchMetric, 'ttfd');
+      expect(ttfd.vitalName, 'time_to_full_display');
+      expect(ttfd.duration, greaterThan(0));
+
+      // Flutter only reports TTID automatically through the mobile native SDKs.
+      // It's usually attached to the ApplicationLaunch view, so look for it in
+      // all events.
+      if (!isDdSdkCppPlatform()) {
+        final ttids = RumVitalAppLaunchEventDecoder.fromEvents(
+          rumLog,
+        ).where((e) => e.appLaunchMetric == 'ttid').toList();
+        expect(ttids.length, 1);
+        expect(ttids[0].vitalName, 'time_to_initial_display');
+        expect(ttids[0].duration, greaterThan(0));
+        expect(ttfd.duration, greaterThanOrEqualTo(ttids[0].duration));
+      }
+    }
+
     // Verify user in all events, except for view updates sent before the
     // user was set
     final userViewEvents = view1.viewEvents
