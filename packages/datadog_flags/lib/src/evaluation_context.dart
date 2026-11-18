@@ -18,15 +18,20 @@ final class FlagsEvaluationContext {
   static const empty = FlagsEvaluationContext();
 
   /// Primary subject key, such as a user id, device id, or organization id.
-  @JsonKey(includeIfNull: false)
-  final String? targetingKey;
+  ///
+  /// A missing key is stored as `""`. Datadog treats both as the same subject.
+  @JsonKey(defaultValue: '')
+  final String targetingKey;
 
   /// JSON-compatible targeting attributes sent with assignment requests.
   @JsonKey(toJson: sanitizeJsonValue)
   final Map<String, Object?> attributes;
 
   /// Creates an evaluation context for assignment requests.
-  const FlagsEvaluationContext({this.targetingKey, this.attributes = const {}});
+  const FlagsEvaluationContext({
+    String? targetingKey,
+    this.attributes = const {},
+  }) : targetingKey = targetingKey ?? '';
 
   /// Creates an evaluation context from a JSON map.
   factory FlagsEvaluationContext.fromJson(Map<String, Object?> json) =>
@@ -63,7 +68,7 @@ bool targetingContextsMatch(
   FlagsEvaluationContext left,
   FlagsEvaluationContext right,
 ) {
-  if ((left.targetingKey ?? '') != (right.targetingKey ?? '')) {
+  if (left.targetingKey != right.targetingKey) {
     return false;
   }
 

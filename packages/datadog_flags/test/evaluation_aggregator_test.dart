@@ -204,37 +204,31 @@ void main() {
     });
   }
 
-  test(
-    'keeps missing telemetry identity separate from an empty subject',
-    () async {
-      final requests = <http.Request>[];
-      final aggregator = _aggregator(requests: requests);
-      addTearDown(aggregator.shutdown);
+  test('reports a missing context as the empty subject', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(requests: requests);
+    addTearDown(aggregator.shutdown);
 
-      for (final context in <FlagsEvaluationContext?>[
-        null,
-        FlagsEvaluationContext.empty,
-        const FlagsEvaluationContext(targetingKey: ''),
-      ]) {
-        aggregator.recordEvaluation(
-          flagKey: 'checkout.enabled',
-          assignment: null,
-          evaluationContext: context,
-          error: FlagEvaluationError.providerNotReady.code,
-        );
-      }
-      await aggregator.flush();
-
-      final evaluations = _flagEvaluations(
-        _evaluationRequests(requests).single,
+    for (final context in <FlagsEvaluationContext?>[
+      null,
+      FlagsEvaluationContext.empty,
+      const FlagsEvaluationContext(targetingKey: ''),
+    ]) {
+      aggregator.recordEvaluation(
+        flagKey: 'checkout.enabled',
+        assignment: null,
+        evaluationContext: context,
+        error: FlagEvaluationError.providerNotReady.code,
       );
-      expect(evaluations, hasLength(2));
-      expect(evaluations.first.containsKey('targeting_key'), isFalse);
-      expect(evaluations.first['evaluation_count'], 1);
-      expect(evaluations.last['targeting_key'], '');
-      expect(evaluations.last['evaluation_count'], 2);
-    },
-  );
+    }
+    await aggregator.flush();
+
+    final evaluation = _flagEvaluations(
+      _evaluationRequests(requests).single,
+    ).single;
+    expect(evaluation['targeting_key'], '');
+    expect(evaluation['evaluation_count'], 3);
+  });
 
   test('keeps runtime-default and error evaluations separate', () async {
     final requests = <http.Request>[];

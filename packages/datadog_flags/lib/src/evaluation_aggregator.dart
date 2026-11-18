@@ -143,9 +143,7 @@ class EvaluationAggregator {
       flagKey: flagKey,
       variantKey: assignment?.variationKey,
       allocationKey: assignment?.allocationKey,
-      targetingKey: evaluationContext == null
-          ? null
-          : evaluationContext.targetingKey ?? '',
+      targetingKey: evaluationContext?.targetingKey ?? '',
       error: error,
       attributes: evaluationContext?.attributes ?? const {},
       features: features,
@@ -391,9 +389,7 @@ String _aggregationKey({
     'flagKey': flagKey,
     'variantKey': variantKey,
     'allocationKey': allocationKey,
-    'targetingKey': evaluationContext == null
-        ? null
-        : evaluationContext.targetingKey ?? '',
+    'targetingKey': evaluationContext?.targetingKey ?? '',
     'error': error,
     'context': _sortedJson(evaluationContext?.attributes ?? const {}),
     if (features.isNotEmpty) 'features': _sortedJson(features),
@@ -405,7 +401,7 @@ class _AggregatedEvaluation {
   final String flagKey;
   final String? variantKey;
   final String? allocationKey;
-  final String? targetingKey;
+  final String targetingKey;
   final String? error;
   final Map<String, Object?> attributes;
   final Map<String, Object> features;

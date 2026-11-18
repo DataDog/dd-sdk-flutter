@@ -86,7 +86,7 @@ class ExposureLogger {
     }
 
     final cacheKey = _ExposureCacheKey(
-      targetingKey: evaluationContext.targetingKey ?? '',
+      targetingKey: evaluationContext.targetingKey,
       flagKey: flagKey,
     );
     final cacheValue = _ExposureCacheValue.of(assignment);
@@ -228,7 +228,7 @@ class ExposureLogger {
     required FlagsEvaluationContext evaluationContext,
   }) {
     final subject = {
-      'id': evaluationContext.targetingKey ?? '',
+      'id': evaluationContext.targetingKey,
       'attributes': sanitizeJsonValue(evaluationContext.attributes),
     };
     final serialId = assignment.serialId;

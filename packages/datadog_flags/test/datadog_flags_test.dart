@@ -1080,7 +1080,7 @@ void main() {
     expect(evaluation['error'], {
       'message': FlagEvaluationError.providerNotReady.code,
     });
-    expect(evaluation.containsKey('targeting_key'), isFalse);
+    expect(evaluation['targeting_key'], '');
   });
 
   test('does not emit flag evaluations when tracking is disabled', () async {

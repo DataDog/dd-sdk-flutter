@@ -224,7 +224,7 @@ class FlagsRepository {
     FlagsEvaluationContext installed,
     FlagsEvaluationContext requested,
   ) =>
-      (installed.targetingKey ?? '') == (requested.targetingKey ?? '') &&
+      installed.targetingKey == requested.targetingKey &&
       (!requested.strictContextSwitching ||
           targetingContextsMatch(installed, requested));
 

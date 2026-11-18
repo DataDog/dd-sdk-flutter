@@ -211,6 +211,25 @@ void main() {
     );
   });
 
+  for (final (name, context) in [
+    ('an empty context', FlagsEvaluationContext.empty),
+    ('an empty key', const FlagsEvaluationContext(targetingKey: '')),
+  ]) {
+    test('snapshot stored without a targeting key matches $name', () async {
+      final h = await Harness.create(
+        storedContext: {'attributes': <String, Object?>{}},
+      );
+      final pending = h.client.initialize(context);
+      await h.started.future;
+      expect(
+        h.client.getBooleanDetails(key: 'flag', defaultValue: false).reason,
+        'CACHED',
+      );
+      h.response.complete(http.Response('{}', 500));
+      await pending;
+    });
+  }
+
   test('mismatched context never installs stored assignments', () async {
     final h = await Harness.create();
     final pending = h.client.initialize(
@@ -236,7 +255,10 @@ class Harness {
   void Function()? onDate;
   DatadogFlagsClient get client => sdk.sharedClient();
 
-  static Future<Harness> create({String reason = 'TARGETING_MATCH'}) async {
+  static Future<Harness> create({
+    String reason = 'TARGETING_MATCH',
+    Map<String, Object?>? storedContext,
+  }) async {
     final h = Harness();
     h.store.data = FlagsData.fromJson({
       'scope': flagsDataScope(
@@ -246,7 +268,7 @@ class Harness {
           site: DatadogFlagsSite.us1,
         ),
       ),
-      'context': context.toJson(),
+      'context': storedContext ?? context.toJson(),
       'date': '2026-01-01T00:00:00.000Z',
       'flags': {
         'flag': {

@@ -115,6 +115,7 @@ void main() {
     bool trackEvaluations = true,
     DateTime Function() dateProvider = DateTime.now,
     ExposureHook? hook,
+    EvaluationContext? context,
   }) async {
     final provider = DatadogProvider.fromConfiguration(
       DatadogFlagsConfiguration(
@@ -126,7 +127,11 @@ void main() {
       ),
     );
     await api.setEvaluationContextAndWait(
-      EvaluationContext(targetingKey: 'user-1', attributes: {'plan': 'pro'}),
+      context ??
+          EvaluationContext(
+            targetingKey: 'user-1',
+            attributes: {'plan': 'pro'},
+          ),
     );
     await api.setProviderAndWait(provider);
     api.addHooks([hook ?? ExposureHook(evaluations.add)]);
@@ -277,6 +282,19 @@ void main() {
     expect(evaluation.isCacheHit, isFalse);
     expect(evaluation.shouldSend, isTrue);
   });
+
+  for (final key in [null, '']) {
+    test('reports the targeting key ${key == null ? 'null' : '""'} '
+        'as given', () async {
+      final (client, _) = await start(
+        context: EvaluationContext(targetingKey: key),
+      );
+
+      client.getBooleanValue('flag', false);
+
+      expect(evaluations.single.targetingKey, key);
+    });
+  }
 
   test('reports a repeat as a cache hit and sends it once', () async {
     final (client, _) = await start();

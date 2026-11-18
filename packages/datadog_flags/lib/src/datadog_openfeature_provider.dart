@@ -134,8 +134,7 @@ final class DatadogProvider
         retained != null &&
         retainedContext != null &&
         !_requiresFreshAssignments &&
-        (retainedContext.targetingKey ?? '') ==
-            (requested.targetingKey ?? '') &&
+        retainedContext.targetingKey == requested.targetingKey &&
         (!requested.strictContextSwitching ||
             targetingContextsMatch(retainedContext, requested))) {
       _activeRuntime = retained;
@@ -144,7 +143,7 @@ final class DatadogProvider
     final active = _activeRuntime;
     final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
     if (active != null &&
-        ((newContext.targetingKey ?? '') != activeKey ||
+        (requested.targetingKey != activeKey ||
             (requested.strictContextSwitching &&
                 !targetingContextsMatch(
                   active.client.evaluationContext ??
@@ -155,7 +154,7 @@ final class DatadogProvider
     }
     if (_activeRuntime ?? _telemetrySource case final previous?
         when (previous.client.evaluationContext?.targetingKey ?? '') !=
-            (requested.targetingKey ?? '')) {
+            requested.targetingKey) {
       previous.client.cancelPendingLoad();
     }
     _events.add(
