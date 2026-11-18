@@ -146,7 +146,7 @@ stages:
   extends: .infra-retry
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/ci-platform-machine-images/tart-vm:dd-sdk-flutter-sequoia-latest
   tags:
-    - macos:tart
+    - macos:tart-experimental
 
 .android-emulator-runner:
   extends: .infra-retry
