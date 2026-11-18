@@ -77,6 +77,9 @@ class ModelResolver {
     if (node.has('enum')) {
       return NamedType(_enum(node, owner: owner, property: property));
     }
+    if (node.has('oneOf')) {
+      return NamedType(_union(node, owner: owner, property: property));
+    }
 
     switch (node.json['type']) {
       case 'object':
@@ -104,7 +107,7 @@ class ModelResolver {
     }
   }
 
-  static const _notSupportedYet = ['oneOf', 'anyOf', 'not'];
+  static const _notSupportedYet = ['anyOf', 'not'];
 
   /// Follows `$ref`s and `allOf: [{$ref}]` wrappers to the schema that
   /// defines the type.
@@ -192,6 +195,9 @@ class ModelResolver {
   /// parts, merged in order: parts first, then the schema's own properties.
   _Object _flatten(SchemaNode schema) {
     final node = loader.deref(schema);
+    if (node.has('oneOf')) {
+      throw SchemaException('A "oneOf" cannot be merged into an object', node);
+    }
     final result = _Object();
     if (node.has('allOf')) {
       for (final part in node.children('allOf')) {
@@ -263,6 +269,92 @@ class ModelResolver {
     );
     _definitions[node.location] = definition;
     return definition;
+  }
+
+  // MARK: - Unions
+
+  /// One of several object schemas (`oneOf`), e.g. the wireframe kinds.
+  UnionDefinition _union(
+    SchemaNode node, {
+    required String owner,
+    required String property,
+  }) {
+    if (_definitions[node.location] case final UnionDefinition existing) {
+      return existing;
+    }
+    if (node.has('properties') || node.has('allOf')) {
+      throw SchemaException(
+        'A "oneOf" cannot be combined with "properties" or "allOf"',
+        node,
+      );
+    }
+    final parts = node.children('oneOf');
+    if (parts.isEmpty) {
+      throw SchemaException('A "oneOf" needs at least one schema', node);
+    }
+
+    final union = UnionDefinition(
+      name: _typeName(node, owner: owner, property: property),
+      location: node.location,
+      description: node.description,
+    );
+    // Registered before its variants are resolved, so that a variant that
+    // uses the union finds this definition instead of starting over.
+    _definitions[node.location] = union;
+
+    final variants = [for (final part in parts) _variant(part, union)];
+    union.discriminatorKey = _discriminator(variants, node);
+    for (final variant in variants) {
+      if (variant.constField(union.discriminatorKey) case Field(
+        constValue: final Object value,
+      )) {
+        union.variants[value] = variant;
+        variant.unions.add(union);
+      }
+    }
+    return union;
+  }
+
+  /// The class of a `oneOf` part, which must be a titled object schema.
+  ClassDefinition _variant(SchemaNode part, UnionDefinition union) {
+    final node = _unwrap(part);
+    if (node.title == null) {
+      throw SchemaException('A "oneOf" variant needs a "title"', node);
+    }
+    if (_typeOf(node, owner: union.name, property: '') case NamedType(
+      definition: final ClassDefinition variant,
+    )) {
+      return variant;
+    }
+    throw SchemaException('A "oneOf" variant must be an object schema', node);
+  }
+
+  /// The key of the property that tells the [variants] apart: the only
+  /// `const` property every variant has, with a different value in each.
+  String _discriminator(List<ClassDefinition> variants, SchemaNode node) {
+    final candidates = [
+      for (final field in variants.first.fields)
+        if (field.isConst &&
+            {
+              for (final variant in variants)
+                variant.constField(field.jsonKey)?.constValue,
+            }.nonNulls.length == variants.length
+          )
+            field.jsonKey,
+    ];
+    return switch (candidates) {
+      [final key] => key,
+      [] => throw SchemaException(
+        'Cannot tell the "oneOf" variants apart: no "const" property has a '
+        'different value in each of them',
+        node,
+      ),
+      _ => throw SchemaException(
+        'Cannot tell the "oneOf" variants apart: several "const" properties '
+        'could (${candidates.join(', ')})',
+        node,
+      ),
+    };
   }
 
   // MARK: - Naming

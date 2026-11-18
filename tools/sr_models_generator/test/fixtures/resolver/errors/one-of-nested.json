@@ -1,0 +1,36 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/inner"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "inner": {
+      "title": "Inner",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/a"
+        }
+      ]
+    },
+    "a": {
+      "title": "A",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "a"
+        }
+      }
+    }
+  }
+}
