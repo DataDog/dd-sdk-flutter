@@ -24,7 +24,7 @@ class NamingOptions {
 /// Turns JSON schemas into the [Definition]s to generate.
 ///
 /// Starting from a root schema, every schema it uses is visited once.
-/// 
+///
 /// The same schema location always gives the same definition, however
 /// many times it is referenced. Validation-only keywords (`pattern`,
 /// `minimum`, `minItems`, `readOnly`, ...) are ignored; anything else the
@@ -68,6 +68,15 @@ class ModelResolver {
         throw SchemaException('"$keyword" is not supported yet', node);
       }
     }
+    if (node.has('const')) {
+      throw SchemaException(
+        '"const" is only supported on object properties',
+        node,
+      );
+    }
+    if (node.has('enum')) {
+      return NamedType(_enum(node, owner: owner, property: property));
+    }
 
     switch (node.json['type']) {
       case 'object':
@@ -95,7 +104,7 @@ class ModelResolver {
     }
   }
 
-  static const _notSupportedYet = ['enum', 'const', 'oneOf', 'anyOf', 'not'];
+  static const _notSupportedYet = ['oneOf', 'anyOf', 'not'];
 
   /// Follows `$ref`s and `allOf: [{$ref}]` wrappers to the schema that
   /// defines the type.
@@ -124,8 +133,9 @@ class ModelResolver {
     required String owner,
     required String property,
   }) {
-    final existing = _definitions[node.location];
-    if (existing != null) return existing as ClassDefinition;
+    if (_definitions[node.location] case final ClassDefinition existing) {
+      return existing;
+    }
 
     final definition = ClassDefinition(
       name: _typeName(node, owner: owner, property: property),
@@ -139,20 +149,44 @@ class ModelResolver {
     final object = _flatten(node);
     for (final MapEntry(key: key, value: schema) in object.properties.entries) {
       final target = _unwrap(schema);
+      final isRequired = object.required.contains(key);
+      final description =
+          schema.description ??
+          (target.title == null ? target.description : null);
+
+      final isConst = target.has('const');
+      if (isConst && !isRequired) {
+        throw SchemaException('A "const" property must be required', target);
+      }
+
       definition.fields.add(
         Field(
           jsonKey: key,
           dartName: fieldName(key),
-          type: _typeOf(schema, owner: definition.name, property: key),
-          isRequired: object.required.contains(key),
-          description:
-              schema.description ??
-              (target.title == null ? target.description : null),
+          type: isConst
+              ? _constType(target)
+              : _typeOf(schema, owner: definition.name, property: key),
+          isRequired: isRequired,
+          description: description,
+          constValue: target.json['const'],
         ),
       );
     }
     return definition;
   }
+
+  /// The type of a `const` property: a string or an integer, matching its
+  /// `type`, e.g. `{"type": "string", "const": "shape"}`.
+  PrimitiveType _constType(SchemaNode node) =>
+      switch ((node.json['type'], node.json['const'])) {
+        ('string', String()) => const PrimitiveType(Primitive.string),
+        ('integer', int()) => const PrimitiveType(Primitive.integer),
+        _ => throw SchemaException(
+          'Unsupported "const": only string and integer values, with a '
+          'matching "type", are supported',
+          node,
+        ),
+      };
 
   /// The properties and required keys of [schema] and of all its `allOf`
   /// parts, merged in order: parts first, then the schema's own properties.
@@ -181,6 +215,54 @@ class ModelResolver {
       throw SchemaException('"required" must be a list of strings', node);
     }
     return required.cast<String>().toSet();
+  }
+
+  // MARK: - Enums
+
+  /// A string enum, e.g. `{"type": "string", "enum": ["clip", "tail"]}`.
+  EnumDefinition _enum(
+    SchemaNode node, {
+    required String owner,
+    required String property,
+  }) {
+    if (_definitions[node.location] case final EnumDefinition existing) {
+      return existing;
+    }
+    if (node.json['type'] != 'string') {
+      throw SchemaException('Only string enums are supported', node);
+    }
+    final values = node.json['enum'];
+    if (values is! List<Object?> ||
+        values.isEmpty ||
+        values.any((value) => value is! String)) {
+      throw SchemaException('"enum" must be a non-empty list of strings', node);
+    }
+
+    final cases = <String, String>{};
+    for (final value in values.cast<String>()) {
+      if (cases.containsKey(value)) {
+        throw SchemaException('Duplicate enum value "$value"', node);
+      }
+      final caseName = enumCaseName(value);
+      for (final MapEntry(key: other, value: otherCase) in cases.entries) {
+        if (otherCase == caseName) {
+          throw SchemaException(
+            'Enum values "$other" and "$value" both become "$caseName"',
+            node,
+          );
+        }
+      }
+      cases[value] = caseName;
+    }
+
+    final definition = EnumDefinition(
+      name: _typeName(node, owner: owner, property: property),
+      location: node.location,
+      description: node.description,
+      values: cases,
+    );
+    _definitions[node.location] = definition;
+    return definition;
   }
 
   // MARK: - Naming

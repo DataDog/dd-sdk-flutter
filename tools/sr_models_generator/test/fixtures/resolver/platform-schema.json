@@ -1,0 +1,6 @@
+{
+  "title": "MobilePlatform",
+  "type": "string",
+  "description": "The platform.",
+  "enum": ["ios", "react-native", "kotlin-multiplatform", "values"]
+}
