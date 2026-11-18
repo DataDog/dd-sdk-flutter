@@ -398,6 +398,7 @@ class _DatadogTrackingHttpRequest implements HttpClientRequest {
             headerType,
             newHeaders,
             contextInjection: rum.contextInjectionSetting,
+            propagateBaggage: rum.propagateTraceBaggageSetting,
           );
         }
         // Because of the custom `HttpHeaders` type, we have to manually merge these headers.

@@ -118,6 +118,56 @@ void main() {
     expect(attributes['_dd.rule_psr'], 0.3);
   });
 
+  for (final headerType in [
+    TracingHeaderType.datadog,
+    TracingHeaderType.tracecontext,
+  ]) {
+    test('$headerType headers omit baggage when baggage is disabled', () {
+      when(() => mockPlatform.getContext()).thenReturn(
+        DatadogContext(
+          sessionId: randomString(),
+          accountId: randomString(),
+          userId: randomString(),
+        ),
+      );
+      final context = generateTracingContext(mockSdk, mockRum);
+
+      final headers = <String, String>{};
+      injectTracingHeaders(
+        context,
+        headerType,
+        headers,
+        propagateBaggage: false,
+      );
+
+      expect(headers, isNot(contains('baggage')));
+    });
+
+    test(
+      '$headerType headers leave existing baggage unchanged when disabled',
+      () {
+        when(() => mockPlatform.getContext()).thenReturn(
+          DatadogContext(
+            sessionId: randomString(),
+            accountId: randomString(),
+            userId: randomString(),
+          ),
+        );
+        final context = generateTracingContext(mockSdk, mockRum);
+
+        final headers = <String, String>{'baggage': 'key=value'};
+        injectTracingHeaders(
+          context,
+          headerType,
+          headers,
+          propagateBaggage: false,
+        );
+
+        expect(headers['baggage'], 'key=value');
+      },
+    );
+  }
+
   // The TraceContextInjection value shouldn't matter in the sampled cases, so
   // make sure all tests work the same way for all TraceContextInjection options
   for (final contextInjection in TraceContextInjection.values) {

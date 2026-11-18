@@ -54,6 +54,7 @@ class CapturedConfiguration {
   final bool rumEnabled;
   final double? traceSampleRate;
   final TraceContextInjection? traceContextInjection;
+  final bool? propagateTraceBaggage;
   final ResourceHeadersExtractor? resourceHeadersExtractor;
   final Map<String, Set<TracingHeaderType>> firstPartyHosts;
   final List<DatadogPluginConfiguration> configuredPlugins;
@@ -63,6 +64,7 @@ class CapturedConfiguration {
     required this.rumEnabled,
     required this.traceSampleRate,
     required this.traceContextInjection,
+    required this.propagateTraceBaggage,
     required this.resourceHeadersExtractor,
     required this.firstPartyHosts,
     required this.configuredPlugins,

@@ -45,7 +45,7 @@ class DdRumWeb extends DdRumPlatform {
     DD_RUM?.init(
       _RumInitOptions(
         applicationId: rumConfiguration.applicationId,
-        propagateTraceBaggage: true,
+        propagateTraceBaggage: rumConfiguration.propagateTraceBaggage,
         clientToken: configuration.clientToken,
         site: siteStringForSite(configuration.site),
         sessionSampleRate: rumConfiguration.sessionSamplingRate,

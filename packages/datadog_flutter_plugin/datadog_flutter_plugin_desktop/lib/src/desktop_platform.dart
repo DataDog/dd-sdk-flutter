@@ -303,6 +303,8 @@ class DatadogDesktopPlatform extends DatadogSdkPlatform {
       traceSampleRate: configuration.rumConfiguration?.traceSampleRate,
       traceContextInjection:
           configuration.rumConfiguration?.traceContextInjection,
+      propagateTraceBaggage:
+          configuration.rumConfiguration?.propagateTraceBaggage,
       resourceHeadersExtractor:
           configuration.rumConfiguration?.trackResourceHeaders,
       firstPartyHosts: configuration.firstPartyHostsWithTracingHeaders,
