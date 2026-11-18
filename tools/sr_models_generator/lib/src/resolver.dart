@@ -1,0 +1,214 @@
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2026-Present Datadog, Inc.
+
+import 'model.dart';
+import 'naming.dart';
+import 'schema_loader.dart';
+import 'schema_node.dart';
+
+/// How generated types are named.
+class NamingOptions {
+  const NamingOptions({
+    this.typePrefix = 'SR',
+    this.stripFromTitles = const ['Mobile'],
+  });
+
+  /// Prefix of every generated type name.
+  final String typePrefix;
+
+  /// Words removed from schema titles: `MobileSegment` -> `SRSegment`.
+  final List<String> stripFromTitles;
+}
+
+/// Turns JSON schemas into the [Definition]s to generate.
+///
+/// Starting from a root schema, every schema it uses is visited once.
+/// 
+/// The same schema location always gives the same definition, however
+/// many times it is referenced. Validation-only keywords (`pattern`,
+/// `minimum`, `minItems`, `readOnly`, ...) are ignored; anything else the
+/// resolver does not support makes it throw a [SchemaException].
+class ModelResolver {
+  ModelResolver(this.loader, {this.naming = const NamingOptions()});
+
+  final SchemaLoader loader;
+  final NamingOptions naming;
+
+  /// Definitions by schema location.
+  final _definitions = <String, Definition>{};
+
+  /// Every definition found so far, sorted by name.
+  List<Definition> get definitions =>
+      _definitions.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+
+  /// Resolves the schema in [file] (relative to the loader root) and every
+  /// schema it uses. Returns the type of the root schema.
+  TypeRef resolveRoot(String file) {
+    final root = _unwrap(loader.load(file));
+    if (root.title == null) {
+      throw SchemaException('The root schema needs a "title"', root);
+    }
+    return _typeOf(root, owner: '', property: '');
+  }
+
+  /// The type of [schema].
+  ///
+  /// [owner] and [property] tell where the schema is used (e.g. owner
+  /// `SRMetaRecord`, property `data`); they name schemas without a title.
+  TypeRef _typeOf(
+    SchemaNode schema, {
+    required String owner,
+    required String property,
+  }) {
+    final node = _unwrap(schema);
+
+    for (final keyword in _notSupportedYet) {
+      if (node.has(keyword)) {
+        throw SchemaException('"$keyword" is not supported yet', node);
+      }
+    }
+
+    switch (node.json['type']) {
+      case 'object':
+        return NamedType(_class(node, owner: owner, property: property));
+      case 'array':
+        if (!node.has('items')) {
+          throw SchemaException('An array needs "items"', node);
+        }
+        return ListType(
+          _typeOf(node.child('items'), owner: owner, property: property),
+        );
+      case 'integer':
+        return const PrimitiveType(Primitive.integer);
+      case 'number':
+        return const PrimitiveType(Primitive.number);
+      case 'string':
+        return const PrimitiveType(Primitive.string);
+      case 'boolean':
+        return const PrimitiveType(Primitive.boolean);
+      // Some objects only declare their parts, without `"type": "object"`.
+      case null when node.has('properties') || node.has('allOf'):
+        return NamedType(_class(node, owner: owner, property: property));
+      case final type:
+        throw SchemaException('Unsupported "type": $type', node);
+    }
+  }
+
+  static const _notSupportedYet = ['enum', 'const', 'oneOf', 'anyOf', 'not'];
+
+  /// Follows `$ref`s and `allOf: [{$ref}]` wrappers to the schema that
+  /// defines the type.
+  SchemaNode _unwrap(SchemaNode schema) {
+    var node = loader.deref(schema);
+    while (_isRefWrapper(node)) {
+      node = loader.deref(node.children('allOf').single);
+    }
+    return node;
+  }
+
+  bool _isRefWrapper(SchemaNode node) {
+    final allOf = node.json['allOf'];
+    return allOf is List<Object?> &&
+        allOf.length == 1 &&
+        allOf.single is JsonMap &&
+        (allOf.single as JsonMap).containsKey(r'$ref') &&
+        !node.has('properties') &&
+        !node.has('required');
+  }
+
+  // MARK: - Classes
+
+  ClassDefinition _class(
+    SchemaNode node, {
+    required String owner,
+    required String property,
+  }) {
+    final existing = _definitions[node.location];
+    if (existing != null) return existing as ClassDefinition;
+
+    final definition = ClassDefinition(
+      name: _typeName(node, owner: owner, property: property),
+      location: node.location,
+      description: node.description,
+    );
+    // Registered before its fields are resolved, so that a schema that uses
+    // itself finds this definition instead of starting over.
+    _definitions[node.location] = definition;
+
+    final object = _flatten(node);
+    for (final MapEntry(key: key, value: schema) in object.properties.entries) {
+      final target = _unwrap(schema);
+      definition.fields.add(
+        Field(
+          jsonKey: key,
+          dartName: fieldName(key),
+          type: _typeOf(schema, owner: definition.name, property: key),
+          isRequired: object.required.contains(key),
+          description:
+              schema.description ??
+              (target.title == null ? target.description : null),
+        ),
+      );
+    }
+    return definition;
+  }
+
+  /// The properties and required keys of [schema] and of all its `allOf`
+  /// parts, merged in order: parts first, then the schema's own properties.
+  _Object _flatten(SchemaNode schema) {
+    final node = loader.deref(schema);
+    final result = _Object();
+    if (node.has('allOf')) {
+      for (final part in node.children('allOf')) {
+        result.merge(_flatten(part));
+      }
+    }
+    if (node.has('properties')) {
+      final properties = node.child('properties');
+      for (final key in properties.json.keys) {
+        result.properties[key] = properties.child(key);
+      }
+    }
+    result.required.addAll(_required(node));
+    return result;
+  }
+
+  Set<String> _required(SchemaNode node) {
+    final required = node.json['required'];
+    if (required == null) return const {};
+    if (required is! List<Object?> || required.any((key) => key is! String)) {
+      throw SchemaException('"required" must be a list of strings', node);
+    }
+    return required.cast<String>().toSet();
+  }
+
+  // MARK: - Naming
+
+  String _typeName(
+    SchemaNode node, {
+    required String owner,
+    required String property,
+  }) {
+    final title = node.title;
+    if (title == null) return '$owner${pascalCase(property)}';
+
+    var name = title;
+    for (final word in naming.stripFromTitles) {
+      name = name.replaceAll(word, '');
+    }
+    return '${naming.typePrefix}${pascalCase(name)}';
+  }
+}
+
+/// The merged properties of an object schema.
+class _Object {
+  /// Property name -> its schema, in declaration order.
+  final properties = <String, SchemaNode>{};
+  final required = <String>{};
+
+  void merge(_Object other) {
+    properties.addAll(other.properties);
+    required.addAll(other.required);
+  }
+}

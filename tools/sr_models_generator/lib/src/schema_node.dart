@@ -17,6 +17,21 @@ class SchemaNode {
 
   String get location => pointer.isEmpty ? file : '$file#$pointer';
 
+  /// The schema `title`, e.g. `ShapeWireframe`; generated types are named
+  /// after it.
+  String? get title => _string('title');
+
+  /// The schema `description`; generated documentation comes from it.
+  String? get description => _string('description');
+
+  String? _string(String key) {
+    final value = json[key];
+    if (value != null && value is! String) {
+      throw SchemaException('"$key" must be a string', this);
+    }
+    return value as String?;
+  }
+
   bool has(String key) => json.containsKey(key);
 
   /// The schema object under [key] (e.g. `child('items')`).

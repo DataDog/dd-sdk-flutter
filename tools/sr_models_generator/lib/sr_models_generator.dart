@@ -7,6 +7,7 @@ library;
 
 export 'src/config.dart';
 export 'src/model.dart';
+export 'src/resolver.dart';
 export 'src/schema_loader.dart';
 export 'src/schema_node.dart';
 export 'src/schema_source.dart';
