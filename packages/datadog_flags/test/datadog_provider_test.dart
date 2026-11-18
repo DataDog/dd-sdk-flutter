@@ -25,6 +25,13 @@ void main() {
     api = createIsolatedOpenFeatureAPI();
   });
 
+  setUpAll(() {
+    registerFallbackValue(Uri.parse('https://example.com'));
+    registerFallbackValue(
+      http.Request('GET', Uri.parse('https://example.com')),
+    );
+  });
+
   tearDown(() => api.shutdown());
 
   for (final injected in [false, true]) {
@@ -43,10 +50,6 @@ void main() {
           }
           return _responseFor(request, _assignmentsResponse());
         });
-        registerFallbackValue(Uri.parse('https://example.com'));
-        registerFallbackValue(
-          http.Request('GET', Uri.parse('https://example.com')),
-        );
         when(() => transport.send(any())).thenAnswer(
           (invocation) => delegate.send(
             invocation.positionalArguments.single as http.BaseRequest,
@@ -147,7 +150,7 @@ void main() {
       're-initialization after '
       '${awaitShutdown ? 'completed' : 'pending'} shutdown uses fresh owned resources',
       () async {
-        final created = <_CountingClient>[];
+        final created = <_MockHttpClient>[];
         final heldUpload = Completer<http.Response>();
         var evaluationUploads = 0;
         final delegate = MockClient((request) async {
@@ -184,8 +187,8 @@ void main() {
               heldUpload.complete(http.Response('{}', 202));
             }
             await shuttingDown;
-            expect(created[0].closeCount, 1);
-            expect(created[1].closeCount, 0);
+            verify(() => created[0].close()).called(1);
+            verifyNever(() => created[1].close());
             expect(
               provider
                   .resolveBooleanValue(
@@ -197,17 +200,43 @@ void main() {
               isTrue,
             );
             await provider.shutdown();
-            expect(created[0].closeCount, 1);
-            expect(created[1].closeCount, 1);
-            expect(
-              created[1].paths.where((p) => p == '/api/v2/flagevaluation'),
-              hasLength(1),
-            );
+            verifyNever(() => created[0].close());
+            verify(() => created[1].close()).called(1);
+            verify(
+              () => created[1].post(
+                any(
+                  that: predicate<Uri>(
+                    (url) => url.path == '/api/v2/flagevaluation',
+                  ),
+                ),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ),
+            ).called(1);
           },
           () {
-            final client = _CountingClient(delegate);
-            created.add(client);
-            return client;
+            final transport = _MockHttpClient();
+            when(() => transport.send(any())).thenAnswer(
+              (invocation) => delegate.send(
+                invocation.positionalArguments.single as http.BaseRequest,
+              ),
+            );
+            when(
+              () => transport.post(
+                any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ),
+            ).thenAnswer(
+              (invocation) => delegate.post(
+                invocation.positionalArguments.single as Uri,
+                headers:
+                    invocation.namedArguments[#headers] as Map<String, String>?,
+                body: invocation.namedArguments[#body],
+              ),
+            );
+            created.add(transport);
+            return transport;
           },
         );
       },
@@ -219,7 +248,7 @@ void main() {
         'second call after upload: $afterUpload', () async {
       final upload = Completer<http.Response>();
       final uploadStarted = Completer<void>();
-      final created = <_CountingClient>[];
+      final created = <_MockHttpClient>[];
       final delegate = MockClient((request) async {
         if (request.url.path == '/api/v2/flagevaluation') {
           uploadStarted.complete();
@@ -252,33 +281,82 @@ void main() {
           await uploadStarted.future;
           await pumpEventQueue();
           expect(secondDone, isFalse);
-          expect(created.single.closeCount, 0);
+          verifyNever(() => created.single.close());
           upload.complete(http.Response('{}', 202));
           await Future.wait([first, second]);
-          expect(created.single.closeCount, 1);
+          verify(() => created.single.close()).called(1);
         },
         () {
-          final client = _CountingClient(delegate);
-          created.add(client);
-          return client;
+          final transport = _MockHttpClient();
+          when(() => transport.send(any())).thenAnswer(
+            (invocation) => delegate.send(
+              invocation.positionalArguments.single as http.BaseRequest,
+            ),
+          );
+          when(
+            () => transport.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (invocation) => delegate.post(
+              invocation.positionalArguments.single as Uri,
+              headers:
+                  invocation.namedArguments[#headers] as Map<String, String>?,
+              body: invocation.namedArguments[#body],
+            ),
+          );
+          created.add(transport);
+          return transport;
         },
       );
     });
   }
 
   test('retiring a context aborts its pending assignment fetch', () async {
-    final client = _AbortRecordingClient();
-    final provider = DatadogProvider.fromConfiguration(_configuration(client));
+    final transport = _MockHttpClient();
+    final abortTriggers = <String, Future<void>?>{};
+    when(() => transport.send(any())).thenAnswer((invocation) async {
+      final request = invocation.positionalArguments.single as http.BaseRequest;
+      final body = await request.finalize().bytesToString();
+      final key =
+          _subject(jsonDecode(body) as Map<String, Object?>)['targeting_key']
+              as String;
+      if (key == 'B') {
+        final trigger = request is http.Abortable ? request.abortTrigger : null;
+        abortTriggers[key] = trigger;
+        final response = Completer<http.StreamedResponse>();
+        unawaited(
+          trigger?.then(
+            (_) => response.completeError(
+              http.RequestAbortedException(request.url),
+            ),
+          ),
+        );
+        return response.future;
+      }
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(jsonEncode(_assignmentsResponse()))),
+        200,
+        request: request,
+      );
+    });
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(transport),
+    );
     await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'A'));
     await api.setProviderAndWait(provider);
-    client.hold.add('B');
     unawaited(
       api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
     );
-    await _waitUntil(() => client.pending.contains('B'));
+    await _waitUntil(() => abortTriggers.containsKey('B'));
     await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'C'));
-    await pumpEventQueue();
-    expect(client.aborted, ['B']);
+    expect(abortTriggers['B'], isNotNull);
+    await expectLater(
+      abortTriggers['B']!.timeout(const Duration(seconds: 1)),
+      completes,
+    );
     expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
   });
 
@@ -2568,58 +2646,3 @@ List<Map<String, Object?>> _evaluationEvents(http.Request request) {
 }
 
 class _MockHttpClient extends Mock implements http.Client {}
-
-final class _CountingClient extends http.BaseClient {
-  _CountingClient(this._inner);
-  final http.Client _inner;
-  final paths = <String>[];
-  var closeCount = 0;
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    if (closeCount > 0) {
-      return Future.error(
-        http.ClientException('Client is closed.', request.url),
-      );
-    }
-    paths.add(request.url.path);
-    return _inner.send(request);
-  }
-
-  @override
-  void close() => closeCount++;
-}
-
-/// Holds fetches for selected subjects until their abort trigger fires.
-final class _AbortRecordingClient extends http.BaseClient {
-  final hold = <String>{};
-  final pending = <String>{};
-  final aborted = <String>[];
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) async {
-    final body = await request.finalize().bytesToString();
-    final plain = http.Request(request.method, request.url)..body = body;
-    if (request.url.path == '/precompute-assignments') {
-      final key =
-          _subject(jsonDecode(body) as Map<String, Object?>)['targeting_key']
-              as String;
-      if (hold.contains(key)) {
-        pending.add(key);
-        final trigger = request is http.Abortable ? request.abortTrigger : null;
-        final result = Completer<http.StreamedResponse>();
-        trigger?.then((_) {
-          aborted.add(key);
-          result.completeError(http.RequestAbortedException(request.url));
-        });
-        return result.future;
-      }
-    }
-    final response = _responseFor(plain, _assignmentsResponse());
-    return http.StreamedResponse(
-      Stream.value(response.bodyBytes),
-      response.statusCode,
-      request: request,
-    );
-  }
-}
