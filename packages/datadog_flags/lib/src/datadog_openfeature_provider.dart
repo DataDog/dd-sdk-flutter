@@ -48,9 +48,6 @@ final class DatadogProvider
   /// OpenFeature flag metadata key containing the Datadog allocation key.
   static const allocationKeyMetadata = datadogAllocationKeyMetadata;
 
-  /// OpenFeature flag metadata key containing the Datadog assignment serial ID.
-  static const serialIdMetadata = datadogSerialIdMetadata;
-
   /// Metadata key containing the assignment logging policy.
   static const doLogMetadata = datadogDoLogMetadata;
 
@@ -141,8 +138,7 @@ final class DatadogProvider
         retained != null &&
         retainedContext != null &&
         !_requiresFreshAssignments &&
-        (retainedContext.targetingKey ?? '') ==
-            (requested.targetingKey ?? '') &&
+        retainedContext.targetingKey == requested.targetingKey &&
         (!requested.strictContextSwitching ||
             targetingContextsMatch(retainedContext, requested))) {
       _activeRuntime = retained;
@@ -151,7 +147,7 @@ final class DatadogProvider
     final active = _activeRuntime;
     final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
     if (active != null &&
-        ((newContext.targetingKey ?? '') != activeKey ||
+        (requested.targetingKey != activeKey ||
             (requested.strictContextSwitching &&
                 !targetingContextsMatch(
                   active.client.evaluationContext ??
@@ -162,7 +158,7 @@ final class DatadogProvider
     }
     if (_activeRuntime ?? _retainedRuntime case final previous?
         when (previous.client.evaluationContext?.targetingKey ?? '') !=
-            (requested.targetingKey ?? '')) {
+            requested.targetingKey) {
       previous.client.cancelPendingLoad();
     }
     _events.add(

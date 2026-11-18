@@ -33,7 +33,7 @@ final class PrecomputeRequest {
             sdkVersion: datadogFlagsSdkVersion,
           ),
           subject: PrecomputeRequestSubject(
-            targetingKey: evaluationContext.targetingKey ?? '',
+            targetingKey: evaluationContext.targetingKey,
             targetingAttributes: evaluationContext.targetingContext.attributes,
           ),
         ),

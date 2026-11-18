@@ -1501,7 +1501,7 @@ void main() {
     expect(details.reason, 'TARGETING_MATCH');
     expect(details.flagMetadata, {
       DatadogProvider.allocationKeyMetadata: 'allocation-a',
-      DatadogProvider.serialIdMetadata: 42,
+      '__dd_split_serial_id': 42,
       'doLog': true,
       'variationType': 'boolean',
       '__dd_allocation_key': 'allocation-a',
@@ -1652,7 +1652,7 @@ void main() {
     expect(boolean.reason, 'TARGETING_MATCH');
     expect(boolean.flagMetadata, {
       DatadogProvider.allocationKeyMetadata: 'allocation-a',
-      DatadogProvider.serialIdMetadata: 42,
+      '__dd_split_serial_id': 42,
       'doLog': true,
       'variationType': 'boolean',
       '__dd_allocation_key': 'allocation-a',

@@ -62,11 +62,11 @@ scalar assignment returns the default with `ErrorCode.typeMismatch`. Failed
 evaluations do not emit exposures. Successful structure values are immutable.
 
 Details include the variant, reason, error code, and provider metadata.
-The provider supplies `allocationKey`, `doLog`, `variationType`,
-`__dd_allocation_key`, `__dd_do_log`, and an optional `__dd_split_serial_id`.
-The provider name is `datadog`. The allocation, logging, and serial keys are
-available through `DatadogProvider.allocationKeyMetadata`, `doLogMetadata`,
-and `serialIdMetadata`.
+The provider supplies `allocationKey`, `doLog`, and `variationType`, available
+through `DatadogProvider.allocationKeyMetadata` and `doLogMetadata`. The
+provider name is `datadog`. Metadata keys that start with `__dd_` are internal
+and can change, except the split feature keys that start with `__dd_feature.`
+(see [Exposures in your own data store](#exposures-in-your-own-data-store)).
 
 ## Identity, refresh, and shutdown
 
