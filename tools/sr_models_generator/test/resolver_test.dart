@@ -25,6 +25,8 @@ class Resolved {
 
   ClassDefinition operator [](String name) => _byName[name]! as ClassDefinition;
 
+  EnumDefinition enumeration(String name) => _byName[name]! as EnumDefinition;
+
   NamedType named(String name) => NamedType(_byName[name]!);
 }
 
@@ -205,10 +207,122 @@ void main() {
     expect(resolved.root, resolved.named('SRPoint'));
   });
 
+  group('enums', () {
+    late Resolved resolved;
+    setUp(() => resolved = resolve('text-schema.json'));
+
+    test('a string enum becomes an enum definition', () {
+      final truncationMode = resolved['SRText'].field('truncation_mode');
+      expect(truncationMode.type, resolved.named('SRTextTruncationMode'));
+      expect(truncationMode.isRequired, isTrue);
+      expect(truncationMode.description, 'How text is truncated.');
+      expect(resolved.enumeration('SRTextTruncationMode').values, {
+        'clip': 'clip',
+        'head': 'head',
+        'tail': 'tail',
+        'middle': 'middle',
+      });
+    });
+
+    test('maps values to Dart case names, in schema order', () {
+      final platform = resolved.enumeration('SRPlatform');
+      expect(platform.values, {
+        'ios': 'ios',
+        'react-native': 'reactNative',
+        'kotlin-multiplatform': 'kotlinMultiplatform',
+        'values': 'valuesValue',
+      });
+      expect(platform.description, 'The platform.');
+      expect(platform.location, 'platform-schema.json');
+    });
+
+    test('a titled enum referenced twice is one definition', () {
+      final text = resolved['SRText'];
+      expect(text.field('platform').type, resolved.named('SRPlatform'));
+      expect(
+        text.field('fallback_platform').type,
+        resolved.named('SRPlatform'),
+      );
+      expect(text.field('fallback_platform').isRequired, isFalse);
+    });
+
+    test('enum array items are named after the array property', () {
+      expect(
+        resolved['SRText'].field('alignments').type,
+        ListType(resolved.named('SRTextAlignments')),
+      );
+      expect(resolved.enumeration('SRTextAlignments').values.keys, [
+        'left',
+        'right',
+      ]);
+    });
+
+    test('lists every enum among the definitions', () {
+      expect(resolved.names, [
+        'SRPlatform',
+        'SRText',
+        'SRTextAlignments',
+        'SRTextTruncationMode',
+      ]);
+    });
+  });
+
+  group('const', () {
+    late Resolved resolved;
+    setUp(() => resolved = resolve('text-schema.json'));
+
+    test('a string const is a required string field with a fixed value', () {
+      final type = resolved['SRText'].field('type');
+      expect(type.type, string);
+      expect(type.isRequired, isTrue);
+      expect(type.isConst, isTrue);
+      expect(type.constValue, 'text');
+      expect(type.description, 'The kind of element.');
+    });
+
+    test('an integer const keeps its value, including 0', () {
+      final version = resolved['SRText'].field('version');
+      expect(version.type, integer);
+      expect(version.constValue, 0);
+      expect(version.isConst, isTrue);
+    });
+
+    test('other fields are not const', () {
+      expect(resolved['SRText'].field('platform').isConst, isFalse);
+    });
+  });
+
   group('fails on schemas it does not support', () {
     Matcher throwsSchemaException(String message) => throwsA(
       isA<SchemaException>().having((e) => e.message, 'message', message),
     );
+
+    final invalidEnumsAndConsts = {
+      'enum-not-string-type.json': 'Only string enums are supported',
+      'enum-non-string-values.json':
+          '"enum" must be a non-empty list of strings',
+      'enum-empty.json': '"enum" must be a non-empty list of strings',
+      'enum-not-a-list.json': '"enum" must be a non-empty list of strings',
+      'enum-duplicate.json': 'Duplicate enum value "a"',
+      'enum-case-collision.json':
+          'Enum values "react-native" and "react_native" both become '
+          '"reactNative"',
+      'const-optional.json': 'A "const" property must be required',
+      'const-type-mismatch.json':
+          'Unsupported "const": only string and integer values, with a '
+          'matching "type", are supported',
+      'const-boolean.json':
+          'Unsupported "const": only string and integer values, with a '
+          'matching "type", are supported',
+      'const-outside-property.json':
+          '"const" is only supported on object properties',
+    };
+    for (final MapEntry(key: file, value: message)
+        in invalidEnumsAndConsts.entries) {
+      test(file, () {
+        expect(() => resolve('errors/$file'), throwsSchemaException(message));
+      });
+    }
 
     test('a root schema without a title', () {
       expect(
@@ -246,7 +360,7 @@ void main() {
       );
     });
 
-    for (final keyword in ['enum', 'const', 'oneOf', 'anyOf', 'not']) {
+    for (final keyword in ['oneOf', 'anyOf', 'not']) {
       test('"$keyword"', () {
         expect(
           () => resolve('errors/keyword-$keyword.json'),
