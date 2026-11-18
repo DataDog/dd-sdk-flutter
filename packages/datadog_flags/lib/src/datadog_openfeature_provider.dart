@@ -42,9 +42,6 @@ final class DatadogProvider
   /// OpenFeature flag metadata key containing the Datadog allocation key.
   static const allocationKeyMetadata = datadogAllocationKeyMetadata;
 
-  /// OpenFeature flag metadata key containing the Datadog assignment serial ID.
-  static const serialIdMetadata = datadogSerialIdMetadata;
-
   /// Metadata key containing the assignment logging policy.
   static const doLogMetadata = datadogDoLogMetadata;
 
