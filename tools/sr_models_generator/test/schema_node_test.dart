@@ -53,6 +53,21 @@ void main() {
     expect(unescapePointerSegment('~01'), '~1');
   });
 
+  test('title and description are read when present', () {
+    expect(root.title, 'Thing');
+    expect(root.description, isNull);
+    expect(
+      SchemaNode('x.json', '', {'description': 'Some thing.'}).description,
+      'Some thing.',
+    );
+  });
+
+  test('title and description must be strings', () {
+    final node = SchemaNode('x.json', '', {'title': 1, 'description': true});
+    expect(() => node.title, throwsA(isA<SchemaException>()));
+    expect(() => node.description, throwsA(isA<SchemaException>()));
+  });
+
   test('SchemaException mentions the location when known', () {
     expect(SchemaException('Boom').toString(), 'Boom');
     expect(

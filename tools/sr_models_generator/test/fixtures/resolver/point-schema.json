@@ -1,0 +1,10 @@
+{
+  "title": "Point",
+  "type": "object",
+  "description": "A point.",
+  "required": ["x", "y"],
+  "properties": {
+    "x": { "type": "integer" },
+    "y": { "type": "integer" }
+  }
+}

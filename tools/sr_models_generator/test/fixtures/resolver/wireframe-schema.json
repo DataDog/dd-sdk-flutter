@@ -1,0 +1,15 @@
+{
+  "title": "MobileShapeWireframe",
+  "type": "object",
+  "description": "A shape wireframe.",
+  "allOf": [
+    { "$ref": "_common-shape-schema.json" },
+    {
+      "required": ["type", "border"],
+      "properties": {
+        "type": { "type": "string" },
+        "border": { "type": "string", "description": "Redeclared: last declaration wins." }
+      }
+    }
+  ]
+}

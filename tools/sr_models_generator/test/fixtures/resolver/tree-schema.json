@@ -1,0 +1,7 @@
+{
+  "title": "Tree",
+  "type": "object",
+  "properties": {
+    "children": { "type": "array", "items": { "$ref": "tree-schema.json" } }
+  }
+}

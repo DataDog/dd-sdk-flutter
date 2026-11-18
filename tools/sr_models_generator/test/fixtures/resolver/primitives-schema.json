@@ -1,0 +1,12 @@
+{
+  "title": "Primitives",
+  "type": "object",
+  "description": "One property of each primitive type.",
+  "required": ["count", "text"],
+  "properties": {
+    "count": { "type": "integer", "description": "An integer.", "readOnly": true },
+    "ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+    "text": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+    "is_visible": { "type": "boolean" }
+  }
+}
