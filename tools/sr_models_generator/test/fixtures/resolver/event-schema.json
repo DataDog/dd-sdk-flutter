@@ -1,0 +1,24 @@
+{
+  "title": "Event",
+  "oneOf": [{ "$ref": "#/definitions/tap" }, { "$ref": "#/definitions/scroll" }],
+  "definitions": {
+    "tap": {
+      "title": "TapEvent",
+      "type": "object",
+      "required": ["source", "x"],
+      "properties": {
+        "source": { "type": "integer", "const": 2 },
+        "x": { "type": "integer" }
+      }
+    },
+    "scroll": {
+      "title": "ScrollEvent",
+      "type": "object",
+      "required": ["source"],
+      "properties": {
+        "source": { "type": "integer", "const": 3 },
+        "delta": { "type": "number" }
+      }
+    }
+  }
+}

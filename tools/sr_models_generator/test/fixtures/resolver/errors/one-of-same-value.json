@@ -1,0 +1,44 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/a"
+        },
+        {
+          "$ref": "#/definitions/b"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "a": {
+      "title": "A",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "same"
+        }
+      }
+    },
+    "b": {
+      "title": "B",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "same"
+        }
+      }
+    }
+  }
+}

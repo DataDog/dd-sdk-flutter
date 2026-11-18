@@ -27,6 +27,8 @@ class Resolved {
 
   EnumDefinition enumeration(String name) => _byName[name]! as EnumDefinition;
 
+  UnionDefinition union(String name) => _byName[name]! as UnionDefinition;
+
   NamedType named(String name) => NamedType(_byName[name]!);
 }
 
@@ -292,6 +294,88 @@ void main() {
     });
   });
 
+  group('unions', () {
+    late Resolved resolved;
+    setUp(() => resolved = resolve('drawing-schema.json'));
+
+    test('a oneOf becomes a union of its variant classes', () {
+      final shape = resolved.union('SRShape');
+      expect(shape.description, 'A shape.');
+      expect(shape.location, 'shape-schema.json');
+      expect(shape.variants, {
+        'circle': resolved['SRCircle'],
+        'square': resolved['SRSquare'],
+      });
+    });
+
+    test(
+      'the discriminator is the const property with a value per variant',
+      () {
+        expect(resolved.union('SRShape').discriminatorKey, 'type');
+      },
+    );
+
+    test('integer discriminators keep their values', () {
+      final event = resolved.union('SREvent');
+      expect(event.discriminatorKey, 'source');
+      expect(event.variants, {
+        2: resolved['SRTapEvent'],
+        3: resolved['SRScrollEvent'],
+      });
+    });
+
+    test('a union can have a single variant', () {
+      final gradient = resolved.union('SRGradient');
+      expect(gradient.discriminatorKey, 'type');
+      expect(gradient.variants, {'linear': resolved['SRLinearGradient']});
+    });
+
+    test('each variant knows the unions it belongs to', () {
+      expect(resolved['SRCircle'].unions, [resolved.union('SRShape')]);
+      expect(resolved['SRTapEvent'].unions, [resolved.union('SREvent')]);
+    });
+
+    test('fields shared by every variant are shared by the union', () {
+      // `label` is in both variants, but with different types.
+      expect(resolved.union('SRShape').sharedFields.map((f) => f.jsonKey), [
+        'id',
+        'clip',
+        'type',
+      ]);
+      expect(resolved.union('SREvent').sharedFields.map((f) => f.jsonKey), [
+        'source',
+      ]);
+    });
+
+    test('fields can be unions, or lists of them', () {
+      final drawing = resolved['SRDrawing'];
+      expect(drawing.field('shapes').type, ListType(resolved.named('SRShape')));
+      expect(drawing.field('main').type, resolved.named('SRShape'));
+      expect(drawing.field('events').type, ListType(resolved.named('SREvent')));
+    });
+
+    test('allOf around a single \$ref to a union is that union', () {
+      final background = resolved['SRDrawing'].field('background');
+      expect(background.type, resolved.named('SRShape'));
+      expect(background.description, 'A wrapped union reference.');
+    });
+
+    test('a union referenced several times is one definition', () {
+      expect(resolved.names, [
+        'SRCircle',
+        'SRDrawing',
+        'SREvent',
+        'SRGradient',
+        'SRLinearGradient',
+        'SRPoint',
+        'SRScrollEvent',
+        'SRShape',
+        'SRSquare',
+        'SRTapEvent',
+      ]);
+    });
+  });
+
   group('fails on schemas it does not support', () {
     Matcher throwsSchemaException(String message) => throwsA(
       isA<SchemaException>().having((e) => e.message, 'message', message),
@@ -316,6 +400,26 @@ void main() {
           'matching "type", are supported',
       'const-outside-property.json':
           '"const" is only supported on object properties',
+      'one-of-empty.json': 'A "oneOf" needs at least one schema',
+      'one-of-no-discriminator.json':
+          'Cannot tell the "oneOf" variants apart: no "const" property has a '
+          'different value in each of them',
+      'one-of-same-value.json':
+          'Cannot tell the "oneOf" variants apart: no "const" property has a '
+          'different value in each of them',
+      'one-of-missing-in-one.json':
+          'Cannot tell the "oneOf" variants apart: no "const" property has a '
+          'different value in each of them',
+      'one-of-ambiguous.json':
+          'Cannot tell the "oneOf" variants apart: several "const" properties '
+          'could (type, kind)',
+      'one-of-primitive-variant.json':
+          'A "oneOf" variant must be an object schema',
+      'one-of-untitled-variant.json': 'A "oneOf" variant needs a "title"',
+      'one-of-nested.json': 'A "oneOf" variant must be an object schema',
+      'one-of-in-all-of.json': 'A "oneOf" cannot be merged into an object',
+      'one-of-with-properties.json':
+          'A "oneOf" cannot be combined with "properties" or "allOf"',
     };
     for (final MapEntry(key: file, value: message)
         in invalidEnumsAndConsts.entries) {
@@ -360,7 +464,7 @@ void main() {
       );
     });
 
-    for (final keyword in ['oneOf', 'anyOf', 'not']) {
+    for (final keyword in ['anyOf', 'not']) {
       test('"$keyword"', () {
         expect(
           () => resolve('errors/keyword-$keyword.json'),
