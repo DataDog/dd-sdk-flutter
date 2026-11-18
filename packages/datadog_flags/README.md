@@ -141,6 +141,8 @@ application ID, service, and version. The environment is sent as `dd_env`.
 - `dateProvider` for application-controlled timestamps.
 - `flagSelection` to load only the flags that match a `FlagSelection` of tags or
   key patterns. Stored assignments are restored only under the same selection.
+  After the selection the SDK sends is added, changed, or removed, clients
+  start without stored assignments until the next successful fetch.
 
 The store loads a `FlagsData` snapshot only when its context matches the request.
 Cache writes and deletes are serialized per store instance and client name.
@@ -154,6 +156,19 @@ to evaluate obfuscated assignments.
 Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
 records successes, defaults, and errors. The provider does not implement
 OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
+
+## Diagnostics
+
+The SDK writes diagnostics to the Dart developer log under the name
+`datadog_flags`. To also print them, including in release builds, set
+`DatadogOpenFeatureProvider.verbosity` to the lowest level to print:
+
+```dart
+DatadogOpenFeatureProvider.verbosity = FlagsLoggerLevel.warning;
+```
+
+The setting applies to every `datadog_flags` component in the isolate. Nothing
+is printed by default.
 
 ## Exposures in your own data store
 
@@ -193,10 +208,6 @@ The callback runs synchronously during the evaluation. Keep it fast and do not
 do I/O in it; queue the work instead. The SDK catches exceptions from the
 callback and writes them to the Dart developer log under the name
 `datadog_flags`. The evaluation result stays the same.
-
-To also print SDK diagnostics such as this one, including in release builds, set
-`DatadogOpenFeatureProvider.verbosity` to the lowest level to print, for example
-`FlagsLoggerLevel.warning`. Nothing is printed by default.
 
 The exposure deduplication cache is in memory. After a restart, the first
 evaluation of each assignment is a new exposure.

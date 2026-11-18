@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
+import 'package:datadog_flags/src/flag_key_obfuscation.dart';
 import 'package:datadog_flags/src/flag_selection.dart';
 import 'package:datadog_flags/src/flags_log.dart';
 import 'package:datadog_flags/src/flags_repository.dart';
@@ -448,7 +449,7 @@ void main() {
     test('writes selected assignments under a key older SDKs do not read', () {
       final json = snapshot(selection).toJson();
 
-      expect(json.containsKey('flags'), isFalse);
+      expect(json['flags'], isA<List<Object?>>());
       expect(json.containsKey('encodedFlags'), isFalse);
       expect(json['flagSelection'], {
         'tags': ['team:a'],
@@ -462,6 +463,53 @@ void main() {
       expect(restored.flagSelection?.tags, ['team:a']);
       expect(restored.flagSelection?.keyPatterns, ['k*']);
       expect(restored.flags.keys, ['cached-flag']);
+    });
+
+    test('datadog_flags 1.1.1 reads a selected snapshot as a cache miss', () {
+      final json =
+          jsonDecode(jsonEncode(snapshot(selection).toJson()))
+              as Map<String, Object?>;
+
+      // 1.1.1 decodes `flags` this way and its cache read returns null when
+      // decoding throws.
+      Map<String, Object?>? readAsVersion111() {
+        try {
+          return json['flags'] as Map<String, Object?>? ?? const {};
+        } catch (_) {
+          return null;
+        }
+      }
+
+      expect(readAsVersion111(), isNull);
+    });
+
+    test('keeps obfuscated selected assignments outside encodedFlags', () {
+      final obfuscation = FlagKeyObfuscation.fromJson(const {
+        'scheme': 'flag-key-sha256-v1',
+        'salt': '000102030405060708090a0b0c0d0e0f',
+      });
+      final encodedKey = obfuscation.encodeKey('cached-flag')!;
+      final plain = snapshot(null);
+      final json =
+          jsonDecode(
+                jsonEncode(
+                  FlagsData(
+                    flags: {encodedKey: plain.flags['cached-flag']!},
+                    context: plain.context,
+                    date: plain.date,
+                    obfuscation: obfuscation,
+                    flagSelection: selection,
+                  ).toJson(),
+                ),
+              )
+              as Map<String, Object?>;
+
+      expect(json.containsKey('encodedFlags'), isFalse);
+      expect(json['flags'], isA<List<Object?>>());
+      final restored = FlagsData.fromJson(json);
+      expect(restored.flags.keys, [encodedKey]);
+      expect(restored.obfuscation?.toJson(), obfuscation.toJson());
+      expect(restored.flagSelection?.tags, ['team:a']);
     });
 
     test('writes snapshots without a selection unchanged', () {

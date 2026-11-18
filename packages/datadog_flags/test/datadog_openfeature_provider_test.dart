@@ -1168,6 +1168,61 @@ void main() {
       },
     );
   }
+
+  group('a dropped flag selection', () {
+    final printed = <String>[];
+
+    setUp(() {
+      printed.clear();
+      DatadogOpenFeatureProvider.verbosity = FlagsLoggerLevel.error;
+      addTearDown(() => DatadogOpenFeatureProvider.verbosity = null);
+    });
+
+    DatadogOpenFeatureProvider newProvider() => DatadogOpenFeatureProvider(
+      configuration: _configuration(
+        MockClient(
+          (request) async => _responseFor(request, _assignmentsResponse()),
+        ),
+        flagSelection: FlagSelection(tags: ['t' * 201]),
+      ),
+    );
+
+    Future<void> capturePrints(Future<void> Function() body) => runZoned(
+      body,
+      zoneSpecification: ZoneSpecification(
+        print: (_, _, _, line) => printed.add(line),
+      ),
+    );
+
+    int dropLogs() =>
+        printed.where((line) => line.contains('was not sent')).length;
+
+    test('is logged once across context changes and refreshes', () async {
+      final provider = newProvider();
+      await capturePrints(() async {
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: 'A'),
+        );
+        await api.setProviderAndWait(provider);
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: 'B'),
+        );
+        await provider.refresh();
+      });
+      expect(dropLogs(), 1);
+    });
+
+    test('is logged once for each provider', () async {
+      await capturePrints(() async {
+        await api.setEvaluationContextAndWait(
+          EvaluationContext(targetingKey: 'A'),
+        );
+        await api.setProviderAndWait(newProvider());
+        await api.setProviderAndWait(newProvider());
+      });
+      expect(dropLogs(), 2);
+    });
+  });
 }
 
 DatadogFlagsConfiguration _configuration(
@@ -1178,6 +1233,7 @@ DatadogFlagsConfiguration _configuration(
       DatadogFlagsConfiguration.defaultEvaluationFlushInterval,
   Duration? initializationTimeout =
       DatadogFlagsConfiguration.defaultInitializationTimeout,
+  FlagSelection? flagSelection,
 }) {
   return DatadogFlagsConfiguration(
     datadogConfig: const DatadogFlagsConfig(
@@ -1194,6 +1250,7 @@ DatadogFlagsConfiguration _configuration(
     trackExposures: trackTelemetry,
     trackEvaluations: trackTelemetry,
     evaluationFlushInterval: evaluationFlushInterval,
+    flagSelection: flagSelection,
   );
 }
 

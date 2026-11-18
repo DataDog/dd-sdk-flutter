@@ -47,8 +47,10 @@ final class DatadogOpenFeatureProvider
   /// An isolated API with a shorter deadline must use a smaller budget.
   static const maxInitializationTimeout = Duration(seconds: 20);
 
-  /// Prints SDK diagnostics at this level and above, including in release
-  /// builds. The default is `null`, which prints nothing.
+  /// Prints diagnostics from every `datadog_flags` component in this isolate,
+  /// including [ExposureHook] and `DatadogFlags` clients, at this level and
+  /// above, in any build mode. The default is `null`, which prints nothing.
+  /// Diagnostics are always written to the Dart developer log.
   static FlagsLoggerLevel? get verbosity => FlagsLogger.printLevel;
 
   static set verbosity(FlagsLoggerLevel? level) =>

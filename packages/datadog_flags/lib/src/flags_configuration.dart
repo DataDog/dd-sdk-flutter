@@ -93,7 +93,9 @@ final class DatadogFlagsConfiguration {
   /// Loads only the flags that match these tags or key patterns.
   ///
   /// Every client created with this configuration uses the selection. Stored
-  /// assignments fetched under a different selection are not restored. See
+  /// assignments fetched under a different selection are not restored: after
+  /// the selection the SDK sends is added, changed, or removed, a client
+  /// starts without stored assignments until its next successful fetch. See
   /// [FlagSelection] for the matching rules, limits, and fallbacks.
   ///
   /// The SDK reports a selection the server ignored through the

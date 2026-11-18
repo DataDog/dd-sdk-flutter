@@ -84,9 +84,11 @@ class FlagsData {
   Map<String, Object?> toJson() {
     return {
       // Older SDKs read only `flags`. Keep encoded assignments separate so a
-      // downgraded SDK cannot interpret their digests as plaintext flag keys,
-      // and selected assignments separate so it cannot take them as every flag.
+      // downgraded SDK cannot interpret their digests as plaintext flag keys.
+      // A selected snapshot writes `flags` as a list, which older SDKs reject
+      // instead of reading it as every flag or as no flags.
       if (flagSelection != null) ...{
+        'flags': const <Object?>[],
         'selectedFlags': flags.map(
           (key, value) => MapEntry(key, value.toJson()),
         ),

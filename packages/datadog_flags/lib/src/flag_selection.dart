@@ -75,7 +75,7 @@ typedef FlagSelectionResult = ({
 });
 
 // The Unicode White_Space property, which the server trims. String.trim()
-// differs: it also trims U+FEFF and does not trim U+0085.
+// also trims U+FEFF, which is not White_Space.
 const _whiteSpace = {
   0x0009, 0x000A, 0x000B, 0x000C, 0x000D, 0x0020, 0x0085, 0x00A0, 0x1680, //
   0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, //
