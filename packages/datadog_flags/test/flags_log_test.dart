@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     printed = [];
     developerLogged = [];
-    addTearDown(() => DatadogOpenFeatureProvider.verbosity = null);
+    addTearDown(() => DatadogProvider.verbosity = null);
   });
 
   void capturePrints(void Function() body) => runZoned(
@@ -45,7 +45,7 @@ void main() {
   ];
 
   test('prints nothing by default', () {
-    expect(DatadogOpenFeatureProvider.verbosity, isNull);
+    expect(DatadogProvider.verbosity, isNull);
 
     logOneOfEach();
 
@@ -68,7 +68,7 @@ void main() {
   for (final MapEntry(key: verbosity, value: expected)
       in printedByVerbosity.entries) {
     test('verbosity ${verbosity.name} prints that level and above', () {
-      DatadogOpenFeatureProvider.verbosity = verbosity;
+      DatadogProvider.verbosity = verbosity;
 
       logOneOfEach();
 
@@ -78,7 +78,7 @@ void main() {
   }
 
   test('printed message includes the error', () {
-    DatadogOpenFeatureProvider.verbosity = FlagsLoggerLevel.warning;
+    DatadogProvider.verbosity = FlagsLoggerLevel.warning;
     final error = StateError('boom');
 
     capturePrints(() => logger.warning('Hook failed.', error: error));
@@ -88,7 +88,7 @@ void main() {
   });
 
   test('prints flag selection errors through the default logger', () {
-    DatadogOpenFeatureProvider.verbosity = FlagsLoggerLevel.error;
+    DatadogProvider.verbosity = FlagsLoggerLevel.error;
 
     capturePrints(
       () => logIgnoredFlagSelection(const FlagsLogger(), 'too_many_values'),

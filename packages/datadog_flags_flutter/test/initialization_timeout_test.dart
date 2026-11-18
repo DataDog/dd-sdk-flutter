@@ -31,6 +31,24 @@ void main() {
     );
   });
 
+  test('forwards strict context switching from the Flutter facade', () async {
+    const context = FlagsEvaluationContext(
+      targetingKey: 'shopper',
+      attributes: {strictContextSwitchingAttribute: true},
+    );
+    final delegate = _MockDatadogFlagsClient();
+    when(() => delegate.initialize(any())).thenAnswer((_) async {});
+    final client = DatadogFlutterFlagsClient(
+      name: 'shop',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+
+    await client.initialize(context);
+
+    verify(() => delegate.initialize(context)).called(1);
+  });
+
   test('forwards initialization timeout errors from the core client', () async {
     const error = FlagsInitializationTimeoutException(
       clientName: 'shop',

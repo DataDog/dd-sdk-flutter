@@ -153,15 +153,13 @@ Future<void> runUsingRunApp(
   });
 }
 
-Future<({OpenFeatureClient client, DatadogOpenFeatureProvider provider})>
+Future<({OpenFeatureClient client, DatadogProvider provider})>
 _initializeOpenFeature(FlagsExampleConfig flagsConfig) async {
   final api = OpenFeatureAPI.instance;
   await api.setEvaluationContextAndWait(flagsConfig.evaluationContext);
+  api.addHooks([DatadogRumHook()]);
   final client = api.getClient();
-  final provider = DatadogOpenFeatureProvider(
-    configuration: flagsConfig.configuration,
-  );
-  client.addHooks([DatadogRumHook()]);
+  final provider = DatadogProvider.fromConfiguration(flagsConfig.configuration);
   try {
     await api.setProviderAndWait(provider);
   } on OpenFeatureException catch (error) {

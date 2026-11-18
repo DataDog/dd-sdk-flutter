@@ -3,9 +3,13 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 
 import 'assignment.dart';
+import 'datadog_flags_config.dart';
 import 'evaluation_context.dart';
 import 'flag_key_obfuscation.dart';
 import 'flag_selection.dart';
@@ -38,7 +42,12 @@ class FlagsData {
   final DateTime date;
 
   /// Encoding metadata stored with these assignments. Null means legacy keys.
+  @internal
   final FlagKeyObfuscation? obfuscation;
+
+  /// Digest identifying the site, environment, and client token.
+  /// Snapshots without a scope are not eligible for restoration.
+  final String? scope;
 
   /// Canonical selection [flags] were fetched with. Null means every flag.
   final FlagSelection? flagSelection;
@@ -49,6 +58,7 @@ class FlagsData {
     required this.context,
     required this.date,
     this.obfuscation,
+    this.scope,
     this.flagSelection,
   });
 
@@ -76,6 +86,7 @@ class FlagsData {
       ),
       date: DateTime.parse(json['date'] as String),
       obfuscation: obfuscation,
+      scope: json['scope'] as String?,
       flagSelection: flagSelection,
     );
   }
@@ -101,6 +112,7 @@ class FlagsData {
         ),
       'context': context.toJson(),
       'date': date.toIso8601String(),
+      if (scope != null) 'scope': scope,
       if (obfuscation != null) ...{
         'obfuscated': true,
         'obfuscation': obfuscation!.toJson(),
@@ -132,3 +144,17 @@ class InMemoryDatadogFlagsStore implements DatadogFlagsStore {
 FlagsData _cloneFlagsData(FlagsData value) {
   return FlagsData.fromJson(value.toJson());
 }
+
+/// Identifies the assignment configuration without storing the client token.
+@internal
+String flagsDataScope(DatadogFlagsConfig configuration) => sha256
+    .convert(
+      utf8.encode(
+        jsonEncode([
+          configuration.site.name,
+          configuration.env,
+          configuration.clientToken,
+        ]),
+      ),
+    )
+    .toString();

@@ -9,8 +9,8 @@ import 'package:datadog_flags/datadog_flags.dart';
 // This checks that the public provider can compile without the test runner.
 // Browser unit tests cover runtime behavior; this is an optional build probe.
 void main() {
-  final provider = DatadogOpenFeatureProvider(
-    configuration: const DatadogFlagsConfiguration(
+  final provider = DatadogProvider.fromConfiguration(
+    const DatadogFlagsConfiguration(
       datadogConfig: DatadogFlagsConfig(
         clientToken: 'client-token',
         env: 'test',

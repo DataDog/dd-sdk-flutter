@@ -9,13 +9,13 @@ part of 'evaluation_context.dart';
 FlagsEvaluationContext _$FlagsEvaluationContextFromJson(
   Map<String, dynamic> json,
 ) => FlagsEvaluationContext(
-  targetingKey: json['targetingKey'] as String?,
+  targetingKey: json['targetingKey'] as String? ?? '',
   attributes: json['attributes'] as Map<String, dynamic>? ?? const {},
 );
 
 Map<String, dynamic> _$FlagsEvaluationContextToJson(
   FlagsEvaluationContext instance,
 ) => <String, dynamic>{
-  'targetingKey': ?instance.targetingKey,
+  'targetingKey': instance.targetingKey,
   'attributes': sanitizeJsonValue(instance.attributes),
 };

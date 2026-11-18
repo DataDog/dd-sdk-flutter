@@ -35,8 +35,8 @@ final class PrecomputeRequest {
             sdkVersion: datadogFlagsSdkVersion,
           ),
           subject: PrecomputeRequestSubject(
-            targetingKey: evaluationContext.targetingKey ?? '',
-            targetingAttributes: evaluationContext.attributes,
+            targetingKey: evaluationContext.targetingKey,
+            targetingAttributes: evaluationContext.targetingContext.attributes,
           ),
           flagSelection: flagSelection == null
               ? null

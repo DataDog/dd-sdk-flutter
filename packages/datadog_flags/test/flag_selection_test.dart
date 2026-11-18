@@ -9,6 +9,7 @@ import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags/src/flag_assignments_fetcher.dart';
 import 'package:datadog_flags/src/flag_key_obfuscation.dart';
 import 'package:datadog_flags/src/flag_selection.dart';
+import 'package:datadog_flags/src/flags_client.dart';
 import 'package:datadog_flags/src/flags_log.dart';
 import 'package:datadog_flags/src/flags_repository.dart';
 import 'package:datadog_flags/src/flags_store.dart';
@@ -70,6 +71,7 @@ void main() {
       },
       'context': evaluationContext.toJson(),
       'date': DateTime.utc(2026).toIso8601String(),
+      'scope': flagsDataScope(datadogConfig),
     }).withSelection(selection);
   }
 
@@ -514,7 +516,7 @@ void main() {
 
     test('writes snapshots without a selection unchanged', () {
       final json = snapshot(null).toJson();
-      expect(json.keys, ['flags', 'context', 'date']);
+      expect(json.keys, ['flags', 'context', 'date', 'scope']);
       expect(FlagsData.fromJson(json).flagSelection, isNull);
     });
 
@@ -585,6 +587,7 @@ extension on FlagsData {
     context: context,
     date: date,
     obfuscation: obfuscation,
+    scope: scope,
     flagSelection: selection,
   );
 }
