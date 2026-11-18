@@ -44,6 +44,14 @@ void main() {
           return _responseFor(request, _assignmentsResponse());
         });
         registerFallbackValue(Uri.parse('https://example.com'));
+        registerFallbackValue(
+          http.Request('GET', Uri.parse('https://example.com')),
+        );
+        when(() => transport.send(any())).thenAnswer(
+          (invocation) => delegate.send(
+            invocation.positionalArguments.single as http.BaseRequest,
+          ),
+        );
         when(
           () => transport.post(
             any(),
@@ -133,6 +141,146 @@ void main() {
       },
     );
   }
+
+  for (final awaitShutdown in [true, false]) {
+    test(
+      're-initialization after '
+      '${awaitShutdown ? 'completed' : 'pending'} shutdown uses fresh owned resources',
+      () async {
+        final created = <_CountingClient>[];
+        final heldUpload = Completer<http.Response>();
+        var evaluationUploads = 0;
+        final delegate = MockClient((request) async {
+          if (request.url.path == '/api/v2/flagevaluation' &&
+              ++evaluationUploads == 1 &&
+              !awaitShutdown) {
+            return heldUpload.future;
+          }
+          return _responseFor(request, _assignmentsResponse());
+        });
+        addTearDown(delegate.close);
+        await http.runWithClient(
+          () async {
+            final provider = DatadogProvider.fromConfiguration(
+              const DatadogFlagsConfiguration(
+                datadogConfig: DatadogFlagsConfig(
+                  clientToken: 'client-token',
+                  env: 'test',
+                  site: DatadogFlagsSite.us1,
+                ),
+              ),
+            );
+            await provider.initialize(EvaluationContext(targetingKey: 'A'));
+            provider.resolveBooleanValue(
+              'show-paywall',
+              false,
+              EvaluationContext.empty,
+            );
+            final shuttingDown = provider.shutdown();
+            if (awaitShutdown) await shuttingDown;
+            await provider.initialize(EvaluationContext(targetingKey: 'B'));
+            expect(created, hasLength(2));
+            if (!heldUpload.isCompleted) {
+              heldUpload.complete(http.Response('{}', 202));
+            }
+            await shuttingDown;
+            expect(created[0].closeCount, 1);
+            expect(created[1].closeCount, 0);
+            expect(
+              provider
+                  .resolveBooleanValue(
+                    'show-paywall',
+                    false,
+                    EvaluationContext.empty,
+                  )
+                  .value,
+              isTrue,
+            );
+            await provider.shutdown();
+            expect(created[0].closeCount, 1);
+            expect(created[1].closeCount, 1);
+            expect(
+              created[1].paths.where((p) => p == '/api/v2/flagevaluation'),
+              hasLength(1),
+            );
+          },
+          () {
+            final client = _CountingClient(delegate);
+            created.add(client);
+            return client;
+          },
+        );
+      },
+    );
+  }
+
+  for (final afterUpload in [true, false]) {
+    test('a concurrent shutdown waits for the telemetry drain, '
+        'second call after upload: $afterUpload', () async {
+      final upload = Completer<http.Response>();
+      final uploadStarted = Completer<void>();
+      final created = <_CountingClient>[];
+      final delegate = MockClient((request) async {
+        if (request.url.path == '/api/v2/flagevaluation') {
+          uploadStarted.complete();
+          return upload.future;
+        }
+        return _responseFor(request, _assignmentsResponse());
+      });
+      addTearDown(delegate.close);
+      await http.runWithClient(
+        () async {
+          final provider = DatadogProvider.fromConfiguration(
+            const DatadogFlagsConfiguration(
+              datadogConfig: DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
+          );
+          await provider.initialize(EvaluationContext(targetingKey: 'A'));
+          provider.resolveBooleanValue(
+            'show-paywall',
+            false,
+            EvaluationContext.empty,
+          );
+          final first = provider.shutdown();
+          if (afterUpload) await uploadStarted.future;
+          var secondDone = false;
+          final second = provider.shutdown().then((_) => secondDone = true);
+          await uploadStarted.future;
+          await pumpEventQueue();
+          expect(secondDone, isFalse);
+          expect(created.single.closeCount, 0);
+          upload.complete(http.Response('{}', 202));
+          await Future.wait([first, second]);
+          expect(created.single.closeCount, 1);
+        },
+        () {
+          final client = _CountingClient(delegate);
+          created.add(client);
+          return client;
+        },
+      );
+    });
+  }
+
+  test('retiring a context aborts its pending assignment fetch', () async {
+    final client = _AbortRecordingClient();
+    final provider = DatadogProvider.fromConfiguration(_configuration(client));
+    await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'A'));
+    await api.setProviderAndWait(provider);
+    client.hold.add('B');
+    unawaited(
+      api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+    );
+    await _waitUntil(() => client.pending.contains('B'));
+    await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'C'));
+    await pumpEventQueue();
+    expect(client.aborted, ['B']);
+    expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+  });
 
   test(
     'DateTime attributes preserve available precision and normalize to UTC',
@@ -2420,3 +2568,58 @@ List<Map<String, Object?>> _evaluationEvents(http.Request request) {
 }
 
 class _MockHttpClient extends Mock implements http.Client {}
+
+final class _CountingClient extends http.BaseClient {
+  _CountingClient(this._inner);
+  final http.Client _inner;
+  final paths = <String>[];
+  var closeCount = 0;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    if (closeCount > 0) {
+      return Future.error(
+        http.ClientException('Client is closed.', request.url),
+      );
+    }
+    paths.add(request.url.path);
+    return _inner.send(request);
+  }
+
+  @override
+  void close() => closeCount++;
+}
+
+/// Holds fetches for selected subjects until their abort trigger fires.
+final class _AbortRecordingClient extends http.BaseClient {
+  final hold = <String>{};
+  final pending = <String>{};
+  final aborted = <String>[];
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final body = await request.finalize().bytesToString();
+    final plain = http.Request(request.method, request.url)..body = body;
+    if (request.url.path == '/precompute-assignments') {
+      final key =
+          _subject(jsonDecode(body) as Map<String, Object?>)['targeting_key']
+              as String;
+      if (hold.contains(key)) {
+        pending.add(key);
+        final trigger = request is http.Abortable ? request.abortTrigger : null;
+        final result = Completer<http.StreamedResponse>();
+        trigger?.then((_) {
+          aborted.add(key);
+          result.completeError(http.RequestAbortedException(request.url));
+        });
+        return result.future;
+      }
+    }
+    final response = _responseFor(plain, _assignmentsResponse());
+    return http.StreamedResponse(
+      Stream.value(response.bodyBytes),
+      response.statusCode,
+      request: request,
+    );
+  }
+}

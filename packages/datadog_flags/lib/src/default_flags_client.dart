@@ -26,6 +26,10 @@ class DefaultDatadogFlagsClient
   final FlagsRepository _repository;
   final ExposureLogger _exposureLogger;
   final EvaluationAggregator _evaluationAggregator;
+
+  /// Whether [shutdown] also shuts down the exposure logger and aggregator.
+  ///
+  /// When false, the caller owns them and must shut them down.
   final bool _ownsTelemetry;
 
   DefaultDatadogFlagsClient({

@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 import 'default_flags_client.dart';
 import 'evaluation_aggregator.dart';
 import 'exposure_logger.dart';
-import 'flag_assignments_fetcher.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_repository.dart';
@@ -117,24 +116,13 @@ class DatadogFlags {
       return client;
     }
 
-    final fetcher = FlagAssignmentsFetcher(
-      datadogConfig: datadogConfig,
-      configuration: configuration,
-      httpClient: httpClient,
-    );
     final runtime = FlagsRuntime(
       configuration: configuration,
       datadogConfig: datadogConfig,
       httpClient: httpClient,
     );
 
-    final repository = FlagsRepository(
-      clientName: name,
-      fetcher: fetcher,
-      store: configuration.store,
-      dateProvider: configuration.dateProvider,
-      initializationTimeout: configuration.initializationTimeout,
-    );
+    final repository = FlagsRepository.forRuntime(runtime, clientName: name);
 
     final client = DefaultDatadogFlagsClient(
       name: name,

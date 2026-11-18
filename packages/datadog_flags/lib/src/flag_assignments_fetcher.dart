@@ -32,23 +32,24 @@ class FlagAssignmentsFetcher {
   }) : _unknownDestinations = UnknownDestinationWarnings(logger);
 
   Future<PrecomputedAssignments> fetch(
-    FlagsEvaluationContext evaluationContext,
-  ) async {
+    FlagsEvaluationContext evaluationContext, {
+    Future<void>? abortTrigger,
+  }) async {
     final endpoint =
         configuration.customFlagsEndpoint ??
         datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
     final http.Response response;
     try {
-      response = await httpClient.post(
-        endpoint,
-        headers: _headers(),
-        body: jsonEncode(
-          PrecomputeRequest.fromContext(
-            datadogConfig: datadogConfig,
-            evaluationContext: evaluationContext,
-          ).toJson(),
-        ),
-      );
+      final request =
+          http.AbortableRequest('POST', endpoint, abortTrigger: abortTrigger)
+            ..headers.addAll(_headers())
+            ..body = jsonEncode(
+              PrecomputeRequest.fromContext(
+                datadogConfig: datadogConfig,
+                evaluationContext: evaluationContext,
+              ).toJson(),
+            );
+      response = await http.Response.fromStream(await httpClient.send(request));
     } catch (error) {
       throw FlagsException.networkError(
         'Failed to fetch flag assignments.',

@@ -27,36 +27,35 @@ void main() {
       times.add(clock.elapsedMilliseconds);
       return http.Response('{}', times.length < 3 ? 503 : 202);
     });
-    final first = _aggregator(
+    final aggregator = _aggregator(
       requests: requests,
       httpClient: client,
       flushInterval: const Duration(milliseconds: 20),
     );
-    addTearDown(first.shutdown);
-    void record(EvaluationAggregator target, String key) =>
-        target.recordEvaluation(
-          flagKey: key,
-          assignment: _assignment(),
-          evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
-          error: null,
-        );
-    record(first, 'first');
+    addTearDown(aggregator.shutdown);
+    void record(String key) => aggregator.recordEvaluation(
+      flagKey: key,
+      assignment: _assignment(),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+      error: null,
+    );
+    record('first');
     await _waitUntil(() => times.length == 1);
     for (var i = 0; i < 10; i++) {
-      record(first, 'next-$i');
-      await first.flush();
+      record('next-$i');
+      await aggregator.flush();
     }
     expect(times, hasLength(1));
     await _waitUntil(() => times.length == 2);
     for (var i = 0; i < 10; i++) {
-      record(first, 'later-$i');
-      await first.flush();
+      record('later-$i');
+      await aggregator.flush();
     }
     expect(times, hasLength(2));
     await _waitUntil(() => times.length == 3);
     expect(times[1] - times[0], greaterThanOrEqualTo(390));
     expect(times[2] - times[1], greaterThanOrEqualTo(790));
-    record(first, 'after-success');
+    record('after-success');
     await _waitUntil(() => times.length == 4);
     expect(times[3] - times[2], lessThan(400));
   });

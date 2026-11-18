@@ -5,24 +5,23 @@
 
 import 'dart:async';
 
-import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
-import 'datadog_flags.dart';
 import 'assignment.dart';
+import 'datadog_flags.dart';
 import 'default_flags_client.dart';
 import 'evaluation_aggregator.dart';
-import 'exposure_logger.dart';
-import 'flag_assignments_fetcher.dart';
-import 'flags_repository.dart';
-import 'flags_runtime.dart';
 import 'evaluation_context.dart';
 import 'exposure_hook.dart';
+import 'exposure_logger.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
+import 'flags_repository.dart';
+import 'flags_runtime.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -69,6 +68,7 @@ final class DatadogProvider
       StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
 
   _ProviderResources? _resources;
+  final Set<Future<void>> _shutdowns = {};
   _ProviderRuntime? _activeRuntime;
   _ProviderRuntime? _retainedRuntime;
   _ProviderRuntime? _pendingRuntime;
@@ -230,15 +230,26 @@ final class DatadogProvider
     _hasCommittedContext = false;
     _requiresFreshAssignments = false;
     _retainedRuntime = null;
-    await Future.wait([
-      ..._retiring,
-      if (activeRuntime != null) _disableQuietly(activeRuntime),
-      if (retainedRuntime != null && !identical(retainedRuntime, activeRuntime))
-        _disableQuietly(retainedRuntime),
-      if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
-        _disableQuietly(pendingRuntime),
-    ]);
-    await resources?.shutdown();
+    final operation = () async {
+      await Future.wait([
+        ..._retiring,
+        if (activeRuntime != null) _disableQuietly(activeRuntime),
+        if (retainedRuntime != null &&
+            !identical(retainedRuntime, activeRuntime))
+          _disableQuietly(retainedRuntime),
+        if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
+          _disableQuietly(pendingRuntime),
+      ]);
+      await resources?.shutdown();
+    }();
+    // A concurrent shutdown also waits for work that an earlier call started.
+    _shutdowns.add(operation);
+    unawaited(
+      operation
+          .catchError((Object _) {})
+          .whenComplete(() => _shutdowns.remove(operation)),
+    );
+    await Future.wait(_shutdowns.toList());
   }
 
   @override
@@ -671,7 +682,7 @@ final class DatadogProvider
       return;
     }
     final previous = _activeRuntime;
-    final retainedRuntime = previous ?? _retainedRuntime;
+    final replacedRuntime = previous ?? _retainedRuntime;
     _retainedRuntime = null;
     _activeRuntime = runtime;
     _hasCommittedContext = true;
@@ -709,8 +720,8 @@ final class DatadogProvider
         ),
       );
     }
-    if (retainedRuntime != null && !identical(retainedRuntime, runtime)) {
-      _retire(retainedRuntime);
+    if (replacedRuntime != null && !identical(replacedRuntime, runtime)) {
+      _retire(replacedRuntime);
     }
   }
 
@@ -834,31 +845,20 @@ final class DatadogProvider
 
 /// Resources shared by every context revision of one provider.
 final class _ProviderResources {
-  final FlagsRuntime runtime;
+  final FlagsRuntime flagsRuntime;
   final bool ownsHttpClient;
-  late final ExposureLogger exposureLogger = ExposureLogger(runtime);
-  late final EvaluationAggregator evaluationAggregator = EvaluationAggregator(
-    runtime,
-  );
+  final ExposureLogger exposureLogger;
+  final EvaluationAggregator evaluationAggregator;
   Future<void>? _shutdown;
 
-  _ProviderResources(this.runtime, {required this.ownsHttpClient});
+  _ProviderResources(this.flagsRuntime, {required this.ownsHttpClient})
+    : exposureLogger = ExposureLogger(flagsRuntime),
+      evaluationAggregator = EvaluationAggregator(flagsRuntime);
 
   DefaultDatadogFlagsClient createClient(String name) {
-    final configuration = runtime.configuration;
     return DefaultDatadogFlagsClient(
       name: name,
-      repository: FlagsRepository(
-        clientName: name,
-        fetcher: FlagAssignmentsFetcher(
-          datadogConfig: runtime.datadogConfig,
-          configuration: configuration,
-          httpClient: runtime.httpClient,
-        ),
-        store: configuration.store,
-        dateProvider: configuration.dateProvider,
-        initializationTimeout: configuration.initializationTimeout,
-      ),
+      repository: FlagsRepository.forRuntime(flagsRuntime, clientName: name),
       exposureLogger: exposureLogger,
       evaluationAggregator: evaluationAggregator,
       ownsTelemetry: false,
@@ -874,7 +874,7 @@ final class _ProviderResources {
         evaluationAggregator.shutdown(),
       ]);
     } finally {
-      if (ownsHttpClient) runtime.httpClient.close();
+      if (ownsHttpClient) flagsRuntime.httpClient.close();
     }
   }
 }
