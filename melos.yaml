@@ -204,6 +204,7 @@ scripts:
       scope:
         - 'datadog_flutter_plugin'
         - 'datadog_flutter_plugin_web'
+        - 'datadog_flags_flutter'
 
   # Test all browser-compatible core and conformance tests on both compilers.
   unit_test:openfeature-web:

@@ -21,7 +21,7 @@ import 'no_op_flags_client.dart';
 /// isolates must use their own [DatadogFlags] instance, create any clients they
 /// need, and initialize each client before evaluating flags.
 @Deprecated(
-  'Use OpenFeatureAPI with DatadogOpenFeatureProvider. Removal is planned for the next major version.',
+  'Use OpenFeatureAPI with DatadogProvider. Removal is planned for the next major version.',
 )
 class DatadogFlags {
   /// Name used for the shared client when no explicit client name is provided.

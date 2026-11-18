@@ -8,7 +8,9 @@ import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 /// Adds successful OpenFeature evaluations to the active Datadog RUM view.
 ///
-/// Register once on the OpenFeature client used by the application.
+/// Register with [OpenFeatureAPI.addHooks] and register again after shutdown.
+/// Client hooks apply only to that client object; [OpenFeatureAPI.getClient]
+/// returns a new client on each call.
 final class DatadogRumHook extends HookAdapter {
   final DatadogSdk _sdk;
 
@@ -16,16 +18,14 @@ final class DatadogRumHook extends HookAdapter {
   DatadogRumHook({DatadogSdk? sdk}) : _sdk = sdk ?? DatadogSdk.instance;
 
   @override
-  void after(
+  void finallyAfter(
     HookContext context,
     FlagEvaluationDetails<Object> details,
     HookHints hints,
   ) {
-    if (details.errorCode == null) {
-      _sdk.rum?.addFeatureFlagEvaluation(
-        context.flagKey,
-        details.variant ?? details.value,
-      );
+    if (details.errorCode != null || details.reason == 'ERROR') return;
+    if (details.variant case final variant?) {
+      _sdk.rum?.addFeatureFlagEvaluation(details.flagKey, variant);
     }
   }
 }
