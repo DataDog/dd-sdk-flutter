@@ -14,9 +14,11 @@ import 'assignment.dart';
 import 'default_flags_client.dart';
 import 'evaluation_context.dart';
 import 'exposure_hook.dart';
+import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
+import 'flags_log.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -51,6 +53,15 @@ final class DatadogProvider
   /// An isolated API with a shorter deadline must use a smaller budget.
   static const maxInitializationTimeout = Duration(seconds: 20);
 
+  /// Prints diagnostics from every `datadog_flags` component in this isolate,
+  /// including [ExposureHook] and `DatadogFlags` clients, at this level and
+  /// above, in any build mode. The default is `null`, which prints nothing.
+  /// Diagnostics are always written to the Dart developer log.
+  static FlagsLoggerLevel? get verbosity => FlagsLogger.printLevel;
+
+  static set verbosity(FlagsLoggerLevel? level) =>
+      FlagsLogger.printLevel = level;
+
   final Set<Future<void>> _retiring = {};
   final List<_ExposureFrame> _exposureFrames = [];
   openfeature.EvaluationContext? _requestedContext;
@@ -65,6 +76,7 @@ final class DatadogProvider
   _ProviderRuntime? _activeRuntime;
   _ProviderRuntime? _telemetrySource;
   _ProviderRuntime? _pendingRuntime;
+  final _flagSelectionDropLog = FlagSelectionDropLog();
   bool _requiresContextRetry = false;
   bool _hasCommittedContext = false;
   bool _requiresFreshAssignments = false;
@@ -409,6 +421,7 @@ final class DatadogProvider
     }
 
     final owner = DatadogFlags();
+    shareFlagSelectionDropLog(owner, _flagSelectionDropLog);
     _ProviderRuntime? runtime;
     var initializationReturned = false;
     try {

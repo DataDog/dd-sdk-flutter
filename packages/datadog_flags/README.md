@@ -186,6 +186,10 @@ application ID, service, and version. The environment is sent as `dd_env`.
   for evaluation telemetry. The interval must be between 1 and 60 seconds.
   The default is 10 seconds.
 - `dateProvider` for application-controlled timestamps.
+- `flagSelection` to load only the flags that match a `FlagSelection` of tags or
+  key patterns. Stored assignments are restored only under the same selection.
+  After the selection the SDK sends is added, changed, or removed, clients
+  start without stored assignments until the next successful fetch.
 
 The store loads a `FlagsData` snapshot only when its context and configuration
 scope match the request. The scope is a digest of the site, environment, and client
@@ -214,6 +218,19 @@ records successes, defaults, and errors when assignments are active. Evaluations
 without active assignments return `ErrorCode.providerNotReady` and are not recorded.
 The provider does not implement
 OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
+
+## Diagnostics
+
+The SDK writes diagnostics to the Dart developer log under the name
+`datadog_flags`. To also print them, including in release builds, set
+`DatadogProvider.verbosity` to the lowest level to print:
+
+```dart
+DatadogProvider.verbosity = FlagsLoggerLevel.warning;
+```
+
+The setting applies to every `datadog_flags` component in the isolate. Nothing
+is printed by default.
 
 ## Exposures in your own data store
 

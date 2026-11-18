@@ -12,6 +12,7 @@ import 'assignment.dart';
 import 'datadog_flags_config.dart';
 import 'evaluation_context.dart';
 import 'flag_key_obfuscation.dart';
+import 'flag_selection.dart';
 
 /// Storage contract for last-known feature flag assignments.
 abstract class DatadogFlagsStore {
@@ -48,6 +49,9 @@ class FlagsData {
   /// Snapshots without a scope are not eligible for restoration.
   final String? scope;
 
+  /// Canonical selection [flags] were fetched with. Null means every flag.
+  final FlagSelection? flagSelection;
+
   /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
@@ -55,12 +59,18 @@ class FlagsData {
     required this.date,
     this.obfuscation,
     this.scope,
+    this.flagSelection,
   });
 
   /// Creates a flag assignment snapshot from persisted JSON.
   factory FlagsData.fromJson(Map<String, Object?> json) {
     final obfuscation = FlagKeyObfuscation.fromSnapshot(json);
-    final flags = obfuscation == null
+    final flagSelection = json.containsKey('flagSelection')
+        ? flagSelectionFromJson(json['flagSelection'])
+        : null;
+    final flags = flagSelection != null
+        ? json['selectedFlags'] as Map<String, Object?>
+        : obfuscation == null
         ? json['flags'] as Map<String, Object?>? ?? const {}
         : json['encodedFlags'] as Map<String, Object?>;
     obfuscation?.validateKeys(flags.keys);
@@ -77,6 +87,7 @@ class FlagsData {
       date: DateTime.parse(json['date'] as String),
       obfuscation: obfuscation,
       scope: json['scope'] as String?,
+      flagSelection: flagSelection,
     );
   }
 
@@ -85,7 +96,15 @@ class FlagsData {
     return {
       // Older SDKs read only `flags`. Keep encoded assignments separate so a
       // downgraded SDK cannot interpret their digests as plaintext flag keys.
-      if (obfuscation == null)
+      // A selected snapshot writes `flags` as a list, which older SDKs reject
+      // instead of reading it as every flag or as no flags.
+      if (flagSelection != null) ...{
+        'flags': const <Object?>[],
+        'selectedFlags': flags.map(
+          (key, value) => MapEntry(key, value.toJson()),
+        ),
+        'flagSelection': flagSelectionToJson(flagSelection!),
+      } else if (obfuscation == null)
         'flags': flags.map((key, value) => MapEntry(key, value.toJson()))
       else
         'encodedFlags': flags.map(
