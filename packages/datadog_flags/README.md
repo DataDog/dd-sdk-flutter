@@ -87,7 +87,7 @@ the default domain.
 By default, when only targeting attributes change, evaluations retain the previous assignments
 while loading or after failure. When the targeting key changes, including sign-out,
 evaluations return application defaults until assignments for the new key load.
-A targeting-key change cancels the previous key's pending load and aborts its request.
+A targeting-key change cancels the previous key's pending load.
 A missing targeting key and an empty key identify the same subject.
 If reconciliation fails, OpenFeature retains the previous active context.
 The provider discards late results from that failed reconciliation.
@@ -176,9 +176,7 @@ application ID, service, and version. The environment is sent as `dd_env`.
 `DatadogFlagsConfiguration` supports:
 
 - `customFlagsEndpoint` and `customFlagsHeaders` for assignment transport.
-- `httpClient` for an application-owned HTTP client. The SDK sends assignment
-  requests with `send`, so the client must implement `send` and should support
-  `http.Abortable` requests.
+- `httpClient` for an application-owned HTTP client.
 - `store` for a `DatadogFlagsStore` implementation.
 - `initializationTimeout` for the lifecycle budget described above.
 - `trackExposures` and `customExposureEndpoint` for exposure telemetry. With
