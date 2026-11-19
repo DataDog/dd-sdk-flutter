@@ -233,7 +233,20 @@ output: out.dart
     final config = GeneratorConfig.load('sr_models_generator.yaml');
     expect(config.naming.typePrefix, 'SR');
     expect(config.naming.stripFromTitles, ['Mobile']);
-    expect(config.naming.renames, {'SRWireframeClip': 'SRContentClip'});
+    expect(config.naming.renames, {
+      'SRWireframeClip': 'SRContentClip',
+      'SRTextPositionAlignment': 'SRAlignment',
+      'SRAlignmentHorizontal': 'SRHorizontalAlignment',
+      'SRAlignmentVertical': 'SRVerticalAlignment',
+      'SRTextPositionPadding': 'SRPadding',
+      'SRPointerInteractionDataPointerEventType': 'SRPointerEventType',
+      'SRPointerInteractionDataPointerType': 'SRPointerType',
+      'SRIncrementalData': 'SRIncrementalSnapshotData',
+      'SRMutationData': 'SRIncrementalMutationData',
+      'SRIncrementalMutationDataAdds': 'SRIncrementalAdd',
+      'SRIncrementalMutationDataRemoves': 'SRIncrementalRemove',
+      'SRWireframeUpdateMutation': 'SRIncrementalUpdate',
+    });
     expect(
       config.repository,
       'https://github.com/DataDog/rum-events-format.git',

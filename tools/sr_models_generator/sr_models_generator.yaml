@@ -21,5 +21,19 @@ strip_from_titles:
   - Mobile
 
 # Generated name, or schema location (`file#pointer`) -> the name to use.
+# These keep the names of the hand-written Flutter models. An inline type is
+# named after its owner's final name, so `SRAlignment`'s enums start as
+# `SRAlignmentHorizontal`, not `SRTextPositionAlignmentHorizontal`.
 type_renames:
   SRWireframeClip: SRContentClip
+  SRTextPositionAlignment: SRAlignment
+  SRAlignmentHorizontal: SRHorizontalAlignment
+  SRAlignmentVertical: SRVerticalAlignment
+  SRTextPositionPadding: SRPadding
+  SRPointerInteractionDataPointerEventType: SRPointerEventType
+  SRPointerInteractionDataPointerType: SRPointerType
+  SRIncrementalData: SRIncrementalSnapshotData
+  SRMutationData: SRIncrementalMutationData
+  SRIncrementalMutationDataAdds: SRIncrementalAdd
+  SRIncrementalMutationDataRemoves: SRIncrementalRemove
+  SRWireframeUpdateMutation: SRIncrementalUpdate
