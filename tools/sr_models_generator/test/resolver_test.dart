@@ -208,6 +208,26 @@ void main() {
     );
   });
 
+  group('a union used by one of its variants', () {
+    // `children` (the union) comes before `type` (the discriminator), so
+    // the union is reached while Branch is only partly resolved.
+    for (final root in ['branch-schema.json', 'tree-node-schema.json']) {
+      test('resolves from $root', () {
+        final resolved = resolve(root);
+        final node = resolved.union('SRTreeNode');
+        expect(node.discriminatorKey, 'type');
+        expect(node.variants, {
+          'branch': resolved['SRBranch'],
+          'leaf': resolved['SRLeaf'],
+        });
+        expect(
+          resolved['SRBranch'].field('children').type,
+          ListType(resolved.named('SRTreeNode')),
+        );
+      });
+    }
+  });
+
   test('a schema can use itself', () {
     final resolved = resolve('tree-schema.json');
     expect(resolved.names, ['SRTree']);
@@ -483,6 +503,8 @@ void main() {
       'keyword-in-all-of-part.json': 'dependencies',
       'additional-properties-true.json': 'additionalProperties',
       'additional-properties-schema.json': 'additionalProperties',
+      'keyword-in-ref-wrapper.json': 'not',
+      'keyword-in-ref-chain.json': 'anyOf',
     };
     for (final MapEntry(key: file, value: keyword)
         in unsupportedKeywords.entries) {
@@ -508,6 +530,30 @@ void main() {
       );
       expect(resolved.names.where((n) => n == 'SRPoint'), hasLength(1));
     });
+
+    final cycles = {
+      'circular-ref.json':
+          r'Circular $ref: errors/circular-ref.json#/properties/value -> '
+          'errors/circular-ref.json#/definitions/a -> '
+          'errors/circular-ref.json#/definitions/b -> '
+          'errors/circular-ref.json#/definitions/a',
+      'circular-wrapper.json':
+          'Circular "allOf": errors/circular-wrapper.json -> '
+          'errors/circular-wrapper.json',
+      'circular-all-of.json':
+          'Circular "allOf": errors/circular-all-of.json -> '
+          'errors/circular-all-of.json',
+    };
+    for (final MapEntry(key: file, value: message) in cycles.entries) {
+      test('fails on $file instead of looping', () {
+        expect(
+          () => resolve('errors/$file'),
+          throwsA(
+            isA<SchemaException>().having((e) => e.message, 'message', message),
+          ),
+        );
+      });
+    }
 
     final clashes = {
       'name-clash.json':

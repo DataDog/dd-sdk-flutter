@@ -49,6 +49,10 @@ final class ModelResolver {
   /// Definitions by name, to detect two locations with the same name.
   final _definitionsByName = <String, Definition>{};
 
+  /// Unions whose discriminator is picked once every schema is resolved.
+  final _unfinishedUnions =
+      <(UnionDefinition, List<ClassDefinition>, SchemaNode)>[];
+
   /// Keys of [NamingOptions.renames] that matched a schema.
   final _appliedRenames = <String>{};
 
@@ -64,6 +68,13 @@ final class ModelResolver {
       throw SchemaException('The root schema needs a "title"', root);
     }
     final type = _typeOf(root, owner: '', property: '');
+
+    // Every variant now has all its fields, including variants that use
+    // their own union before declaring their discriminator.
+    for (final (union, variants, node) in _unfinishedUnions) {
+      _finishUnion(union, variants, node);
+    }
+    _unfinishedUnions.clear();
 
     // A rename that matches nothing is most likely stale after a schema
     // change, and would silently stop applying.
@@ -132,12 +143,16 @@ final class ModelResolver {
   /// Follows `$ref`s and `allOf: [{$ref}]` wrappers to the schema that
   /// defines the type.
   SchemaNode _unwrap(SchemaNode schema) {
-    _checkKeywords(schema);
-    var node = loader.deref(schema);
-    _checkKeywords(node);
+    final wrappers = <String>{};
+    var node = loader.deref(schema, visit: _checkKeywords);
     while (_isRefWrapper(node)) {
-      node = loader.deref(node.children('allOf').single);
-      _checkKeywords(node);
+      if (!wrappers.add(node.location)) {
+        throw SchemaException(
+          'Circular "allOf": ${[...wrappers, node.location].join(' -> ')}',
+          schema,
+        );
+      }
+      node = loader.deref(node.children('allOf').single, visit: _checkKeywords);
     }
     return node;
   }
@@ -237,17 +252,24 @@ final class ModelResolver {
 
   /// The properties and required keys of [schema] and of all its `allOf`
   /// parts, merged in order: parts first, then the schema's own properties.
-  _Object _flatten(SchemaNode schema) {
-    _checkKeywords(schema);
-    final node = loader.deref(schema);
-    _checkKeywords(node);
+  ///
+  /// [merging] are the schemas whose parts are being merged, to detect a
+  /// part that leads back to one of them.
+  _Object _flatten(SchemaNode schema, {Set<String> merging = const {}}) {
+    final node = loader.deref(schema, visit: _checkKeywords);
+    if (merging.contains(node.location)) {
+      throw SchemaException(
+        'Circular "allOf": ${[...merging, node.location].join(' -> ')}',
+        node,
+      );
+    }
     if (node.has('oneOf')) {
       throw SchemaException('A "oneOf" cannot be merged into an object', node);
     }
     final result = _Object();
     if (node.has('allOf')) {
       for (final part in node.children('allOf')) {
-        result.merge(_flatten(part));
+        result.merge(_flatten(part, merging: {...merging, node.location}));
       }
     }
     if (node.has('properties')) {
@@ -348,7 +370,23 @@ final class ModelResolver {
     // uses the union finds this definition instead of starting over.
     _register(union, node);
 
-    final variants = [for (final part in parts) _variant(part, union)];
+    // A variant can still be missing fields here, when it uses this union
+    // before declaring its discriminator, so the union is finished once
+    // every schema is resolved.
+    _unfinishedUnions.add((
+      union,
+      [for (final part in parts) _variant(part, union)],
+      node,
+    ));
+    return union;
+  }
+
+  /// Picks the discriminator of [union] and links it to its [variants].
+  void _finishUnion(
+    UnionDefinition union,
+    List<ClassDefinition> variants,
+    SchemaNode node,
+  ) {
     union.discriminatorKey = _discriminator(variants, node);
     for (final variant in variants) {
       if (variant.constField(union.discriminatorKey) case Field(
@@ -358,7 +396,6 @@ final class ModelResolver {
         variant.unions.add(union);
       }
     }
-    return union;
   }
 
   /// The class of a `oneOf` part, which must be a titled object schema.
