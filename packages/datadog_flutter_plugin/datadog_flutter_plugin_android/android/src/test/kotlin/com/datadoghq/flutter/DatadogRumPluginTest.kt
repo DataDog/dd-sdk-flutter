@@ -11,14 +11,17 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.datadog.android.Datadog
+import com.datadog.android.rum.ExperimentalRumApi
 import com.datadog.android.rum.GlobalRumMonitor
 import com.datadog.android.rum.Rum
 import com.datadog.android.rum.RumActionType
 import com.datadog.android.rum.RumConfiguration
 import com.datadog.android.rum.RumErrorSource
+import com.datadog.android.rum.RumMonitor
 import com.datadog.android.rum.RumPerformanceMetric
 import com.datadog.android.rum.RumResourceKind
 import com.datadog.android.rum.RumResourceMethod
+import com.datadog.android.rum._RumInternalProxy
 import com.datadog.android.rum.configuration.VitalsUpdateFrequency
 import com.datadog.android.rum.metric.networksettled.TimeBasedInitialResourceIdentifier
 import com.datadog.android.rum.operations.FailureReason
@@ -49,16 +52,17 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 @ExtendWith(ForgeExtension::class)
+@OptIn(ExperimentalRumApi::class)
 @Suppress("LargeClass")
 class DatadogRumPluginTest {
     private lateinit var plugin: DatadogRumPlugin
-    private lateinit var monitorProxy: MockRumMonitor
+    private lateinit var mockMonitor: MockableRumMonitor
 
     @BeforeEach
     fun beforeEach() {
-        monitorProxy = MockRumMonitor()
+        mockMonitor = mockk(relaxed = true)
         plugin = DatadogRumPlugin()
-        plugin.rum = monitorProxy
+        plugin.rum = mockMonitor
     }
 
     @AfterEach
@@ -214,7 +218,7 @@ class DatadogRumPluginTest {
             .build()
 
         // THEN
-        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val featureConfiguration = config.getRequiredPrivate("featureConfiguration")
         assertThat(featureConfiguration.getPrivate("sampleRate")).isEqualTo(sessionSampleRate)
         assertThat(featureConfiguration.getPrivate("trackFrustrations")).isEqualTo(trackFrustration)
         if (trackNonFatalAnrs != null) {
@@ -254,7 +258,7 @@ class DatadogRumPluginTest {
             .build()
 
         // THEN
-        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val featureConfiguration = config.getRequiredPrivate("featureConfiguration")
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
@@ -279,7 +283,7 @@ class DatadogRumPluginTest {
             .build()
 
         // THEN
-        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val featureConfiguration = config.getRequiredPrivate("featureConfiguration")
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
@@ -302,7 +306,7 @@ class DatadogRumPluginTest {
             .build()
 
         // THEN
-        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val featureConfiguration = config.getRequiredPrivate("featureConfiguration")
         val timeseriesConfiguration = featureConfiguration
             .getPrivate("timeseriesConfiguration") as? TimeseriesConfiguration
         assertThat(timeseriesConfiguration).isNotNull()
@@ -323,7 +327,7 @@ class DatadogRumPluginTest {
             .build()
 
         // THEN
-        val featureConfiguration: Any = config.getFieldValue("featureConfiguration")
+        val featureConfiguration = config.getRequiredPrivate("featureConfiguration")
         val timeseriesConfiguration = featureConfiguration.getPrivate("timeseriesConfiguration")
         assertThat(timeseriesConfiguration).isNull()
     }
@@ -476,7 +480,7 @@ class DatadogRumPluginTest {
         mockkStatic(Rum::class)
         every { Rum.enable(any()) } returns Unit
         mockkStatic(GlobalRumMonitor::class)
-        every { GlobalRumMonitor.get() } returns monitorProxy
+        every { GlobalRumMonitor.get() } returns mockMonitor
     }
 
     @Test
@@ -494,7 +498,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor wasNot Called }
+        verify { mockMonitor wasNot Called }
         verify { mockResult.notImplemented() }
     }
 
@@ -521,7 +525,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.startView(viewKey, viewName, attributes) }
+        verify { mockMonitor.startView(viewKey, viewName, attributes) }
         verify { mockResult.success(null) }
     }
 
@@ -567,7 +571,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.stopView(viewKey, attributes) }
+        verify { mockMonitor.stopView(viewKey, attributes) }
         verify { mockResult.success(null) }
     }
 
@@ -586,7 +590,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.addTiming(timingName) }
+        verify { mockMonitor.addTiming(timingName) }
         verify { mockResult.success(null) }
     }
 
@@ -607,7 +611,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.addAttribute(key, value) }
+        verify { mockMonitor.addAttribute(key, value) }
         verify { mockResult.success(null) }
     }
 
@@ -626,7 +630,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.removeAttribute(key) }
+        verify { mockMonitor.removeAttribute(key) }
         verify { mockResult.success(null) }
     }
 
@@ -646,7 +650,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.addViewAttributes(mapOf(key to value)) }
+        verify { mockMonitor.addViewAttributes(mapOf(key to value)) }
         verify { mockResult.success(null) }
     }
 
@@ -665,7 +669,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.removeViewAttributes(listOf(key)) }
+        verify { mockMonitor.removeViewAttributes(listOf(key)) }
         verify { mockResult.success(null) }
     }
 
@@ -684,7 +688,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.addViewLoadingTime(overwrite) }
+        verify { mockMonitor.addViewLoadingTime(overwrite) }
         verify { mockResult.success(null) }
     }
 
@@ -711,7 +715,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.startResource(resourceKey, RumResourceMethod.GET,  url,
+        verify { mockMonitor.startResource(resourceKey, RumResourceMethod.GET,  url,
             mapOf(attributeKey to attributeValue)
         ) }
         verify { mockResult.success(null) }
@@ -742,7 +746,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.stopResource(resourceKey, statusCode, size, RumResourceKind.IMAGE,
+        verify { mockMonitor.stopResource(resourceKey, statusCode, size, RumResourceKind.IMAGE,
             mapOf(attributeKey to attributeValue)) }
         verify { mockResult.success(null) }
     }
@@ -771,7 +775,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.stopResourceWithError(eq(resourceKey), isNull(), eq(message),
+        verify { mockMonitor.stopResourceWithError(eq(resourceKey), isNull(), eq(message),
             eq(RumErrorSource.NETWORK), eq(""), eq(errorType),
             eq(mapOf(attributeKey to attributeValue))) }
         verify { mockResult.success(null) }
@@ -802,7 +806,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.addErrorWithStacktrace(message, RumErrorSource.NETWORK,
+        verify { mockMonitor.addErrorWithStacktrace(message, RumErrorSource.NETWORK,
             stackTrace, mapOf(
                 attributeKey to attributeValue,
                 "_dd.error_type" to errorType
@@ -831,7 +835,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.addAction(RumActionType.TAP, name, mapOf(
+        verify { mockMonitor.addAction(RumActionType.TAP, name, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -858,7 +862,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.startAction(RumActionType.SCROLL, name, mapOf(
+        verify { mockMonitor.startAction(RumActionType.SCROLL, name, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -885,7 +889,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.stopAction(RumActionType.SWIPE, name, mapOf(
+        verify { mockMonitor.stopAction(RumActionType.SWIPE, name, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -913,7 +917,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.startOperation(name, operationKey, OperationOptions.Empty, mapOf(
+        verify { mockMonitor.startOperation(name, operationKey, OperationOptions.Empty, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -941,7 +945,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.succeedOperation(name, operationKey, mapOf(
+        verify { mockMonitor.succeedOperation(name, operationKey, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -970,7 +974,7 @@ class DatadogRumPluginTest {
         plugin.onMethodCall(call, mockResult)
 
         // THEN
-        verify { monitorProxy.mockMonitor.failOperation(name, operationKey, FailureReason.ABANDONED, mapOf(
+        verify { mockMonitor.failOperation(name, operationKey, FailureReason.ABANDONED, mapOf(
             attributeKey to attributeValue
         )) }
         verify { mockResult.success(null) }
@@ -994,7 +998,7 @@ class DatadogRumPluginTest {
 
         // THEN
         val durationNs = TimeUnit.MILLISECONDS.toNanos(duration.toLong())
-        verify { monitorProxy.mockInternalProxy.addLongTask(durationNs, "") }
+        verify { mockMonitor._getInternal().addLongTask(durationNs, "") }
         verify { mockResult.success(null) }
     }
 
@@ -1017,16 +1021,20 @@ class DatadogRumPluginTest {
 
         // THEN
         for (raster in rasterTimes) {
-            verify { monitorProxy.mockInternalProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_RASTER_TIME, raster) }
+            verify {
+                mockMonitor._getInternal().updatePerformanceMetric(RumPerformanceMetric.FLUTTER_RASTER_TIME, raster)
+            }
         }
         for (build in buildTimes) {
-            verify { monitorProxy.mockInternalProxy.updatePerformanceMetric(RumPerformanceMetric.FLUTTER_BUILD_TIME, build) }
+            verify {
+                mockMonitor._getInternal().updatePerformanceMetric(RumPerformanceMetric.FLUTTER_BUILD_TIME, build)
+            }
         }
         verify { mockResult.success(null) }
     }
 
     @Test
-    fun `M call internal setInternalViewAttribute W setInternalViewAtttribute is called`(
+    fun `M call internal setInternalViewAttribute W setInternalViewAttribute is called`(
         forge: Forge,
     ) {
         // GIVEN
@@ -1057,7 +1065,7 @@ class DatadogRumPluginTest {
             is Int -> value.toLong()
             else -> value
         }
-        verify { monitorProxy.mockInternalProxy.setInternalViewAttribute(key, expectedValue) }
+        verify { mockMonitor._getInternal().setInternalViewAttribute(key, expectedValue) }
         verify { mockResult.success(null) }
     }
 
@@ -1169,5 +1177,10 @@ class DatadogRumPluginTest {
         forge: Forge
     ) {
         testContracts(contracts, forge, plugin)
+    }
+
+    private interface MockableRumMonitor : RumMonitor {
+        // Redeclare the JVM-synthetic SDK method so MockK can implement it.
+        override fun _getInternal(): _RumInternalProxy
     }
 }
