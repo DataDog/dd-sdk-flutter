@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'default_flags_client.dart';
 import 'evaluation_aggregator.dart';
 import 'exposure_logger.dart';
+import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_repository.dart';
@@ -120,6 +121,7 @@ class DatadogFlags {
       configuration: configuration,
       datadogConfig: datadogConfig,
       httpClient: httpClient,
+      flagSelectionDropLog: flagSelectionDropLogFor(this),
     );
 
     final repository = FlagsRepository.forRuntime(runtime, clientName: name);

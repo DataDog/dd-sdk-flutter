@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 
 import 'datadog_flags_config.dart';
+import 'flag_selection.dart';
 import 'flags_configuration.dart';
 
 class FlagsRuntime {
@@ -15,10 +16,14 @@ class FlagsRuntime {
   final DatadogFlagsConfig datadogConfig;
   final http.Client httpClient;
 
+  /// Shared by every fetcher of one owner so a dropped selection logs once.
+  final FlagSelectionDropLog? flagSelectionDropLog;
+
   const FlagsRuntime({
     required this.configuration,
     required this.datadogConfig,
     required this.httpClient,
+    this.flagSelectionDropLog,
   });
 }
 

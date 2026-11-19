@@ -12,6 +12,7 @@ import 'datadog_flags_config.dart';
 import 'flags_configuration.dart';
 import 'evaluation_context.dart';
 import 'flag_key_obfuscation.dart';
+import 'flag_selection.dart';
 import 'flags_error.dart';
 import 'flags_log.dart';
 import 'precompute_request.dart';
@@ -24,12 +25,21 @@ class FlagAssignmentsFetcher {
   final http.Client httpClient;
   final UnknownDestinationWarnings _unknownDestinations;
 
+  /// Canonical selection sent with every request, or null when none is sent.
+  final FlagSelection? flagSelection;
+
   FlagAssignmentsFetcher({
     required this.datadogConfig,
     required this.configuration,
     required this.httpClient,
     FlagsLogger logger = const FlagsLogger(),
-  }) : _unknownDestinations = UnknownDestinationWarnings(logger);
+    FlagSelectionDropLog? dropLog,
+  }) : _unknownDestinations = UnknownDestinationWarnings(logger),
+       flagSelection = resolveFlagSelection(
+         configuration.flagSelection,
+         logger,
+         dropLog: dropLog,
+       );
 
   Future<PrecomputedAssignments> fetch(
     FlagsEvaluationContext evaluationContext, {
@@ -47,6 +57,7 @@ class FlagAssignmentsFetcher {
               PrecomputeRequest.fromContext(
                 datadogConfig: datadogConfig,
                 evaluationContext: evaluationContext,
+                flagSelection: flagSelection,
               ).toJson(),
             );
       response = await http.Response.fromStream(await httpClient.send(request));
@@ -76,6 +87,9 @@ class FlagAssignmentsFetcher {
         createdAt: attributes.createdAt,
         environment: attributes.environment,
         obfuscation: attributes.obfuscation,
+        flagSelectionIgnoredReason: flagSelection == null
+            ? null
+            : flagSelectionIgnoredReason(response.headers),
       );
     } catch (error) {
       throw FlagsException.invalidResponse(

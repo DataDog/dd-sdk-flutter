@@ -10,8 +10,10 @@ import 'package:meta/meta.dart';
 import 'assignment.dart';
 import 'evaluation_context.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
+import 'flags_log.dart';
 import 'flags_runtime.dart';
 import 'flags_store.dart';
 
@@ -33,6 +35,7 @@ class FlagsRepository {
   final DatadogFlagsStore? store;
   final DateTime Function() dateProvider;
   final Duration? initializationTimeout;
+  final FlagsLogger _logger;
   final _CacheOperationQueue _cacheOperations;
   final String _scope;
 
@@ -56,7 +59,9 @@ class FlagsRepository {
     this.initializationTimeout,
     this.storeReadTimeout = defaultStoreReadTimeout,
     this.scheduleInitializationTimeout = _scheduleInitializationTimeout,
-  }) : _cacheOperations = _cacheOperationQueue(store, clientName),
+    FlagsLogger logger = const FlagsLogger(),
+  }) : _logger = logger,
+       _cacheOperations = _cacheOperationQueue(store, clientName),
        _scope = flagsDataScope(fetcher.datadogConfig);
 
   /// Creates a repository that fetches through [runtime]'s HTTP client.
@@ -71,6 +76,7 @@ class FlagsRepository {
         datadogConfig: runtime.datadogConfig,
         configuration: configuration,
         httpClient: runtime.httpClient,
+        dropLog: runtime.flagSelectionDropLog,
       ),
       store: configuration.store,
       dateProvider: configuration.dateProvider,
@@ -144,11 +150,13 @@ class FlagsRepository {
       return;
     }
 
+    // A snapshot fetched under another selection holds a different flag set.
     final matchingCached =
         cached != null &&
             cached.scope == _scope &&
             !_requiresFreshAssignments &&
-            targetingContextsMatch(cached.context, context)
+            targetingContextsMatch(cached.context, context) &&
+            flagSelectionsEqual(cached.flagSelection, fetcher.flagSelection)
         ? cached
         : null;
     if (matchingCached != null && !_hasCurrentStateForContext(context)) {
@@ -161,6 +169,7 @@ class FlagsRepository {
           date: matchingCached.date,
           obfuscation: matchingCached.obfuscation,
           scope: matchingCached.scope,
+          flagSelection: matchingCached.flagSelection,
         ),
         restoredFromStore: true,
       );
@@ -181,12 +190,17 @@ class FlagsRepository {
         date: dateProvider(),
         obfuscation: assignments.obfuscation,
         scope: _scope,
+        flagSelection: fetcher.flagSelection,
       );
       lastLoadError = null;
       _assignmentsWithheld = false;
       _requiresFreshAssignments = false;
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       _setStatus(DatadogFlagsClientStatus.ready);
+      final ignoredReason = assignments.flagSelectionIgnoredReason;
+      if (ignoredReason != null) {
+        logIgnoredFlagSelection(_logger, ignoredReason);
+      }
       await _writeCached(data);
     } on Object catch (error) {
       if (!token.isCanceled) lastLoadError = error;
