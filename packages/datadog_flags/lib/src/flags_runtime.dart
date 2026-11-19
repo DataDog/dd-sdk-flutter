@@ -36,7 +36,8 @@ bool shouldRetryFlagsUpload(int statusCode) {
 /// Delays start at 500 ms with 20 percent jitter and are capped at 60 seconds.
 /// Periodic flushes and batch-size triggers respect the monotonic delay.
 /// Successful uploads and non-retryable responses reset it.
-/// Shutdown makes one bounded drain attempt.
+/// Shutdown does not wait for this delay; it makes at most one bounded upload
+/// attempt.
 final class UploadBackoff {
   static const maxDelay = Duration(seconds: 60);
   final Stopwatch _clock = Stopwatch()..start();

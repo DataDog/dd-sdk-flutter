@@ -79,7 +79,7 @@ final class DatadogProvider
       StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
 
   _ProviderResources? _resources;
-  final Set<Future<void>> _shutdowns = {};
+  Future<void>? _lastShutdown;
   _ProviderRuntime? _activeRuntime;
   _ProviderRuntime? _retainedRuntime;
   _ProviderRuntime? _pendingRuntime;
@@ -242,26 +242,36 @@ final class DatadogProvider
     _hasCommittedContext = false;
     _requiresFreshAssignments = false;
     _retainedRuntime = null;
-    final operation = () async {
-      await Future.wait([
-        ..._retiring,
-        if (activeRuntime != null) _disableQuietly(activeRuntime),
-        if (retainedRuntime != null &&
-            !identical(retainedRuntime, activeRuntime))
-          _disableQuietly(retainedRuntime),
-        if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
-          _disableQuietly(pendingRuntime),
-      ]);
-      await resources?.shutdown();
-    }();
     // A concurrent shutdown also waits for work that an earlier call started.
-    _shutdowns.add(operation);
-    unawaited(
-      operation
-          .catchError((Object _) {})
-          .whenComplete(() => _shutdowns.remove(operation)),
-    );
-    await Future.wait(_shutdowns.toList());
+    final previous = _lastShutdown;
+    final operation = Future.wait([
+      ?previous,
+      _shutdownRuntimes(
+        activeRuntime,
+        retainedRuntime,
+        pendingRuntime,
+        resources,
+      ),
+    ]);
+    _lastShutdown = operation;
+    await operation;
+  }
+
+  Future<void> _shutdownRuntimes(
+    _ProviderRuntime? activeRuntime,
+    _ProviderRuntime? retainedRuntime,
+    _ProviderRuntime? pendingRuntime,
+    _ProviderResources? resources,
+  ) async {
+    await Future.wait([
+      ..._retiring,
+      if (activeRuntime != null) _disableQuietly(activeRuntime),
+      if (retainedRuntime != null && !identical(retainedRuntime, activeRuntime))
+        _disableQuietly(retainedRuntime),
+      if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
+        _disableQuietly(pendingRuntime),
+    ]);
+    await resources?.shutdown();
   }
 
   @override
@@ -878,6 +888,8 @@ final class _ProviderResources {
     );
   }
 
+  // Every caller gets the same drain. The first call starts it, and later calls
+  // return its future, so telemetry is flushed and the client closed once.
   Future<void> shutdown() => _shutdown ??= _drain();
 
   Future<void> _drain() async {
