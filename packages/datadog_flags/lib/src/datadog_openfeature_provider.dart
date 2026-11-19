@@ -254,7 +254,12 @@ final class DatadogProvider
       ),
     ]);
     _lastShutdown = operation;
-    await operation;
+    try {
+      await operation;
+    } finally {
+      // Do not keep a settled failure for shutdowns after reinitialization.
+      if (identical(_lastShutdown, operation)) _lastShutdown = null;
+    }
   }
 
   Future<void> _shutdownRuntimes(

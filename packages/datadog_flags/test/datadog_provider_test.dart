@@ -314,6 +314,64 @@ void main() {
     });
   }
 
+  test(
+    'a failed shutdown does not fail shutdown after re-initialization',
+    () async {
+      final created = <_MockHttpClient>[];
+      final delegate = MockClient(
+        (request) async => _responseFor(request, _assignmentsResponse()),
+      );
+      addTearDown(delegate.close);
+      await http.runWithClient(
+        () async {
+          final provider = DatadogProvider.fromConfiguration(
+            const DatadogFlagsConfiguration(
+              datadogConfig: DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
+          );
+          await provider.initialize(EvaluationContext(targetingKey: 'A'));
+          await expectLater(provider.shutdown(), throwsStateError);
+
+          await provider.initialize(EvaluationContext(targetingKey: 'B'));
+          expect(created, hasLength(2));
+          await provider.shutdown();
+          verify(() => created[1].close()).called(1);
+        },
+        () {
+          final transport = _MockHttpClient();
+          when(() => transport.send(any())).thenAnswer(
+            (invocation) => delegate.send(
+              invocation.positionalArguments.single as http.BaseRequest,
+            ),
+          );
+          when(
+            () => transport.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (invocation) => delegate.post(
+              invocation.positionalArguments.single as Uri,
+              headers:
+                  invocation.namedArguments[#headers] as Map<String, String>?,
+              body: invocation.namedArguments[#body],
+            ),
+          );
+          if (created.isEmpty) {
+            when(transport.close).thenThrow(StateError('close failed'));
+          }
+          created.add(transport);
+          return transport;
+        },
+      );
+    },
+  );
+
   test('retiring a context aborts its pending assignment fetch', () async {
     final transport = _MockHttpClient();
     final abortTriggers = <String, Future<void>?>{};
