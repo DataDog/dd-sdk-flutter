@@ -124,6 +124,7 @@ void main() {
       when(
         () => mockRum.contextInjectionSetting,
       ).thenReturn(TraceContextInjection.all);
+      when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
       when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
       when(() => mockDatadog.rum).thenReturn(mockRum);
@@ -650,6 +651,49 @@ void main() {
           ).thenReturn({headerType});
         });
 
+        for (final propagateBaggage in [true, false]) {
+          test(
+            'baggage header respects propagateTraceBaggage = $propagateBaggage',
+            () async {
+              when(() => mockPlatform.getContext()).thenReturn(
+                DatadogContext(
+                  sessionId: 'session-id',
+                  userId: 'user-id',
+                  accountId: 'account-id',
+                ),
+              );
+              when(
+                () => mockRum.propagateTraceBaggageSetting,
+              ).thenReturn(propagateBaggage);
+              final client = DatadogClient(
+                datadogSdk: mockDatadog,
+                innerClient: mockClient,
+              );
+              final _ = client.get(Uri.parse('https://test_url/test'));
+
+              final captured =
+                  verify(() => mockClient.send(captureAny())).captured[0]
+                      as http.BaseRequest;
+
+              final supportsBaggage =
+                  headerType == TracingHeaderType.datadog ||
+                  headerType == TracingHeaderType.tracecontext;
+              if (supportsBaggage && propagateBaggage) {
+                expect(
+                  captured.headers['baggage'],
+                  allOf(
+                    contains('session.id=session-id'),
+                    contains('user.id=user-id'),
+                    contains('account.id=account-id'),
+                  ),
+                );
+              } else {
+                expect(captured.headers['baggage'], isNull);
+              }
+            },
+          );
+        }
+
         test(
           'adds tracing headers to request { sampled, TraceContextInjection.all }',
           () async {
@@ -744,6 +788,7 @@ void main() {
             when(
               () => mockRum.contextInjectionSetting,
             ).thenReturn(TraceContextInjection.sampled);
+            when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
             final client = DatadogClient(
               datadogSdk: mockDatadog,
               innerClient: mockClient,

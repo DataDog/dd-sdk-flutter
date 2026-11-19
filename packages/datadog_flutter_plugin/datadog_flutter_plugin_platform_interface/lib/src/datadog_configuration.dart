@@ -483,6 +483,12 @@ class DatadogAttachConfiguration {
   /// Defaults to [TraceContextInjection.sampled].
   TraceContextInjection traceContextInjection = TraceContextInjection.sampled;
 
+  /// Whether to add `session.id`, `user.id`, and `account.id` to the W3C
+  /// `baggage` header of traced requests.
+  ///
+  /// Defaults to `true`.
+  bool propagateTraceBaggage;
+
   /// Configuration for capturing HTTP request and response headers in RUM
   /// resource events.
   ///
@@ -501,6 +507,7 @@ class DatadogAttachConfiguration {
     List<String>? firstPartyHosts,
     this.firstPartyHostsWithTracingHeaders = const {},
     this.traceContextInjection = TraceContextInjection.sampled,
+    this.propagateTraceBaggage = true,
     this.trackResourceHeaders,
   }) {
     // Attempt a union if both configuration options are present

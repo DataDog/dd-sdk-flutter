@@ -178,6 +178,7 @@ void main() {
       when(
         () => mockRum.contextInjectionSetting,
       ).thenReturn(TraceContextInjection.all);
+      when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
       when(() => mockRum.traceSampleRate).thenReturn(12);
     });
 
@@ -279,12 +280,56 @@ void main() {
           },
         );
 
+        for (final propagateBaggage in [true, false]) {
+          test(
+            'baggage header respects propagateTraceBaggage = $propagateBaggage',
+            () async {
+              when(() => mockPlatform.getContext()).thenReturn(
+                DatadogContext(
+                  sessionId: 'session-id',
+                  userId: 'user-id',
+                  accountId: 'account-id',
+                ),
+              );
+              when(
+                () => mockRum.propagateTraceBaggageSetting,
+              ).thenReturn(propagateBaggage);
+              when(
+                () => mockDatadog.headerTypesForHost(any()),
+              ).thenReturn({tracingType});
+
+              final interceptor = DatadogGrpcInterceptor(mockDatadog, channel);
+              final stub = GreeterClient(channel, interceptors: [interceptor]);
+
+              await stub.sayHello(HelloRequest(name: 'test'));
+
+              final metadata = loggingService.calls[0].clientMetadata!;
+              final supportsBaggage =
+                  tracingType == TracingHeaderType.datadog ||
+                  tracingType == TracingHeaderType.tracecontext;
+              if (supportsBaggage && propagateBaggage) {
+                expect(
+                  metadata['baggage'],
+                  allOf(
+                    contains('session.id=session-id'),
+                    contains('user.id=user-id'),
+                    contains('account.id=account-id'),
+                  ),
+                );
+              } else {
+                expect(metadata['baggage'], isNull);
+              }
+            },
+          );
+        }
+
         test(
           'Interceptor passes on proper metadata { sampled, TraceContextInjection.all }',
           () async {
             when(
               () => mockRum.contextInjectionSetting,
             ).thenReturn(TraceContextInjection.all);
+            when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
             when(
               () => mockDatadog.headerTypesForHost(any()),
             ).thenReturn({tracingType});
@@ -312,6 +357,7 @@ void main() {
             when(
               () => mockRum.contextInjectionSetting,
             ).thenReturn(TraceContextInjection.sampled);
+            when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
             when(
               () => mockDatadog.headerTypesForHost(any()),
             ).thenReturn({tracingType});
@@ -342,6 +388,7 @@ void main() {
             when(
               () => mockRum.contextInjectionSetting,
             ).thenReturn(TraceContextInjection.all);
+            when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
             when(
               () => mockRum.shouldSampleTrace(any(), any()),
             ).thenReturn(false);
@@ -372,6 +419,7 @@ void main() {
             when(
               () => mockRum.contextInjectionSetting,
             ).thenReturn(TraceContextInjection.sampled);
+            when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
             when(
               () => mockRum.shouldSampleTrace(any(), any()),
             ).thenReturn(false);
@@ -445,6 +493,7 @@ void main() {
     when(
       () => mockRum.contextInjectionSetting,
     ).thenReturn(TraceContextInjection.all);
+    when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
     when(
       () => mockDatadog.headerTypesForHost(any()),
     ).thenReturn({TracingHeaderType.datadog});
@@ -508,6 +557,7 @@ void main() {
     when(
       () => mockRum.contextInjectionSetting,
     ).thenReturn(TraceContextInjection.all);
+    when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
     when(
       () => mockDatadog.headerTypesForHost(any()),
     ).thenReturn({TracingHeaderType.datadog});
@@ -561,6 +611,7 @@ void main() {
     when(
       () => mockRum.contextInjectionSetting,
     ).thenReturn(TraceContextInjection.all);
+    when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
     when(
       () => mockDatadog.headerTypesForHost(any()),
     ).thenReturn({TracingHeaderType.datadog});

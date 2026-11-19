@@ -90,6 +90,7 @@ class DatadogGrpcInterceptor extends ClientInterceptor {
             tracingType,
             mergedHeaders,
             contextInjection: rum.contextInjectionSetting,
+            propagateBaggage: rum.propagateTraceBaggageSetting,
           );
         }
       }

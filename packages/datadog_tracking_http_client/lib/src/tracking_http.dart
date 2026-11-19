@@ -127,6 +127,7 @@ class DatadogClient extends http.BaseClient {
             context,
             tracingHeaders,
             rum.contextInjectionSetting,
+            rum.propagateTraceBaggageSetting,
           );
         }
 
@@ -303,6 +304,7 @@ class DatadogClient extends http.BaseClient {
     TracingContext context,
     Set<TracingHeaderType> tracingHeaderTypes,
     TraceContextInjection contextInjection,
+    bool propagateBaggage,
   ) {
     var attributes = <String, Object?>{};
 
@@ -318,6 +320,7 @@ class DatadogClient extends http.BaseClient {
           headerType,
           request.headers,
           contextInjection: contextInjection,
+          propagateBaggage: propagateBaggage,
         );
       }
     }
