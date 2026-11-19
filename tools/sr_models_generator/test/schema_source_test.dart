@@ -8,28 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
-/// Runs git in [dir] with an identity and no signing, so that the tests do
-/// not depend on the global git configuration.
-String git(String dir, List<String> args) {
-  final result = Process.runSync('git', [
-    '-c', 'user.name=Test', '-c', 'user.email=test@example.com', //
-    '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false',
-    ...args,
-  ], workingDirectory: dir);
-  if (result.exitCode != 0) {
-    fail('git ${args.join(' ')} failed: ${result.stderr}');
-  }
-  return (result.stdout as String).trim();
-}
-
-/// Writes [content] to `schema.json` in [dir] and commits it.
-String commitSchema(String dir, String content) {
-  File(p.join(dir, 'schema.json')).writeAsStringSync(content);
-  git(dir, ['add', '.']);
-  git(dir, ['commit', '--quiet', '-m', content]);
-  return git(dir, ['rev-parse', 'HEAD']);
-}
-
 void main() {
   late Directory temp;
   late String remoteDir;
@@ -40,6 +18,28 @@ void main() {
   late String firstCommit;
   late String secondCommit;
   late String cache;
+
+  /// Runs git in [dir] with an identity and no signing, so that the tests do
+  /// not depend on the global git configuration.
+  String git(String dir, List<String> args) {
+    final result = Process.runSync('git', [
+      '-c', 'user.name=Test', '-c', 'user.email=test@example.com', //
+      '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false',
+      ...args,
+    ], workingDirectory: dir);
+    if (result.exitCode != 0) {
+      fail('git ${args.join(' ')} failed: ${result.stderr}');
+    }
+    return result.stdout.toString().trim();
+  }
+
+  /// Writes [content] to `schema.json` in [dir] and commits it.
+  String commitSchema(String dir, String content) {
+    File(p.join(dir, 'schema.json')).writeAsStringSync(content);
+    git(dir, ['add', '.']);
+    git(dir, ['commit', '--quiet', '-m', content]);
+    return git(dir, ['rev-parse', 'HEAD']);
+  }
 
   String readSchema(SchemaCheckout checkout) =>
       File(p.join(checkout.directory, 'schema.json')).readAsStringSync();
@@ -73,11 +73,20 @@ void main() {
 
   tearDown(() => temp.deleteSync(recursive: true));
 
-  test('isFullCommitSha accepts only full lowercase SHAs', () {
-    expect(isFullCommitSha(firstCommit), isTrue);
-    expect(isFullCommitSha(firstCommit.substring(0, 7)), isFalse);
-    expect(isFullCommitSha(firstCommit.toUpperCase()), isFalse);
-    expect(isFullCommitSha('master'), isFalse);
+  group('isFullCommitSha', () {
+    const sha = '0123456789abcdef0123456789abcdef01234567';
+    final values = {
+      sha: true,
+      sha.substring(0, 7): false,
+      sha.toUpperCase(): false,
+      '${sha}0': false,
+      'master': false,
+    };
+    for (final MapEntry(key: value, value: isSha) in values.entries) {
+      test('is $isSha for "$value"', () {
+        expect(isFullCommitSha(value), isSha);
+      });
+    }
   });
 
   group('checkoutCommit', () {
@@ -110,15 +119,16 @@ void main() {
       expect(readSchema(await checkout(firstCommit)), 'first');
     });
 
-    test('rejects branches, tags and short SHAs', () async {
-      for (final revision in ['master', 'v1', firstCommit.substring(0, 7)]) {
-        await expectLater(
-          checkout(revision),
-          throwsA(isA<ArgumentError>()),
-          reason: revision,
-        );
-      }
-    });
+    final notCommits = {
+      'a branch': () => 'master',
+      'a tag': () => 'v1',
+      'a short SHA': () => firstCommit.substring(0, 7),
+    };
+    for (final MapEntry(key: kind, value: revision) in notCommits.entries) {
+      test('rejects $kind', () async {
+        await expectLater(checkout(revision()), throwsA(isA<ArgumentError>()));
+      });
+    }
 
     test('fails on a commit the repository does not have', () async {
       await expectLater(
@@ -129,15 +139,18 @@ void main() {
   });
 
   group('fetchLatest', () {
-    test('returns the commit a branch or tag points to', () async {
-      final branch = await latest('master');
-      expect(branch.commit, secondCommit);
-      expect(readSchema(branch), 'second');
-
-      final tag = await latest('v1');
-      expect(tag.commit, firstCommit);
-      expect(readSchema(tag), 'first');
-    });
+    // Branch or tag -> (the commit it points to, its schema).
+    final refs = {
+      'master': (() => secondCommit, 'second'),
+      'v1': (() => firstCommit, 'first'),
+    };
+    for (final MapEntry(key: ref, value: (commit, schema)) in refs.entries) {
+      test('returns the commit "$ref" points to', () async {
+        final result = await latest(ref);
+        expect(result.commit, commit());
+        expect(readSchema(result), schema);
+      });
+    }
 
     test('sees new commits on the branch', () async {
       await latest('master');
@@ -152,11 +165,14 @@ void main() {
       await expectLater(latest(firstCommit), throwsA(isA<ArgumentError>()));
     });
 
-    test('fails on unknown branches and repositories', () async {
+    test('fails on an unknown branch', () async {
       await expectLater(
         latest('no-such-branch'),
         throwsA(isA<SchemaFetchException>()),
       );
+    });
+
+    test('fails on an unknown repository', () async {
       await expectLater(
         fetchLatest(
           repository: Uri.directory(p.join(temp.path, 'missing')).toString(),

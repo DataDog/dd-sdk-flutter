@@ -13,7 +13,7 @@ import 'schema_node.dart';
 ///
 /// Files are identified by posix paths relative to [rootDirectory], so
 /// locations are the same on every platform.
-class SchemaLoader {
+final class SchemaLoader {
   SchemaLoader(this.rootDirectory);
 
   final String rootDirectory;

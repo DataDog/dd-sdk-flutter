@@ -43,8 +43,17 @@ void main() {
     definitions = {for (final d in resolver.definitions) d.name: d};
   });
 
+  /// The union named [name].
+  UnionDefinition unionNamed(String name) => switch (definitions[name]) {
+    final UnionDefinition union => union,
+    final other => throw StateError('$name is not a union: $other'),
+  };
+
   test('the root type is SRSegment', () {
-    expect(root, NamedType(definitions['SRSegment']!));
+    expect(
+      root,
+      isA<NamedType>().having((t) => t.definition.name, 'name', 'SRSegment'),
+    );
   });
 
   // Every type. The names are those of the hand-written
@@ -232,7 +241,7 @@ void main() {
 
   for (final MapEntry(key: name, value: (key, variants)) in unions.entries) {
     test('$name is told apart by "$key"', () {
-      final union = definitions[name]! as UnionDefinition;
+      final union = unionNamed(name);
       expect(union.discriminatorKey, key);
       expect({
         for (final MapEntry(key: tag, value: variant) in union.variants.entries)
@@ -242,7 +251,7 @@ void main() {
   }
 
   test('wireframes expose the fields every kind of wireframe has', () {
-    final wireframe = definitions['SRWireframe']! as UnionDefinition;
+    final wireframe = unionNamed('SRWireframe');
     expect(wireframe.sharedFields.map((f) => f.dartName), [
       'id',
       'x',

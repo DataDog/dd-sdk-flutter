@@ -6,7 +6,10 @@ import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
+import 'support/package_root.dart';
+
 void main() {
+  late String fixtures;
   late SchemaLoader loader;
   late SchemaNode document;
 
@@ -21,8 +24,12 @@ void main() {
     ),
   );
 
+  setUpAll(() async {
+    fixtures = p.join(await packageRoot(), 'test', 'fixtures', 'loader');
+  });
+
   setUp(() {
-    loader = SchemaLoader(p.join('test', 'fixtures', 'loader'));
+    loader = SchemaLoader(fixtures);
     document = loader.load('document.json');
   });
 
@@ -39,20 +46,16 @@ void main() {
       expect(identical(again.json, document.json), isTrue);
     });
 
-    test('fails on missing, invalid or non-object files', () {
-      expect(
-        () => loader.load('missing.json'),
-        throwsSchemaException('not found'),
-      );
-      expect(
-        () => loader.load('invalid.json'),
-        throwsSchemaException('Invalid JSON'),
-      );
-      expect(
-        () => loader.load('array.json'),
-        throwsSchemaException('not a JSON object'),
-      );
-    });
+    final unreadableFiles = {
+      'missing.json': 'not found',
+      'invalid.json': 'Invalid JSON',
+      'array.json': 'not a JSON object',
+    };
+    for (final MapEntry(key: file, value: message) in unreadableFiles.entries) {
+      test('fails on $file', () {
+        expect(() => loader.load(file), throwsSchemaException(message));
+      });
+    }
   });
 
   group('resolveRef', () {
@@ -71,56 +74,49 @@ void main() {
       expect(up.location, 'sibling.json');
     });
 
-    test('resolves fragments in the same file', () {
-      expect(
-        loader.resolveRef(property('local')).location,
-        'document.json#/definitions/local',
-      );
-      expect(loader.resolveRef(property('indexed')).json['title'], 'First');
-      expect(loader.resolveRef(property('root')).location, 'document.json');
+    // Property of document.json -> where its `$ref` points.
+    final references = {
+      'local': 'document.json#/definitions/local',
+      'escaped': 'document.json#/definitions/a~1b~0c',
+      'indexed': 'document.json#/allOf/0',
+      'root': 'document.json',
+      'remote': 'sibling.json#/definitions/remote',
+    };
+    for (final MapEntry(key: name, value: location) in references.entries) {
+      test('resolves the "$name" reference to $location', () {
+        expect(loader.resolveRef(property(name)).location, location);
+      });
+    }
+
+    test('reads the schema an escaped fragment points to', () {
+      expect(loader.resolveRef(property('escaped')).json['title'], 'Escaped');
     });
 
-    test('resolves escaped fragment segments', () {
-      final target = loader.resolveRef(property('escaped'));
-      expect(target.json['title'], 'Escaped');
-    });
-
-    test('resolves fragments in another file', () {
-      final target = loader.resolveRef(property('remote'));
-      expect(target.location, 'sibling.json#/definitions/remote');
-      expect(target.json['title'], 'Remote');
-    });
-
-    test('fails on references it cannot follow', () {
+    test('fails on a node without a \$ref', () {
       expect(
         () => loader.resolveRef(document),
         throwsSchemaException(r'Expected a string "$ref"'),
       );
-      expect(
-        () => loader.resolveRef(property('notAString')),
-        throwsSchemaException(r'Expected a string "$ref"'),
-      );
-      expect(
-        () => loader.resolveRef(property('missingFile')),
-        throwsSchemaException('not found'),
-      );
-      expect(
-        () => loader.resolveRef(property('missingPointer')),
-        throwsSchemaException('points to nothing'),
-      );
-      expect(
-        () => loader.resolveRef(property('outOfRange')),
-        throwsSchemaException('points to nothing'),
-      );
-      expect(
-        () => loader.resolveRef(property('anchor')),
-        throwsSchemaException('only JSON pointer fragments'),
-      );
-      expect(
-        () => loader.resolveRef(property('toArray')),
-        throwsSchemaException('does not point to an object'),
-      );
     });
+
+    // Property of document.json -> why its `$ref` cannot be followed.
+    final brokenReferences = {
+      'notAString': r'Expected a string "$ref"',
+      'missingFile': 'not found',
+      'missingPointer': 'points to nothing',
+      'outOfRange': 'points to nothing',
+      'anchor': 'only JSON pointer fragments',
+      'toArray': 'does not point to an object',
+    };
+    for (final MapEntry(key: name, value: message)
+        in brokenReferences.entries) {
+      test('fails on the "$name" reference', () {
+        expect(
+          () => loader.resolveRef(property(name)),
+          throwsSchemaException(message),
+        );
+      });
+    }
   });
 
   group('deref', () {
@@ -134,15 +130,17 @@ void main() {
       expect(target.location, 'sibling.json');
     });
 
-    test('fails on cycles', () {
-      expect(
-        () => loader.deref(loader.load('cycle-a.json')),
-        throwsSchemaException('cycle-a.json -> cycle-b.json -> cycle-a.json'),
-      );
-      expect(
-        () => loader.deref(loader.load('self-cycle.json')),
-        throwsSchemaException('Circular'),
-      );
-    });
+    final cycles = {
+      'cycle-a.json': 'cycle-a.json -> cycle-b.json -> cycle-a.json',
+      'self-cycle.json': 'self-cycle.json -> self-cycle.json',
+    };
+    for (final MapEntry(key: file, value: chain) in cycles.entries) {
+      test('fails on the cycle in $file', () {
+        expect(
+          () => loader.deref(loader.load(file)),
+          throwsSchemaException(chain),
+        );
+      });
+    }
   });
 }

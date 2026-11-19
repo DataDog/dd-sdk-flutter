@@ -2,13 +2,16 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-Present Datadog, Inc.
 
+import 'package:meta/meta.dart';
+
 typedef JsonMap = Map<String, Object?>;
 
 /// A JSON Schema object together with where it was found.
 ///
 /// The location ([file] + [pointer]) identifies a schema: two nodes with the
 /// same location are the same schema, however they were reached.
-class SchemaNode {
+@immutable
+final class SchemaNode {
   SchemaNode(this.file, this.pointer, this.json);
 
   final String file;
@@ -24,13 +27,11 @@ class SchemaNode {
   /// The schema `description`; generated documentation comes from it.
   String? get description => _string('description');
 
-  String? _string(String key) {
-    final value = json[key];
-    if (value != null && value is! String) {
-      throw SchemaException('"$key" must be a string', this);
-    }
-    return value as String?;
-  }
+  String? _string(String key) => switch (json[key]) {
+    null => null,
+    final String value => value,
+    _ => throw SchemaException('"$key" must be a string', this),
+  };
 
   bool has(String key) => json.containsKey(key);
 
@@ -74,7 +75,8 @@ String unescapePointerSegment(String segment) =>
     segment.replaceAll('~1', '/').replaceAll('~0', '~');
 
 /// A schema the generator cannot read or does not support.
-class SchemaException implements Exception {
+@immutable
+final class SchemaException implements Exception {
   SchemaException(this.message, [this.node]);
 
   final String message;
@@ -83,6 +85,8 @@ class SchemaException implements Exception {
   final SchemaNode? node;
 
   @override
-  String toString() =>
-      node == null ? message : '$message (at ${node!.location})';
+  String toString() => switch (node) {
+    null => message,
+    final node => '$message (at ${node.location})',
+  };
 }

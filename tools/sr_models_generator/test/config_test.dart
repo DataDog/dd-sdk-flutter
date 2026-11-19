@@ -8,21 +8,21 @@ import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
-const _sha = '0123456789abcdef0123456789abcdef01234567';
-const _otherSha = 'fedcba9876543210fedcba9876543210fedcba98';
+import 'support/package_root.dart';
 
-const _valid =
-    '''
+void main() {
+  const sha = '0123456789abcdef0123456789abcdef01234567';
+  const otherSha = 'fedcba9876543210fedcba9876543210fedcba98';
+  const valid =
+      '''
 # Header comment.
 rum_events_format:
   repository: https://example.com/rum-events-format.git
   # The pinned commit.
-  commit: $_sha  # trailing comment
+  commit: $sha  # trailing comment
 root_schema: schemas/root-schema.json
 output: ../out/models.dart
 ''';
-
-void main() {
   final file = p.join('config', 'sr_models_generator.yaml');
 
   Matcher throwsConfigException(String message) => throwsA(
@@ -33,17 +33,23 @@ void main() {
     ),
   );
 
+  /// [valid] without the line that sets [key].
+  String without(String key) => valid
+      .split('\n')
+      .where((line) => !line.trimLeft().startsWith('$key:'))
+      .join('\n');
+
   group('parse', () {
     test('reads every setting', () {
-      final config = GeneratorConfig.parse(_valid, file: file);
+      final config = GeneratorConfig.parse(valid, file: file);
       expect(config.file, file);
       expect(config.repository, 'https://example.com/rum-events-format.git');
-      expect(config.commit, _sha);
+      expect(config.commit, sha);
       expect(config.rootSchema, 'schemas/root-schema.json');
     });
 
     test('uses the default naming when the file does not set it', () {
-      final naming = GeneratorConfig.parse(_valid, file: file).naming;
+      final naming = GeneratorConfig.parse(valid, file: file).naming;
       expect(naming.typePrefix, 'SR');
       expect(naming.stripFromTitles, ['Mobile']);
       expect(naming.renames, isEmpty);
@@ -51,7 +57,7 @@ void main() {
 
     test('reads the naming settings', () {
       final naming = GeneratorConfig.parse('''
-$_valid
+$valid
 type_prefix: DD
 strip_from_titles: [Mobile, Common]
 type_renames:
@@ -84,91 +90,96 @@ type_renames:
         in invalidNaming.entries) {
       test('fails on $setting', () {
         expect(
-          () => GeneratorConfig.parse('$_valid\n$setting\n', file: file),
+          () => GeneratorConfig.parse('$valid\n$setting\n', file: file),
           throwsConfigException(message),
         );
       });
     }
 
     test('resolves the output relative to the configuration file', () {
-      final config = GeneratorConfig.parse(_valid, file: file);
+      final config = GeneratorConfig.parse(valid, file: file);
       expect(config.output, p.join('out', 'models.dart'));
     });
 
-    test('fails on invalid YAML or a non-map document', () {
-      expect(
-        () => GeneratorConfig.parse('a: [', file: file),
-        throwsConfigException('Invalid YAML'),
-      );
-      expect(
-        () => GeneratorConfig.parse('- a', file: file),
-        throwsConfigException('Expected a YAML map'),
-      );
-    });
-
-    test('fails on missing or empty settings', () {
-      for (final (key, message) in [
-        ('repository', 'rum_events_format.repository'),
-        ('commit', 'rum_events_format.commit'),
-        ('root_schema', 'root_schema'),
-        ('output', 'output'),
-      ]) {
-        final withoutKey = _valid
-            .split('\n')
-            .where((line) => !line.trimLeft().startsWith('$key:'))
-            .join('\n');
+    // Description -> (configuration, the error it gives).
+    final invalidFiles = {
+      'invalid YAML': ('a: [', 'Invalid YAML'),
+      'a document that is not a map': ('- a', 'Expected a YAML map'),
+      'a missing repository': (
+        without('repository'),
+        '"rum_events_format.repository" must be a non-empty string',
+      ),
+      'a missing commit': (
+        without('commit'),
+        '"rum_events_format.commit" must be a non-empty string',
+      ),
+      'a missing root_schema': (
+        without('root_schema'),
+        '"root_schema" must be a non-empty string',
+      ),
+      'a missing output': (
+        without('output'),
+        '"output" must be a non-empty string',
+      ),
+      'a blank output': (
+        valid.replaceFirst('output: ../out/models.dart', 'output: " "'),
+        '"output" must be a non-empty string',
+      ),
+      'a missing rum_events_format': (
+        'root_schema: x\noutput: y\n',
+        '"rum_events_format" must be a map',
+      ),
+    };
+    for (final MapEntry(key: description, value: (source, message))
+        in invalidFiles.entries) {
+      test('fails on $description', () {
         expect(
-          () => GeneratorConfig.parse(withoutKey, file: file),
-          throwsConfigException('"$message" must be a non-empty string'),
-          reason: 'without $key',
+          () => GeneratorConfig.parse(source, file: file),
+          throwsConfigException(message),
         );
-      }
-      expect(
-        () => GeneratorConfig.parse(
-          _valid.replaceFirst('output: ../out/models.dart', 'output: " "'),
-          file: file,
-        ),
-        throwsConfigException('"output" must be a non-empty string'),
-      );
-      expect(
-        () => GeneratorConfig.parse('root_schema: x\noutput: y\n', file: file),
-        throwsConfigException('"rum_events_format" must be a map'),
-      );
-    });
+      });
+    }
 
-    test('requires the commit to be a full SHA', () {
-      for (final commit in [
-        'master',
-        'v1.0.0',
-        '748d7fe',
-        _sha.toUpperCase(),
-      ]) {
+    for (final commit in ['master', 'v1.0.0', '748d7fe', sha.toUpperCase()]) {
+      test('fails when the commit is "$commit", not a full SHA', () {
         expect(
           () => GeneratorConfig.parse(
-            _valid.replaceFirst(_sha, commit),
+            valid.replaceFirst(sha, commit),
             file: file,
           ),
           throwsConfigException('full 40-character commit SHA'),
-          reason: commit,
         );
-      }
-    });
+      });
+    }
   });
 
   group('replaceCommit', () {
     test('changes only the commit, keeping comments and layout', () {
       final updated = GeneratorConfig.replaceCommit(
-        _valid,
-        _otherSha,
+        valid,
+        otherSha,
         file: file,
       );
-      expect(updated, _valid.replaceFirst(_sha, _otherSha));
-      expect(GeneratorConfig.parse(updated, file: file).commit, _otherSha);
+      expect(updated, valid.replaceFirst(sha, otherSha));
+      expect(GeneratorConfig.parse(updated, file: file).commit, otherSha);
     });
+
+    for (final quote in ['"', "'"]) {
+      test('keeps the $quote quotes around the commit', () {
+        final quoted = valid.replaceFirst(sha, '$quote$sha$quote');
+        final updated = GeneratorConfig.replaceCommit(
+          quoted,
+          otherSha,
+          file: file,
+        );
+        expect(updated, quoted.replaceFirst(sha, otherSha));
+        expect(GeneratorConfig.parse(updated, file: file).commit, otherSha);
+      });
+    }
 
     test('rejects anything but a full SHA', () {
       expect(
-        () => GeneratorConfig.replaceCommit(_valid, 'master', file: file),
+        () => GeneratorConfig.replaceCommit(valid, 'master', file: file),
         throwsConfigException('full 40-character commit SHA'),
       );
     });
@@ -176,8 +187,8 @@ type_renames:
     test('fails when there is not exactly one commit entry', () {
       expect(
         () => GeneratorConfig.replaceCommit(
-          '$_valid\nother:\n  commit: $_sha\n',
-          _otherSha,
+          '$valid\nother:\n  commit: $sha\n',
+          otherSha,
           file: file,
         ),
         throwsConfigException('found 2'),
@@ -190,14 +201,14 @@ type_renames:
           '''
 rum_events_format:
   repository: https://example.com/rum-events-format.git
-  pinned: $_sha
+  pinned: $sha
 other:
-  commit: $_sha
+  commit: $sha
 root_schema: schemas/root-schema.json
 output: out.dart
 ''';
       expect(
-        () => GeneratorConfig.replaceCommit(misplaced, _otherSha, file: file),
+        () => GeneratorConfig.replaceCommit(misplaced, otherSha, file: file),
         throwsA(isA<ConfigException>()),
       );
     });
@@ -210,15 +221,12 @@ output: out.dart
 
     test('read and update the file on disk', () {
       final path = p.join(dir.path, 'sr_models_generator.yaml');
-      File(path).writeAsStringSync(_valid);
+      File(path).writeAsStringSync(valid);
 
-      GeneratorConfig.load(path).writeCommit(_otherSha);
+      GeneratorConfig.load(path).writeCommit(otherSha);
 
-      expect(
-        File(path).readAsStringSync(),
-        _valid.replaceFirst(_sha, _otherSha),
-      );
-      expect(GeneratorConfig.load(path).commit, _otherSha);
+      expect(File(path).readAsStringSync(), valid.replaceFirst(sha, otherSha));
+      expect(GeneratorConfig.load(path).commit, otherSha);
     });
 
     test('load fails when the file does not exist', () {
@@ -229,8 +237,11 @@ output: out.dart
     });
   });
 
-  test('the repository configuration is valid', () {
-    final config = GeneratorConfig.load('sr_models_generator.yaml');
+  test('the repository configuration is valid', () async {
+    final root = await packageRoot();
+    final config = GeneratorConfig.load(
+      p.join(root, 'sr_models_generator.yaml'),
+    );
     expect(config.naming.typePrefix, 'SR');
     expect(config.naming.stripFromTitles, ['Mobile']);
     expect(config.naming.renames, {
@@ -255,7 +266,10 @@ output: out.dart
     expect(
       config.output,
       p.normalize(
-        '../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart',
+        p.join(
+          root,
+          '../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart',
+        ),
       ),
     );
   });

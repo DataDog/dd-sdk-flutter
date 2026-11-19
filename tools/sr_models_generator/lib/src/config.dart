@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -11,7 +12,8 @@ import 'resolver.dart';
 import 'schema_source.dart';
 
 /// The generator configuration, read from `sr_models_generator.yaml`.
-class GeneratorConfig {
+@immutable
+final class GeneratorConfig {
   GeneratorConfig({
     required this.file,
     required this.repository,
@@ -65,7 +67,7 @@ class GeneratorConfig {
           file,
         );
       }
-      return value.cast<String>().toList();
+      return value.whereType<String>().toList();
     }
 
     Map<String, String>? readRenames(YamlMap map) {
@@ -80,8 +82,12 @@ class GeneratorConfig {
         );
       }
       return {
-        for (final MapEntry(:key, :value) in value.entries)
-          key as String: value as String,
+        for (final entry in value.entries)
+          if (entry case MapEntry(
+            key: final String from,
+            value: final String to,
+          ))
+            from: to,
       };
     }
 
@@ -94,7 +100,7 @@ class GeneratorConfig {
       'commit',
       'rum_events_format.commit',
     );
-    _checkCommit(commit, file);
+    commit.checkIsFullCommitSha(file: file);
 
     return GeneratorConfig(
       file: file,
@@ -148,17 +154,17 @@ class GeneratorConfig {
 
   /// Returns [source] with the pinned commit replaced by [sha].
   ///
-  /// Only the value of `rum_events_format.commit` changes, so comments and
-  /// formatting are kept. The result is parsed again to make sure the edit
-  /// changed the right key.
+  /// Only the value of `rum_events_format.commit` changes, so comments,
+  /// formatting and quotes around the value are kept. The result is parsed
+  /// again to make sure the edit changed the right key.
   static String replaceCommit(
     String source,
     String sha, {
     required String file,
   }) {
-    _checkCommit(sha, file);
+    sha.checkIsFullCommitSha(file: file);
     final pattern = RegExp(
-      r'^([ \t]+commit:[ \t]*)[0-9A-Za-z]+',
+      r'''^([ \t]+commit:[ \t]*['"]?)[0-9A-Za-z]+''',
       multiLine: true,
     );
     final matches = pattern.allMatches(source).length;
@@ -177,13 +183,15 @@ class GeneratorConfig {
     }
     return updated;
   }
+}
 
+extension on String {
   /// The pin must be an exact commit, not a branch or tag that can move.
-  static void _checkCommit(String commit, String file) {
-    if (!isFullCommitSha(commit)) {
+  void checkIsFullCommitSha({required String file}) {
+    if (!isFullCommitSha(this)) {
       throw ConfigException(
         '"rum_events_format.commit" must be a full 40-character commit SHA, '
-        'got "$commit"',
+        'got "$this"',
         file,
       );
     }
@@ -191,7 +199,8 @@ class GeneratorConfig {
 }
 
 /// The configuration file is missing or invalid.
-class ConfigException implements Exception {
+@immutable
+final class ConfigException implements Exception {
   ConfigException(this.message, this.file);
 
   final String message;
