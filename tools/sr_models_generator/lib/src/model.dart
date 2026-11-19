@@ -9,7 +9,10 @@
 /// about Dart syntax; it only describes types and their fields.
 library;
 
+import 'package:meta/meta.dart';
+
 /// The type of a [Field] (or of the items of a [ListType]).
+@immutable
 sealed class TypeRef {
   const TypeRef();
 }
@@ -102,7 +105,8 @@ sealed class Definition {
 }
 
 /// A property of a [ClassDefinition].
-class Field {
+@immutable
+final class Field {
   Field({
     required this.jsonKey,
     required this.dartName,
@@ -139,7 +143,7 @@ class Field {
 }
 
 /// A JSON object, e.g. `SRShapeWireframe`.
-class ClassDefinition extends Definition {
+final class ClassDefinition extends Definition {
   ClassDefinition({
     required super.name,
     required super.location,
@@ -159,7 +163,7 @@ class ClassDefinition extends Definition {
 }
 
 /// One of several kinds of object (`oneOf`), e.g. `SRWireframe`.
-class UnionDefinition extends Definition {
+final class UnionDefinition extends Definition {
   UnionDefinition({
     required super.name,
     required super.location,
@@ -201,7 +205,7 @@ class UnionDefinition extends Definition {
 
 /// A string with a fixed set of values (`enum`), e.g.
 /// `SRTextStyleTruncationMode`.
-class EnumDefinition extends Definition {
+final class EnumDefinition extends Definition {
   EnumDefinition({
     required super.name,
     required super.location,

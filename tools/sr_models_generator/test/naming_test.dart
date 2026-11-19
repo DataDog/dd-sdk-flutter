@@ -6,76 +6,82 @@ import 'package:sr_models_generator/src/naming.dart';
 import 'package:test/test.dart';
 
 void main() {
+  /// Registers one test per input of [cases]: input -> expected output.
+  void testEach(
+    String Function(String) convert,
+    String description,
+    Map<String, String> cases,
+  ) {
+    for (final MapEntry(key: input, value: output) in cases.entries) {
+      test('$description: "$input" -> "$output"', () {
+        expect(convert(input), output);
+      });
+    }
+  }
+
   group('pascalCase', () {
-    test('joins words separated by _, - or spaces', () {
-      expect(pascalCase('records_count'), 'RecordsCount');
-      expect(pascalCase('react-native'), 'ReactNative');
-      expect(pascalCase('kotlin multiplatform'), 'KotlinMultiplatform');
-      expect(pascalCase('embedded_content'), 'EmbeddedContent');
+    testEach(pascalCase, 'joins words separated by _, - or spaces', {
+      'records_count': 'RecordsCount',
+      'react-native': 'ReactNative',
+      'kotlin multiplatform': 'KotlinMultiplatform',
+      'embedded_content': 'EmbeddedContent',
     });
-
-    test('keeps existing capitals', () {
-      expect(pascalCase('backgroundGradient'), 'BackgroundGradient');
-      expect(
-        pascalCase('MobileFullSnapshotRecord'),
-        'MobileFullSnapshotRecord',
-      );
-      expect(pascalCase('base64'), 'Base64');
+    testEach(pascalCase, 'keeps existing capitals', {
+      'backgroundGradient': 'BackgroundGradient',
+      'MobileFullSnapshotRecord': 'MobileFullSnapshotRecord',
+      'base64': 'Base64',
     });
-
-    test('ignores leading, trailing and repeated separators', () {
-      expect(pascalCase('_has__focus_'), 'HasFocus');
-      expect(pascalCase('---'), isEmpty);
+    testEach(pascalCase, 'ignores leading, trailing and repeated separators', {
+      '_has__focus_': 'HasFocus',
+      '---': '',
     });
   });
 
-  test('camelCase lowercases only the first letter', () {
-    expect(camelCase('records_count'), 'recordsCount');
-    expect(camelCase('ShapeStyle'), 'shapeStyle');
-    expect(camelCase('sourceOver'), 'sourceOver');
-    expect(camelCase(''), isEmpty);
+  group('camelCase', () {
+    testEach(camelCase, 'lowercases only the first letter', {
+      'records_count': 'recordsCount',
+      'ShapeStyle': 'shapeStyle',
+      'sourceOver': 'sourceOver',
+      '': '',
+    });
   });
 
   group('fieldName', () {
-    test('converts JSON keys to Dart names', () {
-      expect(fieldName('has_full_snapshot'), 'hasFullSnapshot');
-      expect(fieldName('index_in_view'), 'indexInView');
-      expect(fieldName('permanentId'), 'permanentId');
+    testEach(fieldName, 'converts JSON keys to Dart names', {
+      'has_full_snapshot': 'hasFullSnapshot',
+      'index_in_view': 'indexInView',
+      'permanentId': 'permanentId',
     });
-
-    test('escapes reserved words and generated members', () {
-      expect(fieldName('default'), 'defaultValue');
-      expect(fieldName('class'), 'classValue');
-      expect(fieldName('hashCode'), 'hashCodeValue');
-      expect(fieldName('to_json'), 'toJsonValue');
+    testEach(fieldName, 'escapes reserved words and generated members', {
+      'default': 'defaultValue',
+      'class': 'classValue',
+      'hashCode': 'hashCodeValue',
+      'to_json': 'toJsonValue',
     });
-
-    test('keeps names that are only reserved in enums', () {
-      // Composition layer modifiers have a `value` property.
-      expect(fieldName('value'), 'value');
-      expect(fieldName('index'), 'index');
-      // `type` is not reserved in Dart.
-      expect(fieldName('type'), 'type');
+    // Composition layer modifiers have a `value` property, and `type` is not
+    // reserved in Dart.
+    testEach(fieldName, 'keeps names that are only reserved in enums', {
+      'value': 'value',
+      'index': 'index',
+      'type': 'type',
     });
-
-    test('prefixes names that would start with a digit or be empty', () {
-      expect(fieldName('2d'), 'v2d');
-      expect(fieldName('-'), 'v');
+    testEach(fieldName, 'prefixes names that start with a digit or are empty', {
+      '2d': 'v2d',
+      '-': 'v',
     });
   });
 
   group('enumCaseName', () {
-    test('converts JSON values to Dart case names', () {
-      expect(enumCaseName('react-native'), 'reactNative');
-      expect(enumCaseName('kotlin-multiplatform'), 'kotlinMultiplatform');
-      expect(enumCaseName('sourceOver'), 'sourceOver');
+    testEach(enumCaseName, 'converts JSON values to Dart case names', {
+      'react-native': 'reactNative',
+      'kotlin-multiplatform': 'kotlinMultiplatform',
+      'sourceOver': 'sourceOver',
     });
-
-    test('escapes members of Dart enums', () {
-      expect(enumCaseName('values'), 'valuesValue');
-      expect(enumCaseName('index'), 'indexValue');
-      expect(enumCaseName('value'), 'valueValue');
-      expect(enumCaseName('default'), 'defaultValue');
+    testEach(enumCaseName, 'escapes members of Dart enums', {
+      'values': 'valuesValue',
+      'index': 'indexValue',
+      'value': 'valueValue',
+      'default': 'defaultValue',
     });
   });
 }

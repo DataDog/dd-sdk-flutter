@@ -5,33 +5,37 @@
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
-const integer = PrimitiveType(Primitive.integer);
-const string = PrimitiveType(Primitive.string);
-
-Field field(
-  String key, {
-  TypeRef type = integer,
-  bool isRequired = true,
-  Object? constValue,
-}) => Field(
-  jsonKey: key,
-  dartName: key,
-  type: type,
-  isRequired: isRequired,
-  description: null,
-  constValue: constValue,
-);
-
-ClassDefinition classWith(String name, List<Field> fields) =>
-    ClassDefinition(name: name, location: '$name.json', description: null)
-      ..fields.addAll(fields);
-
-UnionDefinition unionOf(Map<Object, ClassDefinition> variants) =>
-    UnionDefinition(name: 'SRShape', location: 'shape.json', description: null)
-      ..discriminatorKey = 'type'
-      ..variants.addAll(variants);
-
 void main() {
+  const integer = PrimitiveType(Primitive.integer);
+  const string = PrimitiveType(Primitive.string);
+
+  Field field(
+    String key, {
+    TypeRef type = integer,
+    bool isRequired = true,
+    Object? constValue,
+  }) => Field(
+    jsonKey: key,
+    dartName: key,
+    type: type,
+    isRequired: isRequired,
+    description: null,
+    constValue: constValue,
+  );
+
+  ClassDefinition classWith(String name, List<Field> fields) =>
+      ClassDefinition(name: name, location: '$name.json', description: null)
+        ..fields.addAll(fields);
+
+  UnionDefinition unionOf(Map<Object, ClassDefinition> variants) =>
+      UnionDefinition(
+          name: 'SRShape',
+          location: 'shape.json',
+          description: null,
+        )
+        ..discriminatorKey = 'type'
+        ..variants.addAll(variants);
+
   group('TypeRef equality', () {
     test('primitives are equal when they are the same primitive', () {
       expect(const PrimitiveType(Primitive.integer), integer);

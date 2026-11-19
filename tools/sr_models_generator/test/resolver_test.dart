@@ -6,10 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
-const integer = PrimitiveType(Primitive.integer);
-const number = PrimitiveType(Primitive.number);
-const string = PrimitiveType(Primitive.string);
-const boolean = PrimitiveType(Primitive.boolean);
+import 'support/package_root.dart';
 
 /// The result of resolving one fixture.
 class Resolved {
@@ -23,22 +20,18 @@ class Resolved {
   final List<String> names;
   final Map<String, Definition> _byName;
 
-  ClassDefinition operator [](String name) => _byName[name]! as ClassDefinition;
+  ClassDefinition operator [](String name) => _definition(name);
 
-  EnumDefinition enumeration(String name) => _byName[name]! as EnumDefinition;
+  EnumDefinition enumeration(String name) => _definition(name);
 
-  UnionDefinition union(String name) => _byName[name]! as UnionDefinition;
+  UnionDefinition union(String name) => _definition(name);
 
-  NamedType named(String name) => NamedType(_byName[name]!);
-}
+  NamedType named(String name) => NamedType(_definition(name));
 
-Resolved resolve(String file, {NamingOptions naming = const NamingOptions()}) {
-  final resolver = ModelResolver(
-    SchemaLoader(p.join('test', 'fixtures', 'resolver')),
-    naming: naming,
-  );
-  final root = resolver.resolveRoot(file);
-  return Resolved(root, resolver.definitions);
+  T _definition<T extends Definition>(String name) => switch (_byName[name]) {
+    final T definition => definition,
+    final other => throw StateError('No $T named $name (found $other)'),
+  };
 }
 
 extension on ClassDefinition {
@@ -47,6 +40,25 @@ extension on ClassDefinition {
 }
 
 void main() {
+  const integer = PrimitiveType(Primitive.integer);
+  const number = PrimitiveType(Primitive.number);
+  const string = PrimitiveType(Primitive.string);
+  const boolean = PrimitiveType(Primitive.boolean);
+
+  late String fixtures;
+  setUpAll(() async {
+    fixtures = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
+  });
+
+  Resolved resolve(
+    String file, {
+    NamingOptions naming = const NamingOptions(),
+  }) {
+    final resolver = ModelResolver(SchemaLoader(fixtures), naming: naming);
+    final root = resolver.resolveRoot(file);
+    return Resolved(root, resolver.definitions);
+  }
+
   group('primitives', () {
     late Resolved resolved;
     setUp(() => resolved = resolve('primitives-schema.json'));
@@ -436,20 +448,17 @@ void main() {
       );
     });
 
-    test('unknown, list or missing types', () {
-      expect(
-        () => resolve('errors/unsupported-type.json'),
-        throwsSchemaException('Unsupported "type": null'),
-      );
-      expect(
-        () => resolve('errors/type-list.json'),
-        throwsSchemaException('Unsupported "type": [string, null]'),
-      );
-      expect(
-        () => resolve('errors/no-type.json'),
-        throwsSchemaException('Unsupported "type": null'),
-      );
-    });
+    final unsupportedTypes = {
+      'unsupported-type.json': 'Unsupported "type": null',
+      'type-list.json': 'Unsupported "type": [string, null]',
+      'no-type.json': 'Unsupported "type": null',
+    };
+    for (final MapEntry(key: file, value: message)
+        in unsupportedTypes.entries) {
+      test(file, () {
+        expect(() => resolve('errors/$file'), throwsSchemaException(message));
+      });
+    }
 
     test('an array without items', () {
       expect(

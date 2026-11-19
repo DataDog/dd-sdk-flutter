@@ -4,10 +4,12 @@
 
 import 'dart:io';
 
+import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 
 /// A rum-events-format checkout at a known commit.
-class SchemaCheckout {
+@immutable
+final class SchemaCheckout {
   SchemaCheckout(this.directory, this.commit);
 
   /// Root of the checkout; the schemas root for `SchemaLoader`.
@@ -110,10 +112,10 @@ Future<String> _git(String dir, List<String> args) async {
   if (result.exitCode != 0) {
     throw SchemaFetchException(
       '`git ${args.join(' ')}` failed (exit code ${result.exitCode}):\n'
-      '${(result.stderr as String).trim()}',
+      '${result.stderr.toString().trim()}',
     );
   }
-  return result.stdout as String;
+  return result.stdout.toString();
 }
 
 Future<ProcessResult> _run(String dir, List<String> args) async {
@@ -125,7 +127,8 @@ Future<ProcessResult> _run(String dir, List<String> args) async {
 }
 
 /// The schemas could not be downloaded or checked out.
-class SchemaFetchException implements Exception {
+@immutable
+final class SchemaFetchException implements Exception {
   SchemaFetchException(this.message);
 
   final String message;

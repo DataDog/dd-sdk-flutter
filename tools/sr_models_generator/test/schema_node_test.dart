@@ -39,19 +39,26 @@ void main() {
     expect(parts.map((n) => n.json['title']), ['A', 'B']);
   });
 
-  test('child() and children() reject values of the wrong type', () {
-    expect(() => root.child('title'), throwsA(isA<SchemaException>()));
-    expect(() => root.child('missing'), throwsA(isA<SchemaException>()));
-    expect(() => root.children('properties'), throwsA(isA<SchemaException>()));
-    expect(() => root.children('mixed'), throwsA(isA<SchemaException>()));
-  });
+  final wrongShapes = {
+    'child("title"), a string': () => root.child('title'),
+    'child("missing"), absent': () => root.child('missing'),
+    'children("properties"), an object': () => root.children('properties'),
+    'children("mixed"), with a non-object item': () => root.children('mixed'),
+  };
+  for (final MapEntry(key: call, value: read) in wrongShapes.entries) {
+    test('$call fails', () {
+      expect(read, throwsA(isA<SchemaException>()));
+    });
+  }
 
-  test('pointer segments escape ~ and / and round-trip', () {
-    expect(escapePointerSegment('a/b~c'), 'a~1b~0c');
-    expect(unescapePointerSegment('a~1b~0c'), 'a/b~c');
-    // ~01 is an escaped "~" followed by "1", not an escaped "/".
-    expect(unescapePointerSegment('~01'), '~1');
-  });
+  // Key -> its JSON pointer segment.
+  final escapes = {'a/b~c': 'a~1b~0c', '~1': '~01', 'plain': 'plain'};
+  for (final MapEntry(key: key, value: segment) in escapes.entries) {
+    test('the pointer segment of "$key" is "$segment", and back', () {
+      expect(escapePointerSegment(key), segment);
+      expect(unescapePointerSegment(segment), key);
+    });
+  }
 
   test('title and description are read when present', () {
     expect(root.title, 'Thing');
@@ -62,11 +69,16 @@ void main() {
     );
   });
 
-  test('title and description must be strings', () {
-    final node = SchemaNode('x.json', '', {'title': 1, 'description': true});
-    expect(() => node.title, throwsA(isA<SchemaException>()));
-    expect(() => node.description, throwsA(isA<SchemaException>()));
-  });
+  final node = SchemaNode('x.json', '', {'title': 1, 'description': true});
+  final notStrings = {
+    'title': () => node.title,
+    'description': () => node.description,
+  };
+  for (final MapEntry(key: keyword, value: read) in notStrings.entries) {
+    test('$keyword must be a string', () {
+      expect(read, throwsA(isA<SchemaException>()));
+    });
+  }
 
   test('SchemaException mentions the location when known', () {
     expect(SchemaException('Boom').toString(), 'Boom');

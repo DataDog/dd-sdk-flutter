@@ -2,13 +2,16 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-Present Datadog, Inc.
 
+import 'package:meta/meta.dart';
+
 import 'model.dart';
 import 'naming.dart';
 import 'schema_loader.dart';
 import 'schema_node.dart';
 
 /// How generated types are named.
-class NamingOptions {
+@immutable
+final class NamingOptions {
   const NamingOptions({
     this.typePrefix = 'SR',
     this.stripFromTitles = const ['Mobile'],
@@ -34,7 +37,7 @@ class NamingOptions {
 /// name. Validation-only keywords (`pattern`, `minimum`, `minItems`,
 /// `readOnly`, ...) are ignored; any other keyword the resolver does not
 /// support makes it throw a [SchemaException].
-class ModelResolver {
+final class ModelResolver {
   ModelResolver(this.loader, {this.naming = const NamingOptions()});
 
   final SchemaLoader loader;
@@ -162,15 +165,13 @@ class ModelResolver {
     }
   }
 
-  bool _isRefWrapper(SchemaNode node) {
-    final allOf = node.json['allOf'];
-    return allOf is List<Object?> &&
-        allOf.length == 1 &&
-        allOf.single is JsonMap &&
-        (allOf.single as JsonMap).containsKey(r'$ref') &&
-        !node.has('properties') &&
-        !node.has('required');
-  }
+  bool _isRefWrapper(SchemaNode node) => switch (node.json['allOf']) {
+    [final JsonMap part] =>
+      part.containsKey(r'$ref') &&
+          !node.has('properties') &&
+          !node.has('required'),
+    _ => false,
+  };
 
   // MARK: - Classes
 
@@ -265,7 +266,7 @@ class ModelResolver {
     if (required is! List<Object?> || required.any((key) => key is! String)) {
       throw SchemaException('"required" must be a list of strings', node);
     }
-    return required.cast<String>().toSet();
+    return required.whereType<String>().toSet();
   }
 
   // MARK: - Enums
@@ -290,7 +291,7 @@ class ModelResolver {
     }
 
     final cases = <String, String>{};
-    for (final value in values.cast<String>()) {
+    for (final value in values.whereType<String>()) {
       if (cases.containsKey(value)) {
         throw SchemaException('Duplicate enum value "$value"', node);
       }
@@ -458,7 +459,7 @@ class ModelResolver {
 }
 
 /// The merged properties of an object schema.
-class _Object {
+final class _Object {
   /// Property name -> its schema, in declaration order.
   final properties = <String, SchemaNode>{};
   final required = <String>{};
