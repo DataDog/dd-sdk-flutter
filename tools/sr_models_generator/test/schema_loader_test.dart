@@ -130,6 +130,40 @@ void main() {
       expect(target.location, 'sibling.json');
     });
 
+    test('visits every schema of the chain, in order', () {
+      final visited = <String>[];
+      loader.deref(property('chain'), visit: (n) => visited.add(n.location));
+      expect(visited, [
+        'document.json#/properties/chain',
+        'nested/forward.json',
+        'sibling.json',
+      ]);
+    });
+
+    test('visits a schema without a \$ref once', () {
+      final visited = <String>[];
+      loader.deref(document, visit: (n) => visited.add(n.location));
+      expect(visited, ['document.json']);
+    });
+
+    test('stops at the first schema visit throws on', () {
+      final visited = <String>[];
+      expect(
+        () => loader.deref(
+          property('chain'),
+          visit: (n) {
+            visited.add(n.location);
+            if (n.location == 'nested/forward.json') throw StateError('stop');
+          },
+        ),
+        throwsStateError,
+      );
+      expect(visited, [
+        'document.json#/properties/chain',
+        'nested/forward.json',
+      ]);
+    });
+
     final cycles = {
       'cycle-a.json': 'cycle-a.json -> cycle-b.json -> cycle-a.json',
       'self-cycle.json': 'self-cycle.json -> self-cycle.json',

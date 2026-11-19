@@ -1,0 +1,14 @@
+{
+  "title": "Loop",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "#"
+    }
+  ],
+  "properties": {
+    "a": {
+      "type": "string"
+    }
+  }
+}

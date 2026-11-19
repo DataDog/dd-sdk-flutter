@@ -67,11 +67,16 @@ final class SchemaLoader {
 
   /// Follows `$ref`s from [node] until reaching a schema without one.
   ///
+  /// [visit] is called with every schema of the chain, in order, [node] and
+  /// the returned schema included, before following its `$ref`.
+  ///
   /// Throws if the chain loops back on itself.
-  SchemaNode deref(SchemaNode node) {
+  SchemaNode deref(SchemaNode node, {void Function(SchemaNode)? visit}) {
     final visited = <String>{};
     var current = node;
-    while (current.has(r'$ref')) {
+    while (true) {
+      visit?.call(current);
+      if (!current.has(r'$ref')) return current;
       if (!visited.add(current.location)) {
         throw SchemaException(
           'Circular \$ref: ${[...visited, current.location].join(' -> ')}',
@@ -80,7 +85,6 @@ final class SchemaLoader {
       }
       current = resolveRef(current);
     }
-    return current;
   }
 
   /// Walks the JSON [pointer] from [root].
