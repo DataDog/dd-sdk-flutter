@@ -1,0 +1,15 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "object",
+      "properties": {}
+    },
+    "other": {
+      "title": "BadValue",
+      "type": "object",
+      "properties": {}
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

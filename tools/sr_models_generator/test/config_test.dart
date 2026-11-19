@@ -42,6 +42,54 @@ void main() {
       expect(config.rootSchema, 'schemas/root-schema.json');
     });
 
+    test('uses the default naming when the file does not set it', () {
+      final naming = GeneratorConfig.parse(_valid, file: file).naming;
+      expect(naming.typePrefix, 'SR');
+      expect(naming.stripFromTitles, ['Mobile']);
+      expect(naming.renames, isEmpty);
+    });
+
+    test('reads the naming settings', () {
+      final naming = GeneratorConfig.parse('''
+$_valid
+type_prefix: DD
+strip_from_titles: [Mobile, Common]
+type_renames:
+  SRWireframeClip: SRContentClip
+  "a.json#/properties/b": SRB
+''', file: file).naming;
+      expect(naming.typePrefix, 'DD');
+      expect(naming.stripFromTitles, ['Mobile', 'Common']);
+      expect(naming.renames, {
+        'SRWireframeClip': 'SRContentClip',
+        'a.json#/properties/b': 'SRB',
+      });
+    });
+
+    final invalidNaming = {
+      'type_prefix: ""': '"type_prefix" must be a non-empty string',
+      'type_prefix: [SR]': '"type_prefix" must be a non-empty string',
+      'strip_from_titles: Mobile':
+          '"strip_from_titles" must be a list of non-empty strings',
+      'strip_from_titles: [Mobile, ""]':
+          '"strip_from_titles" must be a list of non-empty strings',
+      'type_renames: [SRA]':
+          '"type_renames" must map non-empty strings to non-empty strings',
+      'type_renames: {SRA: ""}':
+          '"type_renames" must map non-empty strings to non-empty strings',
+      'type_renames: {SRA: [SRB]}':
+          '"type_renames" must map non-empty strings to non-empty strings',
+    };
+    for (final MapEntry(key: setting, value: message)
+        in invalidNaming.entries) {
+      test('fails on $setting', () {
+        expect(
+          () => GeneratorConfig.parse('$_valid\n$setting\n', file: file),
+          throwsConfigException(message),
+        );
+      });
+    }
+
     test('resolves the output relative to the configuration file', () {
       final config = GeneratorConfig.parse(_valid, file: file);
       expect(config.output, p.join('out', 'models.dart'));
@@ -183,6 +231,9 @@ output: out.dart
 
   test('the repository configuration is valid', () {
     final config = GeneratorConfig.load('sr_models_generator.yaml');
+    expect(config.naming.typePrefix, 'SR');
+    expect(config.naming.stripFromTitles, ['Mobile']);
+    expect(config.naming.renames, {'SRWireframeClip': 'SRContentClip'});
     expect(
       config.repository,
       'https://github.com/DataDog/rum-events-format.git',

@@ -12,6 +12,7 @@ class NamingOptions {
   const NamingOptions({
     this.typePrefix = 'SR',
     this.stripFromTitles = const ['Mobile'],
+    this.renames = const {},
   });
 
   /// Prefix of every generated type name.
@@ -19,6 +20,9 @@ class NamingOptions {
 
   /// Words removed from schema titles: `MobileSegment` -> `SRSegment`.
   final List<String> stripFromTitles;
+
+  /// The name to use instead, e.g. `SRWireframeClip -> SRContentClip`.
+  final Map<String, String> renames;
 }
 
 /// Turns JSON schemas into the [Definition]s to generate.
@@ -26,9 +30,10 @@ class NamingOptions {
 /// Starting from a root schema, every schema it uses is visited once.
 ///
 /// The same schema location always gives the same definition, however
-/// many times it is referenced. Validation-only keywords (`pattern`,
-/// `minimum`, `minItems`, `readOnly`, ...) are ignored; anything else the
-/// resolver does not support makes it throw a [SchemaException].
+/// many times it is referenced, and two locations never give the same type
+/// name. Validation-only keywords (`pattern`, `minimum`, `minItems`,
+/// `readOnly`, ...) are ignored; any other keyword the resolver does not
+/// support makes it throw a [SchemaException].
 class ModelResolver {
   ModelResolver(this.loader, {this.naming = const NamingOptions()});
 
@@ -37,6 +42,12 @@ class ModelResolver {
 
   /// Definitions by schema location.
   final _definitions = <String, Definition>{};
+
+  /// Definitions by name, to detect two locations with the same name.
+  final _definitionsByName = <String, Definition>{};
+
+  /// Keys of [NamingOptions.renames] that matched a schema.
+  final _appliedRenames = <String>{};
 
   /// Every definition found so far, sorted by name.
   List<Definition> get definitions =>
@@ -49,7 +60,20 @@ class ModelResolver {
     if (root.title == null) {
       throw SchemaException('The root schema needs a "title"', root);
     }
-    return _typeOf(root, owner: '', property: '');
+    final type = _typeOf(root, owner: '', property: '');
+
+    // A rename that matches nothing is most likely stale after a schema
+    // change, and would silently stop applying.
+    final unusedRenames = [
+      for (final name in naming.renames.keys)
+        if (!_appliedRenames.contains(name)) name,
+    ];
+    if (unusedRenames.isNotEmpty) {
+      throw SchemaException(
+        'Renames that match no generated type: ${unusedRenames.join(', ')}',
+      );
+    }
+    return type;
   }
 
   /// The type of [schema].
@@ -63,11 +87,6 @@ class ModelResolver {
   }) {
     final node = _unwrap(schema);
 
-    for (final keyword in _notSupportedYet) {
-      if (node.has(keyword)) {
-        throw SchemaException('"$keyword" is not supported yet', node);
-      }
-    }
     if (node.has('const')) {
       throw SchemaException(
         '"const" is only supported on object properties',
@@ -107,16 +126,40 @@ class ModelResolver {
     }
   }
 
-  static const _notSupportedYet = ['anyOf', 'not'];
-
   /// Follows `$ref`s and `allOf: [{$ref}]` wrappers to the schema that
   /// defines the type.
   SchemaNode _unwrap(SchemaNode schema) {
+    _checkKeywords(schema);
     var node = loader.deref(schema);
+    _checkKeywords(node);
     while (_isRefWrapper(node)) {
       node = loader.deref(node.children('allOf').single);
+      _checkKeywords(node);
     }
     return node;
+  }
+
+  /// The keywords the resolver understands, or ignores because they only
+  /// validate values and do not change the generated types.
+  static const _supportedKeywords = {
+    r'$schema', r'$id', r'$ref', r'$comment', 'definitions', r'$defs', //
+    'title', 'description', 'type', 'properties', 'required', 'items',
+    'allOf', 'oneOf', 'enum', 'const',
+    // Validation and annotations only:
+    'readOnly', 'pattern', 'format', 'minimum', 'maximum',
+    'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength',
+    'maxLength', 'minItems', 'maxItems', 'uniqueItems', 'examples',
+  };
+
+  /// Throws on keywords the resolver does not support, so that a schema
+  /// using one is not silently generated without it.
+  void _checkKeywords(SchemaNode node) {
+    for (final MapEntry(:key, :value) in node.json.entries) {
+      if (_supportedKeywords.contains(key)) continue;
+      // `false` only forbids other keys, which needs nothing generated.
+      if (key == 'additionalProperties' && value == false) continue;
+      throw SchemaException('Unsupported keyword "$key"', node);
+    }
   }
 
   bool _isRefWrapper(SchemaNode node) {
@@ -147,7 +190,7 @@ class ModelResolver {
     );
     // Registered before its fields are resolved, so that a schema that uses
     // itself finds this definition instead of starting over.
-    _definitions[node.location] = definition;
+    _register(definition, node);
 
     final object = _flatten(node);
     for (final MapEntry(key: key, value: schema) in object.properties.entries) {
@@ -194,7 +237,9 @@ class ModelResolver {
   /// The properties and required keys of [schema] and of all its `allOf`
   /// parts, merged in order: parts first, then the schema's own properties.
   _Object _flatten(SchemaNode schema) {
+    _checkKeywords(schema);
     final node = loader.deref(schema);
+    _checkKeywords(node);
     if (node.has('oneOf')) {
       throw SchemaException('A "oneOf" cannot be merged into an object', node);
     }
@@ -267,7 +312,7 @@ class ModelResolver {
       description: node.description,
       values: cases,
     );
-    _definitions[node.location] = definition;
+    _register(definition, node);
     return definition;
   }
 
@@ -300,7 +345,7 @@ class ModelResolver {
     );
     // Registered before its variants are resolved, so that a variant that
     // uses the union finds this definition instead of starting over.
-    _definitions[node.location] = union;
+    _register(union, node);
 
     final variants = [for (final part in parts) _variant(part, union)];
     union.discriminatorKey = _discriminator(variants, node);
@@ -336,11 +381,11 @@ class ModelResolver {
       for (final field in variants.first.fields)
         if (field.isConst &&
             {
-              for (final variant in variants)
-                variant.constField(field.jsonKey)?.constValue,
-            }.nonNulls.length == variants.length
-          )
-            field.jsonKey,
+                  for (final variant in variants)
+                    variant.constField(field.jsonKey)?.constValue,
+                }.nonNulls.length ==
+                variants.length)
+          field.jsonKey,
     ];
     return switch (candidates) {
       [final key] => key,
@@ -357,21 +402,58 @@ class ModelResolver {
     };
   }
 
+  // MARK: - Registry
+
+  /// Records [definition] as the type of the schema at [node].
+  ///
+  /// Throws when another schema already produced a type with the same name:
+  /// the generated file would have two declarations of it.
+  void _register(Definition definition, SchemaNode node) {
+    final other = _definitionsByName[definition.name];
+    if (other != null) {
+      throw SchemaException(
+        'Two schemas produce the type "${definition.name}": '
+        '${other.location} and ${node.location}; '
+        'rename one of them by its location in "type_renames"',
+        node,
+      );
+    }
+    _definitions[node.location] = definition;
+    _definitionsByName[definition.name] = definition;
+  }
+
   // MARK: - Naming
 
+  /// `SR` + the title without "Mobile" (`MobileFullSnapshotRecord` ->
+  /// `SRFullSnapshotRecord`), or for schemas without a title, the owner
+  /// followed by the property (`SRMetaRecord` + `data` -> `SRMetaRecordData`);
+  /// then [NamingOptions.renames] applies, by location first.
   String _typeName(
     SchemaNode node, {
     required String owner,
     required String property,
   }) {
-    final title = node.title;
-    if (title == null) return '$owner${pascalCase(property)}';
+    final name = switch (node.title) {
+      final title? => '${naming.typePrefix}${pascalCase(_stripTitle(title))}',
+      null => '$owner${pascalCase(property)}',
+    };
+    for (final key in [node.location, name]) {
+      final renamed = naming.renames[key];
+      if (renamed != null) {
+        _appliedRenames.add(key);
+        return renamed;
+      }
+    }
+    return name;
+  }
 
+  /// [title] without the words of [NamingOptions.stripFromTitles].
+  String _stripTitle(String title) {
     var name = title;
     for (final word in naming.stripFromTitles) {
       name = name.replaceAll(word, '');
     }
-    return '${naming.typePrefix}${pascalCase(name)}';
+    return name;
   }
 }
 

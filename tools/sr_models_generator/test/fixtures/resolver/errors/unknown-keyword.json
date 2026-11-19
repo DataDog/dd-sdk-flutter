@@ -1,0 +1,14 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "object",
+      "patternProperties": {
+        "^x": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

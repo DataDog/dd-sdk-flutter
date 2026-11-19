@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
+import 'resolver.dart';
 import 'schema_source.dart';
 
 /// The generator configuration, read from `sr_models_generator.yaml`.
@@ -17,6 +18,7 @@ class GeneratorConfig {
     required this.commit,
     required this.rootSchema,
     required this.output,
+    this.naming = const NamingOptions(),
   });
 
   /// Reads and validates the configuration file at [path].
@@ -51,6 +53,38 @@ class GeneratorConfig {
       return value;
     }
 
+    bool isNonEmptyString(Object? value) =>
+        value is String && value.trim().isNotEmpty;
+
+    List<String>? readStrings(YamlMap map, String key) {
+      final value = map[key];
+      if (value == null) return null;
+      if (value is! YamlList || !value.every(isNonEmptyString)) {
+        throw ConfigException(
+          '"$key" must be a list of non-empty strings',
+          file,
+        );
+      }
+      return value.cast<String>().toList();
+    }
+
+    Map<String, String>? readRenames(YamlMap map) {
+      final value = map['type_renames'];
+      if (value == null) return null;
+      if (value is! YamlMap ||
+          !value.keys.every(isNonEmptyString) ||
+          !value.values.every(isNonEmptyString)) {
+        throw ConfigException(
+          '"type_renames" must map non-empty strings to non-empty strings',
+          file,
+        );
+      }
+      return {
+        for (final MapEntry(:key, :value) in value.entries)
+          key as String: value as String,
+      };
+    }
+
     final rumEventsFormat = yaml['rum_events_format'];
     if (rumEventsFormat is! YamlMap) {
       throw ConfigException('"rum_events_format" must be a map', file);
@@ -74,6 +108,15 @@ class GeneratorConfig {
       output: p.normalize(
         p.join(p.dirname(file), readString(yaml, 'output', 'output')),
       ),
+      naming: NamingOptions(
+        typePrefix: yaml.containsKey('type_prefix')
+            ? readString(yaml, 'type_prefix', 'type_prefix')
+            : const NamingOptions().typePrefix,
+        stripFromTitles:
+            readStrings(yaml, 'strip_from_titles') ??
+            const NamingOptions().stripFromTitles,
+        renames: readRenames(yaml) ?? const NamingOptions().renames,
+      ),
     );
   }
 
@@ -92,6 +135,10 @@ class GeneratorConfig {
   /// Path of the generated file, resolved against the configuration's
   /// directory.
   final String output;
+
+  /// How generated types are named; each setting defaults to
+  /// [NamingOptions]'s when the file does not set it.
+  final NamingOptions naming;
 
   /// Pins [sha] in the configuration file, keeping its comments and layout.
   void writeCommit(String sha) {
