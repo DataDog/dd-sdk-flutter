@@ -1,30 +1,74 @@
 {
   "title": "Shapes",
   "type": "object",
-  "required": ["tags", "points"],
+  "required": [
+    "tags",
+    "points"
+  ],
   "properties": {
-    "tags": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
-    "grid": { "type": "array", "items": { "type": "array", "items": { "type": "integer" } } },
-    "points": { "type": "array", "items": { "$ref": "point-schema.json" } },
-    "origin": { "$ref": "point-schema.json" },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "grid": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        }
+      }
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "$ref": "point-schema.json"
+      }
+    },
+    "origin": {
+      "$ref": "point-schema.json"
+    },
     "center": {
-      "allOf": [{ "$ref": "point-schema.json" }],
+      "allOf": [
+        {
+          "$ref": "point-schema.json"
+        }
+      ],
       "description": "A wrapped reference keeps its own description."
     },
     "meta": {
       "type": "object",
       "description": "An inline object.",
-      "required": ["size"],
+      "required": [
+        "size"
+      ],
       "properties": {
         "size": {
           "type": "object",
-          "properties": { "width": { "type": "integer" } }
+          "properties": {
+            "width": {
+              "type": "integer"
+            }
+          }
         }
       }
     },
     "stops": {
       "type": "array",
-      "items": { "type": "object", "properties": { "offset": { "type": "number" } } }
+      "items": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "alias": {
+      "$ref": "./point-schema.json"
     }
   }
 }

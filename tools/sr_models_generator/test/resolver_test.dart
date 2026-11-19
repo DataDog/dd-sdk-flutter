@@ -32,9 +32,10 @@ class Resolved {
   NamedType named(String name) => NamedType(_byName[name]!);
 }
 
-Resolved resolve(String file) {
+Resolved resolve(String file, {NamingOptions naming = const NamingOptions()}) {
   final resolver = ModelResolver(
     SchemaLoader(p.join('test', 'fixtures', 'resolver')),
+    naming: naming,
   );
   final root = resolver.resolveRoot(file);
   return Resolved(root, resolver.definitions);
@@ -464,13 +465,146 @@ void main() {
       );
     });
 
-    for (final keyword in ['anyOf', 'not']) {
-      test('"$keyword"', () {
+    final unsupportedKeywords = {
+      'keyword-anyOf.json': 'anyOf',
+      'keyword-not.json': 'not',
+      'unknown-keyword.json': 'patternProperties',
+      'misspelled-keyword.json': 'requird',
+      'keyword-next-to-ref.json': 'default',
+      'keyword-in-all-of-part.json': 'dependencies',
+      'additional-properties-true.json': 'additionalProperties',
+      'additional-properties-schema.json': 'additionalProperties',
+    };
+    for (final MapEntry(key: file, value: keyword)
+        in unsupportedKeywords.entries) {
+      test(file, () {
         expect(
-          () => resolve('errors/keyword-$keyword.json'),
-          throwsSchemaException('"$keyword" is not supported yet'),
+          () => resolve('errors/$file'),
+          throwsSchemaException('Unsupported keyword "$keyword"'),
         );
       });
     }
+
+    test('"additionalProperties": false, which needs nothing generated', () {
+      expect(() => resolve('primitives-schema.json'), returnsNormally);
+    });
+  });
+
+  group('one type per schema location', () {
+    test('however the path to the schema is spelled', () {
+      final resolved = resolve('shapes-schema.json');
+      expect(
+        resolved['SRShapes'].field('alias').type,
+        resolved.named('SRPoint'),
+      );
+      expect(resolved.names.where((n) => n == 'SRPoint'), hasLength(1));
+    });
+
+    final clashes = {
+      'name-clash.json':
+          'Two schemas produce the type "SRSame": '
+          'errors/name-clash.json#/properties/first and '
+          'errors/name-clash.json#/properties/second; rename one of them by '
+          'its location in "type_renames"',
+      'name-clash-inline.json':
+          'Two schemas produce the type "SRBadValue": '
+          'errors/name-clash-inline.json#/properties/value and '
+          'errors/name-clash-inline.json#/properties/other; rename one of '
+          'them by its location in "type_renames"',
+    };
+    for (final MapEntry(key: file, value: message) in clashes.entries) {
+      test('fails when two schemas produce the same name ($file)', () {
+        expect(
+          () => resolve('errors/$file'),
+          throwsA(
+            isA<SchemaException>().having((e) => e.message, 'message', message),
+          ),
+        );
+      });
+    }
+  });
+
+  group('renames', () {
+    test('rename a titled type and every reference to it', () {
+      final resolved = resolve(
+        'wireframe-schema.json',
+        naming: const NamingOptions(renames: {'SRPoint': 'SRAnchor'}),
+      );
+      expect(resolved.names, [
+        'SRAnchor',
+        'SRShapeWireframe',
+        'SRShapeWireframeStyle',
+      ]);
+      expect(
+        resolved['SRShapeWireframe'].field('clip').type,
+        resolved.named('SRAnchor'),
+      );
+    });
+
+    test('rename an inline type, and the inline types named after it', () {
+      final resolved = resolve(
+        'shapes-schema.json',
+        naming: const NamingOptions(renames: {'SRShapesMeta': 'SRMeta'}),
+      );
+      expect(resolved.names, containsAll(['SRMeta', 'SRMetaSize']));
+      expect(resolved.names, isNot(contains('SRShapesMeta')));
+    });
+
+    test('rename a single schema by its location', () {
+      final resolved = resolve(
+        'errors/name-clash.json',
+        naming: const NamingOptions(
+          renames: {'errors/name-clash.json#/properties/second': 'SRSecond'},
+        ),
+      );
+      expect(resolved.names, ['SRBad', 'SRSame', 'SRSecond']);
+    });
+
+    test('a location rename wins over a name rename', () {
+      final resolved = resolve(
+        'errors/name-clash.json',
+        naming: const NamingOptions(
+          renames: {
+            'SRSame': 'SRFirst',
+            'errors/name-clash.json#/properties/second': 'SRSecond',
+          },
+        ),
+      );
+      expect(resolved.names, ['SRBad', 'SRFirst', 'SRSecond']);
+    });
+
+    test('fails when a rename produces a name that is already taken', () {
+      expect(
+        () => resolve(
+          'wireframe-schema.json',
+          naming: const NamingOptions(renames: {'SRPoint': 'SRShapeWireframe'}),
+        ),
+        throwsA(
+          isA<SchemaException>().having(
+            (e) => e.message,
+            'message',
+            startsWith('Two schemas produce the type "SRShapeWireframe"'),
+          ),
+        ),
+      );
+    });
+
+    test('fails on renames that match no schema', () {
+      expect(
+        () => resolve(
+          'primitives-schema.json',
+          naming: const NamingOptions(
+            renames: {'SRMissing': 'SRA', 'missing.json': 'SRB'},
+          ),
+        ),
+        throwsA(
+          isA<SchemaException>().having(
+            (e) => e.message,
+            'message',
+            'Renames that match no generated type: SRMissing, missing.json',
+          ),
+        ),
+      );
+    });
   });
 }

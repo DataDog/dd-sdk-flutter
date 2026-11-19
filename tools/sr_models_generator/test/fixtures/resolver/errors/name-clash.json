@@ -1,0 +1,16 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "first": {
+      "title": "Same",
+      "type": "object",
+      "properties": {}
+    },
+    "second": {
+      "title": "Same",
+      "type": "object",
+      "properties": {}
+    }
+  }
+}

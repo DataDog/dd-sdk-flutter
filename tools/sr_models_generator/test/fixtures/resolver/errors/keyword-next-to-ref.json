@@ -1,0 +1,21 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "$ref": "#/definitions/point",
+      "default": {}
+    }
+  },
+  "definitions": {
+    "point": {
+      "title": "Point",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

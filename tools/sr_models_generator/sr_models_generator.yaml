@@ -13,3 +13,13 @@ root_schema: schemas/session-replay-mobile-schema.json
 
 # Generated file, relative to this directory.
 output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart
+
+# Generated type names: `type_prefix` + the schema title without the words in
+# `strip_from_titles` (`MobileSegment` -> `SRSegment`).
+type_prefix: SR
+strip_from_titles:
+  - Mobile
+
+# Generated name, or schema location (`file#pointer`) -> the name to use.
+type_renames:
+  SRWireframeClip: SRContentClip
