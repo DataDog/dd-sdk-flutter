@@ -24,9 +24,7 @@ final class DartPrinter {
         switch (definition) {
           EnumDefinition() => definition.toDart(),
           ClassDefinition() => library.classToDart(definition),
-          UnionDefinition() => throw UnsupportedError(
-            'Printing ${definition.name} is not supported yet',
-          ),
+          UnionDefinition() => definition.toDart(),
         },
     ];
 
@@ -34,7 +32,7 @@ final class DartPrinter {
     for (final line in header) {
       out.writeln(line.isEmpty ? '//' : '// $line');
     }
-    if (definitions.any((d) => d is ClassDefinition)) {
+    if (definitions.any((d) => d is ClassDefinition || d is UnionDefinition)) {
       out
         ..writeln()
         ..writeln("import 'package:meta/meta.dart';");
@@ -45,6 +43,40 @@ final class DartPrinter {
         ..write(declaration);
     }
     return out.toString();
+  }
+}
+
+extension on UnionDefinition {
+  /// A sealed class that the variants implement, with a `fromJson` that
+  /// picks the variant from the discriminator, and the fields every variant
+  /// shares.
+  String toDart() {
+    final key = dartString(discriminatorKey);
+    final cases = [
+      for (final MapEntry(key: tag, value: variant) in variants.entries)
+        '    ${tag is String ? dartString(tag) : '$tag'} => '
+            '${variant.name}.fromJson(json),',
+    ];
+    final getters = [
+      for (final field in sharedFields)
+        '  ${field.type.dartType}${field.isRequired ? '' : '?'} '
+            'get ${field.dartName};',
+    ];
+    return '''
+@immutable
+sealed class $name {
+  factory $name.fromJson(Map<String, Object?> json) => switch (json[$key]) {
+${cases.join('\n')}
+    final other => throw FormatException(
+      'Unknown $name ${discriminatorKey.replaceAll(r'$', r'\$')}: \$other',
+    ),
+  };
+
+${getters.join('\n')}
+
+  Map<String, Object?> toJson();
+}
+''';
   }
 }
 
@@ -92,6 +124,14 @@ final class _Library {
 
   /// An immutable class with a `fromJson` factory and a `toJson` method.
   String classToDart(ClassDefinition c) {
+    // The fields this class implements for the unions it belongs to.
+    final overrides = {
+      for (final union in c.unions)
+        for (final field in union.sharedFields) field.jsonKey,
+    };
+    final override = [
+      for (final field in c.fields) overrides.contains(field.jsonKey),
+    ];
     final parameters = <String>[];
     final arguments = <String>[];
     final members = <String>[];
@@ -99,15 +139,17 @@ final class _Library {
     // Const fields are the same in every instance, so == ignores them.
     final comparisons = <String>[];
     final hashes = <String>[];
-    for (final field in c.fields) {
-      final type = _dartType(field.type);
+    for (final (i, field) in c.fields.indexed) {
+      final type = field.type.dartType;
+      final annotation = override[i] ? '  @override\n' : '';
       if (!field.isConst) {
         parameters.add(
           '${field.isRequired ? 'required ' : ''}this.${field.dartName}',
         );
         arguments.add('    ${field.dartName}: ${_decodeField(c, field)},');
         members.add(
-          '  final $type${field.isRequired ? '' : '?'} ${field.dartName};',
+          '$annotation  final $type${field.isRequired ? '' : '?'} '
+          '${field.dartName};',
         );
         if (field.type is ListType) {
           // List == compares identity; lists are compared item by item.
@@ -126,7 +168,7 @@ final class _Library {
           final String value => dartString(value),
           final value => '$value',
         };
-        members.add('  $type get ${field.dartName} => $value;');
+        members.add('$annotation  $type get ${field.dartName} => $value;');
       }
       entries.add('    ${_encodeField(field)},');
     }
@@ -142,12 +184,12 @@ final class _Library {
 
     return '''
 @immutable
-final class ${c.name} {
+final class ${c.name}${c.unions.isEmpty ? '' : ' implements ${[for (final union in c.unions) union.name].join(', ')}'} {
 $constructor
 
 $factory
 ${members.isEmpty ? '' : '\n${members.join('\n')}\n'}
-  Map<String, Object?> toJson() => {
+${c.unions.isEmpty ? '' : '  @override\n'}  Map<String, Object?> toJson() => {
 ${entries.join('\n')}
   };
 
@@ -218,15 +260,6 @@ ${entries.join('\n')}
     NamedType() => '$value.toJson()',
     ListType(:final item) =>
       '[for (final v$depth in $value) ${_encode(item, 'v$depth', depth + 1)}]',
-  };
-
-  String _dartType(TypeRef type) => switch (type) {
-    PrimitiveType(primitive: Primitive.integer) => 'int',
-    PrimitiveType(primitive: Primitive.number) => 'double',
-    PrimitiveType(primitive: Primitive.string) => 'String',
-    PrimitiveType(primitive: Primitive.boolean) => 'bool',
-    ListType(:final item) => 'List<${_dartType(item)}>',
-    NamedType(:final definition) => definition.name,
   };
 }
 
@@ -319,6 +352,16 @@ int _hash(Object? value) => value is List<Object?>
 }
 
 extension on TypeRef {
+  /// This type in Dart, e.g. `List<SRPoint>`.
+  String get dartType => switch (this) {
+    PrimitiveType(primitive: Primitive.integer) => 'int',
+    PrimitiveType(primitive: Primitive.number) => 'double',
+    PrimitiveType(primitive: Primitive.string) => 'String',
+    PrimitiveType(primitive: Primitive.boolean) => 'bool',
+    ListType(:final item) => 'List<${item.dartType}>',
+    NamedType(:final definition) => definition.name,
+  };
+
   /// Whether values of this type are already JSON: primitives, and lists of
   /// them at any depth.
   bool get isJson => switch (this) {
