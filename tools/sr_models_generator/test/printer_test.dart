@@ -519,6 +519,93 @@ void main() {
     });
   });
 
+  group('documentation', () {
+    late String library;
+
+    setUpAll(() async {
+      final root = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
+      final resolver = ModelResolver(SchemaLoader(root))
+        ..resolveRoot('primitives-schema.json')
+        ..resolveRoot('text-schema.json')
+        ..resolveRoot('drawing-schema.json');
+      library = const DartPrinter().printLibrary(resolver.definitions);
+    });
+
+    // Description in the fixtures -> where it must be printed.
+    final comments = {
+      'a class':
+          '/// One property of each primitive type.\n'
+          '@immutable\nfinal class SRPrimitives {',
+      'a field': '  /// An integer.\n  final int count;',
+      'an enum': '/// The platform.\nenum SRPlatform {',
+      'a field of an enum type':
+          '  /// How text is truncated.\n'
+          '  final SRTextTruncationMode truncationMode;',
+      'a const field':
+          "  /// The kind of element.\n  String get type => 'text';",
+      'a union': '/// A shape.\n@immutable\nsealed class SRShape {',
+      'a shared field, in the union': '  /// The identifier.\n  int get id;',
+      'a shared field, in a variant':
+          '  /// The identifier.\n  @override\n  final int id;',
+    };
+    for (final MapEntry(key: what, value: comment) in comments.entries) {
+      test('documents $what', () {
+        expect(library, contains(comment));
+      });
+    }
+
+    test('writes no comment without a description', () {
+      expect(library, contains('  final int count;\n  final double? ratio;'));
+    });
+
+    String printed(String description) => const DartPrinter().printLibrary([
+      ClassDefinition(
+          name: 'SRNote',
+          location: 'note.json',
+          description: description,
+        )
+        ..fields.add(
+          Field(
+            jsonKey: 'text',
+            dartName: 'text',
+            type: const PrimitiveType(Primitive.string),
+            isRequired: true,
+            description: description,
+          ),
+        ),
+    ]);
+
+    test('wraps long descriptions to 80 columns, keeping every word', () {
+      final description = List.generate(30, (i) => 'word$i').join(' ');
+      final lines = printed(description).split('\n');
+      final comments = [
+        for (final line in lines)
+          if (line.trimLeft().startsWith('///')) line,
+      ];
+      expect(comments.length, greaterThan(2));
+      expect(comments.every((line) => line.length <= 80), isTrue);
+      final words = [
+        for (final line in comments)
+          if (line.startsWith('/// ')) ...line.substring(4).split(' '),
+      ];
+      expect(words.join(' '), description);
+    });
+
+    test('keeps paragraphs', () {
+      expect(
+        printed('First.\n\nSecond.'),
+        contains('/// First.\n///\n/// Second.\n@immutable'),
+      );
+    });
+
+    test('escapes what dartdoc would read as a reference or HTML', () {
+      expect(
+        printed('Entries [0] to [3], or <none>.'),
+        contains(r'/// Entries \[0\] to \[3\], or \<none>.'),
+      );
+    });
+  });
+
   group('dartString', () {
     final literals = {
       'plain': "'plain'",

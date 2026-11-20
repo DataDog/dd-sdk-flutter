@@ -59,11 +59,12 @@ extension on UnionDefinition {
     ];
     final getters = [
       for (final field in sharedFields)
-        '  ${field.type.dartType}${field.isRequired ? '' : '?'} '
+        '${field.description.docComment(indent: '  ')}'
+            '  ${field.type.dartType}${field.isRequired ? '' : '?'} '
             'get ${field.dartName};',
     ];
     return '''
-@immutable
+${description.docComment()}@immutable
 sealed class $name {
   factory $name.fromJson(Map<String, Object?> json) => switch (json[$key]) {
 ${cases.join('\n')}
@@ -88,7 +89,7 @@ extension on EnumDefinition {
         '  $caseName(${dartString(value)})',
     ];
     return '''
-enum $name {
+${description.docComment()}enum $name {
 ${cases.join(',\n')};
 
   const $name(this.value);
@@ -141,7 +142,9 @@ final class _Library {
     final hashes = <String>[];
     for (final (i, field) in c.fields.indexed) {
       final type = field.type.dartType;
-      final annotation = override[i] ? '  @override\n' : '';
+      final annotation =
+          '${field.description.docComment(indent: '  ')}'
+          '${override[i] ? '  @override\n' : ''}';
       if (!field.isConst) {
         parameters.add(
           '${field.isRequired ? 'required ' : ''}this.${field.dartName}',
@@ -183,7 +186,7 @@ final class _Library {
               '${c.name}(\n${arguments.join('\n')}\n  );';
 
     return '''
-@immutable
+${c.description.docComment()}@immutable
 final class ${c.name}${c.unions.isEmpty ? '' : ' implements ${[for (final union in c.unions) union.name].join(', ')}'} {
 $constructor
 
@@ -349,6 +352,39 @@ int _hash(Object? value) => value is List<Object?>
 
   /// Whether it decodes JSON, and so reports errors with [invalid].
   final bool decodes;
+}
+
+extension on String? {
+  /// This text as a documentation comment indented by [indent], wrapped to
+  /// fit 80 columns; empty when there is no text.
+  ///
+  /// `[`, `]` and `<` are escaped, so that dartdoc shows them as written
+  /// instead of reading a symbol reference (`[0]`) or an HTML tag.
+  String docComment({String indent = ''}) {
+    final text = this?.trim() ?? '';
+    if (text.isEmpty) return '';
+    final width = 80 - indent.length - '/// '.length;
+    final out = StringBuffer();
+    final paragraphs = text.split(RegExp(r'\n\s*\n'));
+    for (final (i, paragraph) in paragraphs.indexed) {
+      if (i > 0) out.writeln('$indent///');
+      var line = '';
+      for (final word in paragraph.split(RegExp(r'\s+'))) {
+        final escaped = word.replaceAllMapped(
+          RegExp(r'[\[\]<]'),
+          (match) => '\\${match[0]}',
+        );
+        if (line.isNotEmpty && line.length + 1 + escaped.length > width) {
+          out.writeln('$indent/// $line');
+          line = escaped;
+        } else {
+          line = line.isEmpty ? escaped : '$line $escaped';
+        }
+      }
+      out.writeln('$indent/// $line');
+    }
+    return out.toString();
+  }
 }
 
 extension on TypeRef {
