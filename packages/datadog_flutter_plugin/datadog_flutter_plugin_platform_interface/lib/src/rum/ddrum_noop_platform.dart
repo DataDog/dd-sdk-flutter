@@ -171,6 +171,9 @@ class DdNoOpRumPlatform extends DdRumPlatform {
   Future<void> stopSession() => Future.value();
 
   @override
+  Future<void> reportAppFullyDisplayed() => Future.value();
+
+  @override
   Future<void> stopAction(
     DateTime timestamp,
     RumActionType type,
