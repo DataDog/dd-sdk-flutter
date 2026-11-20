@@ -14,6 +14,7 @@ import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_error.dart';
 import 'flags_log.dart';
+import 'flags_runtime.dart';
 import 'flags_store.dart';
 
 class FlagsRepository {
@@ -62,6 +63,26 @@ class FlagsRepository {
   }) : _logger = logger,
        _cacheOperations = _cacheOperationQueue(store, clientName),
        _scope = flagsDataScope(fetcher.datadogConfig);
+
+  /// Creates a repository that fetches through [runtime]'s HTTP client.
+  factory FlagsRepository.forRuntime(
+    FlagsRuntime runtime, {
+    required String clientName,
+  }) {
+    final configuration = runtime.configuration;
+    return FlagsRepository(
+      clientName: clientName,
+      fetcher: FlagAssignmentsFetcher(
+        datadogConfig: runtime.datadogConfig,
+        configuration: configuration,
+        httpClient: runtime.httpClient,
+        dropLog: runtime.flagSelectionDropLog,
+      ),
+      store: configuration.store,
+      dateProvider: configuration.dateProvider,
+      initializationTimeout: configuration.initializationTimeout,
+    );
+  }
 
   FlagsEvaluationContext? get context =>
       _assignmentsWithheld ? null : _state?.data.context;
@@ -156,7 +177,10 @@ class FlagsRepository {
     }
 
     try {
-      final assignments = await fetcher.fetch(context);
+      final assignments = await fetcher.fetch(
+        context,
+        abortTrigger: token.abortTrigger,
+      );
       if (token.isCanceled) {
         return;
       }
@@ -342,11 +366,14 @@ class _CacheOperationQueue {
 }
 
 class _CancelToken {
-  var _canceled = false;
+  final _abort = Completer<void>();
 
-  bool get isCanceled => _canceled;
+  bool get isCanceled => _abort.isCompleted;
+
+  /// Completes on cancellation so the HTTP client can abort the request.
+  Future<void> get abortTrigger => _abort.future;
 
   void cancel() {
-    _canceled = true;
+    if (!_abort.isCompleted) _abort.complete();
   }
 }

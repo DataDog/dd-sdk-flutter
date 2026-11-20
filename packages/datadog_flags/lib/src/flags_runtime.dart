@@ -8,6 +8,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 
 import 'datadog_flags_config.dart';
+import 'flag_selection.dart';
 import 'flags_configuration.dart';
 
 class FlagsRuntime {
@@ -15,10 +16,14 @@ class FlagsRuntime {
   final DatadogFlagsConfig datadogConfig;
   final http.Client httpClient;
 
+  /// Shared by every fetcher of one owner so a dropped selection logs once.
+  final FlagSelectionDropLog? flagSelectionDropLog;
+
   const FlagsRuntime({
     required this.configuration,
     required this.datadogConfig,
     required this.httpClient,
+    this.flagSelectionDropLog,
   });
 }
 
@@ -26,12 +31,13 @@ bool shouldRetryFlagsUpload(int statusCode) {
   return statusCode == 408 || statusCode == 429 || statusCode >= 500;
 }
 
-/// Exponential upload backoff shared across telemetry runtime handoffs.
+/// Exponential upload backoff for a telemetry stream.
 ///
 /// Delays start at 500 ms with 20 percent jitter and are capped at 60 seconds.
-/// Handoffs preserve the failure count and remaining monotonic delay. Periodic
-/// flushes and batch-size triggers respect this delay. Successful uploads and
-/// non-retryable responses reset it. Shutdown makes one bounded drain attempt.
+/// Periodic flushes and batch-size triggers respect the monotonic delay.
+/// Successful uploads and non-retryable responses reset it.
+/// Shutdown does not wait for this delay; it makes at most one bounded upload
+/// attempt.
 final class UploadBackoff {
   static const maxDelay = Duration(seconds: 60);
   final Stopwatch _clock = Stopwatch()..start();

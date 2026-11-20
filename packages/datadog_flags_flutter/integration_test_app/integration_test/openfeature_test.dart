@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -98,6 +99,7 @@ void main() {
             site: DatadogFlagsSite.us1,
           ),
           httpClient: transport,
+          evaluationFlushInterval: const Duration(hours: 1),
         ),
       );
       api.addHooks([DatadogRumHook()]);
@@ -154,7 +156,33 @@ void main() {
         initialBody['data']['attributes']['subject']['targeting_attributes']['signupDate'],
         '2026-01-02T00:00:00.000Z',
       );
+      expect(
+        requests.where((r) => r.url.path == '/api/v2/flagevaluation'),
+        isEmpty,
+      );
       await api.shutdown();
+      final evaluations = requests
+          .where((r) => r.url.path == '/api/v2/flagevaluation')
+          .expand(
+            (r) => kIsWeb
+                ? r.body
+                      .split('\n')
+                      .where((line) => line.isNotEmpty)
+                      .map(jsonDecode)
+                : (jsonDecode(r.body)
+                          as Map<String, dynamic>)['flagEvaluations']
+                      as List,
+          );
+      final counts = <String, int>{};
+      for (final event in evaluations) {
+        final subject = event['targeting_key'] as String;
+        counts.update(
+          subject,
+          (n) => n + (event['evaluation_count'] as int),
+          ifAbsent: () => event['evaluation_count'] as int,
+        );
+      }
+      expect(counts, {'simulator-user': 7, 'second-user': 1});
       expect(client.providerStatus, ProviderStatus.notReady);
       expect(client.getBooleanValue('checkout.enabled', true), isTrue);
       expect(requests.any((r) => r.url.path == '/api/v2/exposures'), isTrue);

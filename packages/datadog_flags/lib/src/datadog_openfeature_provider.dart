@@ -5,20 +5,25 @@
 
 import 'dart:async';
 
+import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
     as openfeature;
 
-import 'datadog_flags.dart';
 import 'assignment.dart';
+import 'datadog_flags.dart';
 import 'default_flags_client.dart';
+import 'evaluation_aggregator.dart';
 import 'evaluation_context.dart';
 import 'exposure_hook.dart';
+import 'exposure_logger.dart';
 import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_error.dart';
 import 'flags_log.dart';
+import 'flags_repository.dart';
+import 'flags_runtime.dart';
 
 /// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
 ///
@@ -73,8 +78,10 @@ final class DatadogProvider
   final StreamController<openfeature.ProviderEvent> _events =
       StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
 
+  _ProviderResources? _resources;
+  Future<void>? _lastShutdown;
   _ProviderRuntime? _activeRuntime;
-  _ProviderRuntime? _telemetrySource;
+  _ProviderRuntime? _retainedRuntime;
   _ProviderRuntime? _pendingRuntime;
   final _flagSelectionDropLog = FlagSelectionDropLog();
   bool _requiresContextRetry = false;
@@ -137,7 +144,7 @@ final class DatadogProvider
     _requestedContext = newContext;
     _requiresContextRetry = true;
     final requested = newContext.datadogContext;
-    final retained = _telemetrySource;
+    final retained = _retainedRuntime;
     final retainedContext = retained?.client.evaluationContext;
     if (_activeRuntime == null &&
         retained != null &&
@@ -147,7 +154,7 @@ final class DatadogProvider
         (!requested.strictContextSwitching ||
             targetingContextsMatch(retainedContext, requested))) {
       _activeRuntime = retained;
-      _telemetrySource = null;
+      _retainedRuntime = null;
     }
     final active = _activeRuntime;
     final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
@@ -161,7 +168,7 @@ final class DatadogProvider
                 )))) {
       _withholdActiveAssignments();
     }
-    if (_activeRuntime ?? _telemetrySource case final previous?
+    if (_activeRuntime ?? _retainedRuntime case final previous?
         when (previous.client.evaluationContext?.targetingKey ?? '') !=
             requested.targetingKey) {
       previous.client.cancelPendingLoad();
@@ -222,9 +229,11 @@ final class DatadogProvider
     _fatalMessage = null;
     _shutdownGeneration += 1;
     _contextRevision += 1;
+    final resources = _resources;
+    _resources = null;
     final activeRuntime = _activeRuntime;
     final pendingRuntime = _pendingRuntime;
-    final telemetrySource = _telemetrySource;
+    final retainedRuntime = _retainedRuntime;
     _activeRuntime = null;
     _pendingRuntime = null;
     _resolvedClientName = null;
@@ -232,15 +241,42 @@ final class DatadogProvider
     _requiresContextRetry = false;
     _hasCommittedContext = false;
     _requiresFreshAssignments = false;
-    _telemetrySource = null;
+    _retainedRuntime = null;
+    // A concurrent shutdown also waits for work that an earlier call started.
+    final previous = _lastShutdown;
+    final operation = Future.wait([
+      ?previous,
+      _shutdownRuntimes(
+        activeRuntime,
+        retainedRuntime,
+        pendingRuntime,
+        resources,
+      ),
+    ]);
+    _lastShutdown = operation;
+    try {
+      await operation;
+    } finally {
+      // Do not keep a settled failure for shutdowns after reinitialization.
+      if (identical(_lastShutdown, operation)) _lastShutdown = null;
+    }
+  }
+
+  Future<void> _shutdownRuntimes(
+    _ProviderRuntime? activeRuntime,
+    _ProviderRuntime? retainedRuntime,
+    _ProviderRuntime? pendingRuntime,
+    _ProviderResources? resources,
+  ) async {
     await Future.wait([
       ..._retiring,
       if (activeRuntime != null) _disableQuietly(activeRuntime),
-      if (telemetrySource != null && !identical(telemetrySource, activeRuntime))
-        _disableQuietly(telemetrySource),
+      if (retainedRuntime != null && !identical(retainedRuntime, activeRuntime))
+        _disableQuietly(retainedRuntime),
       if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
         _disableQuietly(pendingRuntime),
     ]);
+    await resources?.shutdown();
   }
 
   @override
@@ -402,7 +438,8 @@ final class DatadogProvider
       return;
     }
 
-    if (_configuration.datadogConfig == null) {
+    final datadogConfig = _configuration.datadogConfig;
+    if (datadogConfig == null) {
       _emitLoadError('Datadog Flags configuration is required.', fatal: true);
       return;
     }
@@ -420,29 +457,23 @@ final class DatadogProvider
       return;
     }
 
-    final owner = DatadogFlags();
-    shareFlagSelectionDropLog(owner, _flagSelectionDropLog);
     _ProviderRuntime? runtime;
     var initializationReturned = false;
     try {
-      await owner.enable(configuration: _configuration);
-      if (revision != _contextRevision) {
-        await _disableOwnerQuietly(owner);
-        return;
-      }
-      final client = owner.sharedClient(
-        name: _resolvedClientName ?? DatadogFlags.defaultClientName,
+      final resources = _resources ??= _ProviderResources(
+        FlagsRuntime(
+          configuration: _configuration,
+          datadogConfig: datadogConfig,
+          httpClient: _configuration.httpClient ?? http.Client(),
+          flagSelectionDropLog: _flagSelectionDropLog,
+        ),
+        ownsHttpClient: _configuration.httpClient == null,
       );
-      if (client is! DefaultDatadogFlagsClient) {
-        await _disableOwnerQuietly(owner);
-        _emitLoadError(
-          'The Datadog client does not expose assignment lifecycle state.',
-        );
-        return;
-      }
-
+      final client = resources.createClient(
+        _resolvedClientName ?? DatadogFlags.defaultClientName,
+      );
       final lifecycle = client as DatadogFlagsClientLifecycle;
-      final candidate = _ProviderRuntime(owner, client);
+      final candidate = _ProviderRuntime(client);
       runtime = candidate;
       _pendingRuntime = candidate;
       candidate.statusSubscription = lifecycle.statusChanges.listen((status) {
@@ -481,8 +512,6 @@ final class DatadogProvider
         if (!identical(_activeRuntime, runtime)) {
           await _disableQuietly(runtime);
         }
-      } else if (!identical(_activeRuntime?.owner, owner)) {
-        await _disableOwnerQuietly(owner);
       }
       if (revision == _contextRevision) {
         if ((_requestedContext?.datadogContext.strictContextSwitching ??
@@ -681,11 +710,8 @@ final class DatadogProvider
       return;
     }
     final previous = _activeRuntime;
-    final telemetrySource = previous ?? _telemetrySource;
-    _telemetrySource = null;
-    if (telemetrySource != null && !identical(telemetrySource, runtime)) {
-      runtime.client.inheritTelemetry(telemetrySource.client);
-    }
+    final replacedRuntime = previous ?? _retainedRuntime;
+    _retainedRuntime = null;
     _activeRuntime = runtime;
     _hasCommittedContext = true;
     if (status == DatadogFlagsClientStatus.ready) {
@@ -722,8 +748,8 @@ final class DatadogProvider
         ),
       );
     }
-    if (telemetrySource != null && !identical(telemetrySource, runtime)) {
-      _retire(telemetrySource);
+    if (replacedRuntime != null && !identical(replacedRuntime, runtime)) {
+      _retire(replacedRuntime);
     }
   }
 
@@ -731,7 +757,7 @@ final class DatadogProvider
     final active = _activeRuntime;
     if (active == null) return;
     _activeRuntime = null;
-    _telemetrySource = active;
+    _retainedRuntime = active;
     unawaited(active.statusSubscription?.cancel());
     active.statusSubscription = null;
   }
@@ -753,16 +779,7 @@ final class DatadogProvider
     try {
       await runtime?.disable();
     } on Object {
-      // Assignment readiness must not be replaced by a teardown error from an
-      // inactive runtime. Datadog runtime shutdown already bounds its uploads.
-    }
-  }
-
-  static Future<void> _disableOwnerQuietly(DatadogFlags owner) async {
-    try {
-      await owner.disable();
-    } on Object {
-      // Preserve the assignment lifecycle result when cleanup also fails.
+      // Preserve assignment readiness when an inactive repository fails to close.
     }
   }
 
@@ -854,19 +871,56 @@ final class DatadogProvider
   }
 }
 
+/// Resources shared by every context revision of one provider.
+final class _ProviderResources {
+  final FlagsRuntime flagsRuntime;
+  final bool ownsHttpClient;
+  final ExposureLogger exposureLogger;
+  final EvaluationAggregator evaluationAggregator;
+  Future<void>? _shutdown;
+
+  _ProviderResources(this.flagsRuntime, {required this.ownsHttpClient})
+    : exposureLogger = ExposureLogger(flagsRuntime),
+      evaluationAggregator = EvaluationAggregator(flagsRuntime);
+
+  DefaultDatadogFlagsClient createClient(String name) {
+    return DefaultDatadogFlagsClient(
+      name: name,
+      repository: FlagsRepository.forRuntime(flagsRuntime, clientName: name),
+      exposureLogger: exposureLogger,
+      evaluationAggregator: evaluationAggregator,
+      ownsTelemetry: false,
+    );
+  }
+
+  // Every caller gets the same drain. The first call starts it, and later calls
+  // return its future, so telemetry is flushed and the client closed once.
+  Future<void> shutdown() => _shutdown ??= _drain();
+
+  Future<void> _drain() async {
+    try {
+      await Future.wait([
+        exposureLogger.shutdown(),
+        evaluationAggregator.shutdown(),
+      ]);
+    } finally {
+      if (ownsHttpClient) flagsRuntime.httpClient.close();
+    }
+  }
+}
+
 final class _ProviderRuntime {
-  final DatadogFlags owner;
   final DefaultDatadogFlagsClient client;
   StreamSubscription<DatadogFlagsClientStatus>? statusSubscription;
   Future<void>? _disabling;
 
-  _ProviderRuntime(this.owner, this.client);
+  _ProviderRuntime(this.client);
 
   Future<void> disable() => _disabling ??= _disable();
 
   Future<void> _disable() async {
     await statusSubscription?.cancel();
-    await owner.disable();
+    await client.shutdown();
   }
 }
 

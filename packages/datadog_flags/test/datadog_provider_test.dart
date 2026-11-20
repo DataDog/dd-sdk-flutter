@@ -12,6 +12,7 @@ import 'package:datadog_flags/src/evaluation_aggregator.dart';
 import 'package:datadog_flags/src/intake_platform.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk_experimental.dart'
     show createIsolatedOpenFeatureAPI;
@@ -24,7 +25,398 @@ void main() {
     api = createIsolatedOpenFeatureAPI();
   });
 
+  setUpAll(() {
+    registerFallbackValue(Uri.parse('https://example.com'));
+    registerFallbackValue(
+      http.Request('GET', Uri.parse('https://example.com')),
+    );
+  });
+
   tearDown(() => api.shutdown());
+
+  for (final injected in [false, true]) {
+    test(
+      'provider shares ${injected ? 'injected' : 'owned'} HTTP transport until shutdown',
+      () async {
+        final transport = _MockHttpClient();
+        final requests = <http.Request>[];
+        final upload = Completer<http.Response>();
+        final uploadStarted = Completer<void>();
+        final delegate = MockClient((request) async {
+          requests.add(request);
+          if (request.url.path == '/api/v2/flagevaluation') {
+            uploadStarted.complete();
+            return upload.future;
+          }
+          return _responseFor(request, _assignmentsResponse());
+        });
+        when(() => transport.send(any())).thenAnswer(
+          (invocation) => delegate.send(
+            invocation.positionalArguments.single as http.BaseRequest,
+          ),
+        );
+        when(
+          () => transport.post(
+            any(),
+            headers: any(named: 'headers'),
+            body: any(named: 'body'),
+          ),
+        ).thenAnswer(
+          (invocation) => delegate.post(
+            invocation.positionalArguments.single as Uri,
+            headers:
+                invocation.namedArguments[#headers] as Map<String, String>?,
+            body: invocation.namedArguments[#body],
+          ),
+        );
+        var created = 0;
+        await http.runWithClient(
+          () async {
+            final provider = DatadogProvider.fromConfiguration(
+              DatadogFlagsConfiguration(
+                datadogConfig: const DatadogFlagsConfig(
+                  clientToken: 'client-token',
+                  env: 'test',
+                  site: DatadogFlagsSite.us1,
+                ),
+                httpClient: injected ? transport : null,
+                evaluationFlushInterval: const Duration(hours: 1),
+              ),
+            );
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'A'),
+            );
+            await api.setProviderAndWait(provider);
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            await provider.refresh();
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'B'),
+            );
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            await api.setEvaluationContextAndWait(
+              EvaluationContext(targetingKey: 'A'),
+            );
+            expect(
+              api.getClient().getBooleanValue('show-paywall', false),
+              isTrue,
+            );
+            expect(created, injected ? 0 : 1);
+            verifyNever(() => transport.close());
+            // Retiring context repositories does not flush the shared telemetry.
+            expect(
+              requests.where((r) => r.url.path != '/precompute-assignments'),
+              isEmpty,
+            );
+            final shuttingDown = provider.shutdown();
+            await uploadStarted.future;
+            verifyNever(() => transport.close());
+            upload.complete(http.Response('{}', 202));
+            await shuttingDown;
+            await provider.shutdown();
+            if (injected) {
+              verifyNever(() => transport.close());
+            } else {
+              verify(() => transport.close()).called(1);
+            }
+            final evaluations = requests
+                .where((r) => r.url.path == '/api/v2/flagevaluation')
+                .expand(_evaluationEvents);
+            expect(
+              {
+                for (final event in evaluations)
+                  event['targeting_key']: event['evaluation_count'],
+              },
+              {'A': 2, 'B': 1},
+            );
+          },
+          () {
+            created++;
+            return transport;
+          },
+        );
+        delegate.close();
+      },
+    );
+  }
+
+  for (final awaitShutdown in [true, false]) {
+    test(
+      're-initialization after '
+      '${awaitShutdown ? 'completed' : 'pending'} shutdown uses fresh owned resources',
+      () async {
+        final created = <_MockHttpClient>[];
+        final heldUpload = Completer<http.Response>();
+        var evaluationUploads = 0;
+        final delegate = MockClient((request) async {
+          if (request.url.path == '/api/v2/flagevaluation' &&
+              ++evaluationUploads == 1 &&
+              !awaitShutdown) {
+            return heldUpload.future;
+          }
+          return _responseFor(request, _assignmentsResponse());
+        });
+        addTearDown(delegate.close);
+        await http.runWithClient(
+          () async {
+            final provider = DatadogProvider.fromConfiguration(
+              const DatadogFlagsConfiguration(
+                datadogConfig: DatadogFlagsConfig(
+                  clientToken: 'client-token',
+                  env: 'test',
+                  site: DatadogFlagsSite.us1,
+                ),
+              ),
+            );
+            await provider.initialize(EvaluationContext(targetingKey: 'A'));
+            provider.resolveBooleanValue(
+              'show-paywall',
+              false,
+              EvaluationContext.empty,
+            );
+            final shuttingDown = provider.shutdown();
+            if (awaitShutdown) await shuttingDown;
+            await provider.initialize(EvaluationContext(targetingKey: 'B'));
+            expect(created, hasLength(2));
+            if (!heldUpload.isCompleted) {
+              heldUpload.complete(http.Response('{}', 202));
+            }
+            await shuttingDown;
+            verify(() => created[0].close()).called(1);
+            verifyNever(() => created[1].close());
+            expect(
+              provider
+                  .resolveBooleanValue(
+                    'show-paywall',
+                    false,
+                    EvaluationContext.empty,
+                  )
+                  .value,
+              isTrue,
+            );
+            await provider.shutdown();
+            verifyNever(() => created[0].close());
+            verify(() => created[1].close()).called(1);
+            verify(
+              () => created[1].post(
+                any(
+                  that: predicate<Uri>(
+                    (url) => url.path == '/api/v2/flagevaluation',
+                  ),
+                ),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ),
+            ).called(1);
+          },
+          () {
+            final transport = _MockHttpClient();
+            when(() => transport.send(any())).thenAnswer(
+              (invocation) => delegate.send(
+                invocation.positionalArguments.single as http.BaseRequest,
+              ),
+            );
+            when(
+              () => transport.post(
+                any(),
+                headers: any(named: 'headers'),
+                body: any(named: 'body'),
+              ),
+            ).thenAnswer(
+              (invocation) => delegate.post(
+                invocation.positionalArguments.single as Uri,
+                headers:
+                    invocation.namedArguments[#headers] as Map<String, String>?,
+                body: invocation.namedArguments[#body],
+              ),
+            );
+            created.add(transport);
+            return transport;
+          },
+        );
+      },
+    );
+  }
+
+  for (final afterUpload in [true, false]) {
+    test('a concurrent shutdown waits for the telemetry drain, '
+        'second call after upload: $afterUpload', () async {
+      final upload = Completer<http.Response>();
+      final uploadStarted = Completer<void>();
+      final created = <_MockHttpClient>[];
+      final delegate = MockClient((request) async {
+        if (request.url.path == '/api/v2/flagevaluation') {
+          uploadStarted.complete();
+          return upload.future;
+        }
+        return _responseFor(request, _assignmentsResponse());
+      });
+      addTearDown(delegate.close);
+      await http.runWithClient(
+        () async {
+          final provider = DatadogProvider.fromConfiguration(
+            const DatadogFlagsConfiguration(
+              datadogConfig: DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
+          );
+          await provider.initialize(EvaluationContext(targetingKey: 'A'));
+          provider.resolveBooleanValue(
+            'show-paywall',
+            false,
+            EvaluationContext.empty,
+          );
+          final first = provider.shutdown();
+          if (afterUpload) await uploadStarted.future;
+          var secondDone = false;
+          final second = provider.shutdown().then((_) => secondDone = true);
+          await uploadStarted.future;
+          await pumpEventQueue();
+          expect(secondDone, isFalse);
+          verifyNever(() => created.single.close());
+          upload.complete(http.Response('{}', 202));
+          await Future.wait([first, second]);
+          verify(() => created.single.close()).called(1);
+        },
+        () {
+          final transport = _MockHttpClient();
+          when(() => transport.send(any())).thenAnswer(
+            (invocation) => delegate.send(
+              invocation.positionalArguments.single as http.BaseRequest,
+            ),
+          );
+          when(
+            () => transport.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (invocation) => delegate.post(
+              invocation.positionalArguments.single as Uri,
+              headers:
+                  invocation.namedArguments[#headers] as Map<String, String>?,
+              body: invocation.namedArguments[#body],
+            ),
+          );
+          created.add(transport);
+          return transport;
+        },
+      );
+    });
+  }
+
+  test(
+    'a failed shutdown does not fail shutdown after re-initialization',
+    () async {
+      final created = <_MockHttpClient>[];
+      final delegate = MockClient(
+        (request) async => _responseFor(request, _assignmentsResponse()),
+      );
+      addTearDown(delegate.close);
+      await http.runWithClient(
+        () async {
+          final provider = DatadogProvider.fromConfiguration(
+            const DatadogFlagsConfiguration(
+              datadogConfig: DatadogFlagsConfig(
+                clientToken: 'client-token',
+                env: 'test',
+                site: DatadogFlagsSite.us1,
+              ),
+            ),
+          );
+          await provider.initialize(EvaluationContext(targetingKey: 'A'));
+          await expectLater(provider.shutdown(), throwsStateError);
+
+          await provider.initialize(EvaluationContext(targetingKey: 'B'));
+          expect(created, hasLength(2));
+          await provider.shutdown();
+          verify(() => created[1].close()).called(1);
+        },
+        () {
+          final transport = _MockHttpClient();
+          when(() => transport.send(any())).thenAnswer(
+            (invocation) => delegate.send(
+              invocation.positionalArguments.single as http.BaseRequest,
+            ),
+          );
+          when(
+            () => transport.post(
+              any(),
+              headers: any(named: 'headers'),
+              body: any(named: 'body'),
+            ),
+          ).thenAnswer(
+            (invocation) => delegate.post(
+              invocation.positionalArguments.single as Uri,
+              headers:
+                  invocation.namedArguments[#headers] as Map<String, String>?,
+              body: invocation.namedArguments[#body],
+            ),
+          );
+          if (created.isEmpty) {
+            when(transport.close).thenThrow(StateError('close failed'));
+          }
+          created.add(transport);
+          return transport;
+        },
+      );
+    },
+  );
+
+  test('retiring a context aborts its pending assignment fetch', () async {
+    final transport = _MockHttpClient();
+    final abortTriggers = <String, Future<void>?>{};
+    when(() => transport.send(any())).thenAnswer((invocation) async {
+      final request = invocation.positionalArguments.single as http.BaseRequest;
+      final body = await request.finalize().bytesToString();
+      final key =
+          _subject(jsonDecode(body) as Map<String, Object?>)['targeting_key']
+              as String;
+      if (key == 'B') {
+        final trigger = request is http.Abortable ? request.abortTrigger : null;
+        abortTriggers[key] = trigger;
+        final response = Completer<http.StreamedResponse>();
+        unawaited(
+          trigger?.then(
+            (_) => response.completeError(
+              http.RequestAbortedException(request.url),
+            ),
+          ),
+        );
+        return response.future;
+      }
+      return http.StreamedResponse(
+        Stream.value(utf8.encode(jsonEncode(_assignmentsResponse()))),
+        200,
+        request: request,
+      );
+    });
+    final provider = DatadogProvider.fromConfiguration(
+      _configuration(transport),
+    );
+    await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'A'));
+    await api.setProviderAndWait(provider);
+    unawaited(
+      api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'B')),
+    );
+    await _waitUntil(() => abortTriggers.containsKey('B'));
+    await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'C'));
+    expect(abortTriggers['B'], isNotNull);
+    await expectLater(
+      abortTriggers['B']!.timeout(const Duration(seconds: 1)),
+      completes,
+    );
+    expect(api.getClient().getBooleanValue('show-paywall', false), isTrue);
+  });
 
   test(
     'DateTime attributes preserve available precision and normalize to UTC',
@@ -2367,3 +2759,5 @@ List<Map<String, Object?>> _evaluationEvents(http.Request request) {
   return (body['flagEvaluations'] as List<Object?>)
       .cast<Map<String, Object?>>();
 }
+
+class _MockHttpClient extends Mock implements http.Client {}
