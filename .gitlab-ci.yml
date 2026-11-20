@@ -382,7 +382,7 @@ android-integration-test:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-      - tools/ci/emulator.log
+      - tools/ci/.tmp/emulator.log
       - .build/test-results/*.jsonl
 
 ios-integration-test:
@@ -514,6 +514,9 @@ linux-integration-test:
 # with `preReleaseBranches` in tools/releaser/lib/publish_rules.dart.
 prepare-release:
   stage: prepare-release
+  # Artifacts from earlier jobs would add untracked files to the working tree,
+  # which prepare_release.dart rejects.
+  dependencies: []
   rules:
     # push-only: matches self.prepare-release.sts.yaml's trust policy.
     # allow_failure: true: `when: manual` under `rules:` defaults to
@@ -863,7 +866,7 @@ nightly-android:
       junit: $CI_PROJECT_DIR/.build/test-results/*.xml
     paths:
       - tools/ci/logcat.txt
-      - tools/ci/emulator.log
+      - tools/ci/.tmp/emulator.log
       - .build/test-results/*.jsonl
 
 # Verify the published Dart floor with the repository's Flutter version manager.
