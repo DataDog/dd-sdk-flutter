@@ -303,11 +303,14 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 #if defined(__OBJC__)
 
 @class NSString;
+@class NSNumber;
 SWIFT_CLASS_NAMED("FlutterRUMCoreContext")
 @interface FlutterRUMCoreContext : NSObject
 @property (nonatomic, copy) NSString * _Nonnull sessionID;
 @property (nonatomic, copy) NSString * _Nullable viewID;
 @property (nonatomic, copy) NSString * _Nonnull applicationID;
+/// The RUM session sample rate native RUM applied to <code>sessionID</code>.
+@property (nonatomic, strong) NSNumber * _Nullable sessionSampleRate;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
 @end
@@ -334,6 +337,11 @@ SWIFT_CLASS_NAMED("FlutterSessionReplay")
 /// Reports whether <code>replaySampleRate</code> selected the RUM session <code>sessionId</code>, for WebView records.
 - (void)setSessionSampledFor:(NSString * _Nonnull)sessionId sampled:(BOOL)sampled;
 - (void)setRecordCountFor:(NSString * _Nonnull)viewId count:(NSInteger)count;
+/// Publishes the Session Replay configuration RUM reports on its view events
+/// (<code>session_replay_sample_rate</code>, <code>start_session_replay_recording_manually</code>). Called by Dart
+/// straight after <code>setEmbedded</code>. Standalone only, like <code>has_replay</code>: when embedded, the
+/// native <code>SessionReplayFeature</code> publishes the host’s own configuration.
+- (void)setReplayConfigurationWithSampleRate:(double)sampleRate startRecordingImmediately:(BOOL)startRecordingImmediately;
 /// Declares which recording path this engine writes to. Called once by Dart, straight after
 /// <code>enable()</code>, from the <code>isEmbedded</code> it was configured with.
 - (void)setEmbedded:(BOOL)isEmbedded;

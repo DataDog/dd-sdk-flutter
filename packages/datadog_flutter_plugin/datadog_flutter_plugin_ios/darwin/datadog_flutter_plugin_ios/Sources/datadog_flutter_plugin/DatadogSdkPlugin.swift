@@ -26,6 +26,11 @@ public class DatadogContextBridge: NSObject {
     @objc public var sessionId: String?
     @objc public var accountId: String?
     @objc public var userId: String?
+    /// The RUM session sample rate (0-100), or nil when there is no RUM session.
+    @objc public var sessionSampleRate: NSNumber?
+    /// The trace sample rate (0-100) native RUM reports on its views, or nil when RUM has no
+    /// first-party hosts tracing configured.
+    @objc public var traceSampleRate: NSNumber?
 
     @objc public class func current() -> DatadogContextBridge {
         let bridge = DatadogContextBridge()
@@ -33,6 +38,8 @@ public class DatadogContextBridge: NSObject {
             bridge.sessionId = ctx.sessionId
             bridge.accountId = ctx.accountId
             bridge.userId = ctx.userId
+            bridge.sessionSampleRate = ctx.sessionSampleRate.map { NSNumber(value: $0) }
+            bridge.traceSampleRate = ctx.traceSampleRate.map { NSNumber(value: $0) }
         }
         return bridge
     }
@@ -78,7 +85,22 @@ public class ContextMessageReceiver: FeatureMessageReceiver {
         public let sessionId: String?
         public let accountId: String?
         public let userId: String?
+        public let sessionSampleRate: Float?
+        public let traceSampleRate: Float?
 
+        public init(
+            sessionId: String?,
+            accountId: String?,
+            userId: String?,
+            sessionSampleRate: Float?,
+            traceSampleRate: Float? = nil
+        ) {
+            self.sessionId = sessionId
+            self.accountId = accountId
+            self.userId = userId
+            self.sessionSampleRate = sessionSampleRate
+            self.traceSampleRate = traceSampleRate
+        }
     }
 
     static let shared: ContextMessageReceiver = {
@@ -100,7 +122,14 @@ public class ContextMessageReceiver: FeatureMessageReceiver {
             cachedContext = Context(
                 sessionId: rumContext?.sessionID,
                 accountId: context.accountInfo?.id,
-                userId: context.userInfo?.id
+                userId: context.userInfo?.id,
+                sessionSampleRate: rumContext?.sessionSampler.samplingRate,
+                // The rate RUM reports as `trace_sample_rate`: Flutter's own when it initialized
+                // RUM, the host app's when attached to an existing instance.
+                traceSampleRate: core.feature(
+                    named: Feature.networkInstrumentation,
+                    type: DistributedTracingSampleRateProvider.self
+                )?.distributedTracingSampleRate
             )
             return true
         default:
@@ -613,6 +642,14 @@ public class DatadogSdkPlugin: NSObject, FlutterPlugin, DatadogFeature {
         var logsEnabled = false
 
         core = Datadog.sdkInstance(named: CoreRegistry.defaultInstanceName)
+        // Receives the core context, as on initialize, so Dart reads the native RUM session
+        // (and its sample rate) to sample traces on.
+        do {
+            try core?.register(feature: self)
+        } catch {
+            consolePrint("🔥 Could not attach to the Datadog SDK's context: \(error)", .error)
+        }
+
         if Logs._internal.isEnabled() {
             logsEnabled = true
         }

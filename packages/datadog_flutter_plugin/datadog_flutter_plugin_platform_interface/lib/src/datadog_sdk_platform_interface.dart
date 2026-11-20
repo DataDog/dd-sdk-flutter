@@ -99,10 +99,20 @@ class DatadogContext {
   final String? userId;
   final String? accountId;
 
+  /// The RUM session sample rate (0-100) the native SDK sampled [sessionId]
+  /// with, used to rebase other features' sampling onto the session.
+  final double? sessionSampleRate;
+
+  /// The trace sample rate (0-100) the native SDK reports on RUM views, when it
+  /// has one, so that Flutter samples its traces at the rate RUM reports.
+  final double? traceSampleRate;
+
   const DatadogContext({
     required this.sessionId,
     required this.userId,
     required this.accountId,
+    this.sessionSampleRate,
+    this.traceSampleRate,
   });
 }
 

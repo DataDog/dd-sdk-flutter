@@ -23,6 +23,7 @@ protocol FlutterSessionReplayFeature {
     func setHasReplay(_ hasReplay: Bool)
     func setSessionSampled(for sessionID: String, sampled: Bool)
     func setRecordCount(for viewId: String, count: Int64)
+    func setReplayConfiguration(sampleRate: Float, startRecordingImmediately: Bool)
     func writeSegment(segment: String)
 }
 
@@ -201,6 +202,15 @@ class DefaultFlutterSessionReplayFeature:
         }
         recordCountByViewId[viewId] = count
         core?.set(context: SessionReplayCoreContext.RecordsCount(value: recordCountByViewId))
+    }
+
+    func setReplayConfiguration(sampleRate: Float, startRecordingImmediately: Bool) {
+        // Read by RUM for `_dd.configuration.session_replay_sample_rate` on view events, as
+        // the native SessionReplayFeature publishes it.
+        core?.set(context: SessionReplayCoreContext.Configuration(
+            sampleRate: sampleRate,
+            startRecordingManually: !startRecordingImmediately
+        ))
     }
 
     func writeSegment(segment: String) {

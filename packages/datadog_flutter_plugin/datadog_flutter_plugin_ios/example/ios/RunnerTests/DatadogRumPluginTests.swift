@@ -214,6 +214,32 @@ class DatadogRumPluginTests: XCTestCase {
         XCTAssertEqual(config?.appHangThreshold, appHangThreshold)
     }
 
+    func testRumConfiguration_WithTraceSampleRate_ReportsItWithoutTracingAnyHost() throws {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id",
+            "traceSampleRate": 42.5
+        ]
+
+        let config = try XCTUnwrap(RUM.Configuration.init(fromEncoded: encoded))
+
+        // Native RUM reports this rate on views; with no hosts it never traces a request itself
+        guard case let .trace(hosts, sampleRate, _)? = config.urlSessionTracking?.firstPartyHostsTracing else {
+            return XCTFail("Expected first party hosts tracing with Flutter's trace sample rate")
+        }
+        XCTAssertEqual(hosts, [])
+        XCTAssertEqual(sampleRate, 42.5)
+    }
+
+    func testRumConfiguration_WithoutTraceSampleRate_ConfiguresNoTracing() {
+        let encoded: [String: Any?] = [
+            "applicationId": "fake-application-id"
+        ]
+
+        let config = RUM.Configuration.init(fromEncoded: encoded)
+        XCTAssertNotNil(config?.urlSessionTracking)
+        XCTAssertNil(config?.urlSessionTracking?.firstPartyHostsTracing)
+    }
+
     func testRumConfiguration_WithTrackWatchdogTerminations_IsSetCorrectly() {
         let trackWatchdogTerminations = Bool.random()
         let encoded: [String: Any?] = [

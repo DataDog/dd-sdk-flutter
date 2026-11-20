@@ -21,10 +21,15 @@ import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.api.context.AccountInfo
 import com.datadog.android.api.context.UserInfo
+import com.datadog.android.api.feature.Feature
+import com.datadog.android.api.feature.FeatureSdkCore
+import com.datadog.android.core.InternalSdkCore
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.log.Logs
 import com.datadog.android.privacy.TrackingConsent
+import com.datadog.android.rum.GlobalRumMonitor
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -37,6 +42,7 @@ import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
+import io.mockk.verify as mockkVerify
 import io.mockk.verifyOrder
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -483,6 +489,53 @@ class DatadogSdkPluginTest {
 
         // THEN
         io.mockk.verify(exactly = 1) { Log.e(DATADOG_FLUTTER_TAG, MESSAGE_INVALID_REINITIALIZATION) }
+    }
+
+
+    @Test
+    fun `M request the RUM and tracing contexts W getCoreContext`() {
+        // GIVEN
+        val mockCore = mockk<InternalSdkCore>(relaxed = true)
+        mockkStatic(Datadog::class)
+        every { Datadog.getInstance() } returns mockCore
+
+        // WHEN
+        try {
+            DatadogSdkPlugin.getCoreContext()
+
+            // THEN - Dart reads the session from RUM and the trace sample rate from tracing
+            mockkVerify {
+                mockCore.getDatadogContext(
+                    setOf(Feature.RUM_FEATURE_NAME, Feature.TRACING_FEATURE_NAME)
+                )
+            }
+        } finally {
+            unmockkStatic(Datadog::class)
+        }
+    }
+
+    @Test
+    fun `M publish the trace sample rate W attachToExisting { RUM enabled natively }`() {
+        // GIVEN
+        val mockCore = mockk<FeatureSdkCore>(relaxed = true)
+        every { mockCore.getFeature(Feature.TRACING_FEATURE_NAME) } returns null
+        mockkStatic(Datadog::class, Logs::class, GlobalRumMonitor::class)
+        every { Datadog.isInitialized() } returns true
+        every { Logs.isEnabled(any()) } returns false
+        every { GlobalRumMonitor.isRegistered(any()) } returns true
+        every { Datadog.getInstance() } returns mockCore
+        val methodCall = MethodCall("attachToExisting", mapOf("traceSampleRate" to 37.0))
+
+        // WHEN
+        try {
+            plugin.onMethodCall(methodCall, mock<MethodChannel.Result>())
+
+            // THEN
+            mockkVerify { mockCore.registerFeature(match { it is TracingContextFeature }) }
+            mockkVerify { mockCore.updateFeatureContext(Feature.TRACING_FEATURE_NAME, true, any()) }
+        } finally {
+            unmockkStatic(Datadog::class, Logs::class, GlobalRumMonitor::class)
+        }
     }
 
 //    @Test

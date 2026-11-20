@@ -31,6 +31,7 @@ internal interface FlutterSessionReplayFeature : StorageBackedFeature {
     fun registerSessionReplayContext()
     fun setHasReplay(viewId: String, hasReplay: Boolean)
     fun setRecordCount(viewId: String, recordCount: Int)
+    fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean)
     fun setSessionSampled(sessionId: String, sampled: Boolean)
     fun writeSegment(segment: String)
     fun readCurrentContext(): DefaultFlutterSessionReplayFeature.RumContext?
@@ -53,13 +54,15 @@ internal class DefaultFlutterSessionReplayFeature(
         val applicationId: String?,
         val sessionId: String?,
         val viewId: String?,
-        val viewServerTimeOffset: Long?
+        val viewServerTimeOffset: Long?,
+        val sessionSampleRate: Float? = null
     ) {
         constructor(event: Map<String, Any?>) : this(
             applicationId = event[APPLICATION_ID_KEY] as? String,
             sessionId = event[SESSION_ID_KEY] as? String,
             viewId = event[VIEW_ID_KEY] as? String,
-            viewServerTimeOffset = event[VIEW_SERVER_TIME_OFFSET_KEY] as? Long
+            viewServerTimeOffset = event[VIEW_SERVER_TIME_OFFSET_KEY] as? Long,
+            sessionSampleRate = (event[SESSION_SAMPLE_RATE_KEY] as? Number)?.toFloat()
         )
     }
 
@@ -171,9 +174,9 @@ internal class DefaultFlutterSessionReplayFeature(
         }
     }
 
-    // Both of these write to [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
-    // that context is where RUM reads `has_replay` and the record counts from, regardless of which
-    // feature wrote them. Only the standalone path reaches here, and only once
+    // All of these write to [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
+    // that context is where RUM reads `has_replay`, the record counts and the sample rate from,
+    // regardless of which feature wrote them. Only the standalone path reaches here, and only once
     // [registerSessionReplayContext] registered the feature owning that context.
     override fun setHasReplay(viewId: String, hasReplay: Boolean) {
         if (!ownsSessionReplayContext) return
@@ -193,8 +196,19 @@ internal class DefaultFlutterSessionReplayFeature(
             val viewMetadata: MutableMap<String, Any?> =
                 (it[viewId] as? MutableMap<String, Any?>) ?: mutableMapOf()
             viewMetadata[HAS_REPLAY_KEY] = true
+            // RUM reads the count as a Long, and treats any other type as no records.
             viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount.toLong()
             it[viewId] = viewMetadata
+        }
+    }
+
+    // Same keys and types as the native Session Replay; RUM reads the sample rate for
+    // `_dd.configuration.session_replay_sample_rate` on view events.
+    override fun setReplayConfiguration(sampleRate: Double, startRecordingImmediately: Boolean) {
+        if (!ownsSessionReplayContext) return
+        sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
+            it[SESSION_REPLAY_SAMPLE_RATE_KEY] = sampleRate.toLong()
+            it[SESSION_REPLAY_START_IMMEDIATE_RECORDING_KEY] = startRecordingImmediately
         }
     }
 
@@ -253,6 +267,8 @@ internal class DefaultFlutterSessionReplayFeature(
                 "as embedded in hybrid apps."
 
         const val HAS_REPLAY_KEY = "has_replay"
+        const val SESSION_REPLAY_SAMPLE_RATE_KEY = "session_replay_sample_rate"
+        const val SESSION_REPLAY_START_IMMEDIATE_RECORDING_KEY = "session_replay_start_immediate_recording"
         const val SESSION_REPLAY_ENABLED_KEY = "session_replay_is_enabled"
         const val TEXT_AND_INPUT_PRIVACY_KEY = "session_replay_text_and_input_privacy"
         const val IMAGE_PRIVACY_KEY = "session_replay_image_privacy"
@@ -263,5 +279,6 @@ internal class DefaultFlutterSessionReplayFeature(
         const val SESSION_ID_KEY = "session_id"
         const val VIEW_ID_KEY = "view_id"
         const val VIEW_SERVER_TIME_OFFSET_KEY = "view_timestamp_offset"
+        const val SESSION_SAMPLE_RATE_KEY = "session_sample_rate"
     }
 }

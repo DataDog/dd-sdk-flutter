@@ -10,6 +10,13 @@ import 'datadog_android_bridge.dart' as bridge;
 class AndroidDatadogFlutterPlugin {
   static final JString _javaRumKey = 'rum'.toJString();
   static final JString _javaSessionId = 'session_id'.toJString();
+  static final JString _javaSessionSampleRate = 'session_sample_rate'
+      .toJString();
+  static final JString _javaTracingKey = 'tracing'.toJString();
+  // Must match TracingInterceptor.OKHTTP_INTERCEPTOR_SAMPLE_RATE in
+  // dd-sdk-android-okhttp, and TracingContextFeature.TRACE_SAMPLE_RATE_KEY.
+  static final JString _javaTraceSampleRate = 'okhttp_interceptor_sample_rate'
+      .toJString();
 
   static DatadogContext? getContext() {
     return using((arena) {
@@ -20,6 +27,14 @@ class AndroidDatadogFlutterPlugin {
       final featuresContext = javaContext.featuresContext..releasedBy(arena);
       final rumContext = featuresContext.get(_javaRumKey)?..releasedBy(arena);
       final javaSessionId = rumContext?.get(_javaSessionId)?..releasedBy(arena);
+      // Stored by native RUM as a Float.
+      final javaSessionSampleRate = rumContext?.get(_javaSessionSampleRate)
+        ?..releasedBy(arena);
+      final tracingContext = featuresContext.get(_javaTracingKey)
+        ?..releasedBy(arena);
+      // Stored by native tracing (or Flutter's stand-in for it) as a Float.
+      final javaTraceSampleRate = tracingContext?.get(_javaTraceSampleRate)
+        ?..releasedBy(arena);
       final accountInfo = javaContext.accountInfo?..releasedBy(arena);
       final userInfo = javaContext.userInfo..releasedBy(arena);
 
@@ -27,6 +42,8 @@ class AndroidDatadogFlutterPlugin {
         sessionId: javaSessionId?.toString(),
         accountId: accountInfo?.id.toDartString(releaseOriginal: true),
         userId: userInfo.id?.toDartString(releaseOriginal: true),
+        sessionSampleRate: (javaSessionSampleRate as JNumber?)?.doubleValue(),
+        traceSampleRate: (javaTraceSampleRate as JNumber?)?.doubleValue(),
       );
     });
   }
