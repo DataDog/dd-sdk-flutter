@@ -16,7 +16,9 @@ void main() {
       addTearDown(() => root.delete(recursive: true));
       final sdkPath = path.join(root.path, 'android sdk');
       final ciProjectPath = path.join(root.path, 'CI project');
-      final log = File(path.join(ciProjectPath, 'tools', 'ci', 'emulator.log'));
+      final log = File(
+        path.join(ciProjectPath, 'tools', 'ci', '.tmp', 'emulator.log'),
+      );
       await log.create(recursive: true);
       await log.writeAsString('Output from the original emulator\n');
 

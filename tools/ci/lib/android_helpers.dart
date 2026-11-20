@@ -232,9 +232,13 @@ Future<bool> _startEmulator(String emulatorName) async {
   }
 
   final ciProjectDir = Platform.environment['CI_PROJECT_DIR'];
-  final logPath = ciProjectDir == null
-      ? emulatorLogFile
-      : path.join(ciProjectDir, 'tools', 'ci', emulatorLogFile);
+  // `tools/ci/.tmp` is git ignored. Without CI_PROJECT_DIR the path is relative
+  // to the working directory, which is `tools/ci`.
+  final ciDir = ciProjectDir == null
+      ? ''
+      : path.join(ciProjectDir, 'tools', 'ci');
+  final logPath = path.join(ciDir, '.tmp', emulatorLogFile);
+  await Directory(path.dirname(logPath)).create(recursive: true);
   print('Starting $emulatorName, logging to $logPath');
 
   // The detached shell collects output and records the emulator's exit status.
