@@ -13,6 +13,7 @@ packages:
   - examples/native-hybrid-app/flutter_module
   - test_apps/*
   - tools/openfeature_conformance
+  - tools/sr_models_generator
 
 scripts:
   build:

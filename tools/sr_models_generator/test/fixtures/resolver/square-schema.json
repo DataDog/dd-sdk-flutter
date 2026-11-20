@@ -1,0 +1,15 @@
+{
+  "title": "Square",
+  "type": "object",
+  "allOf": [
+    { "$ref": "_common-schema.json" },
+    {
+      "required": ["type", "side"],
+      "properties": {
+        "type": { "type": "string", "const": "square" },
+        "side": { "type": "integer" },
+        "label": { "type": "integer" }
+      }
+    }
+  ]
+}

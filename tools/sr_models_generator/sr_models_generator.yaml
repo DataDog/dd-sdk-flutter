@@ -1,0 +1,39 @@
+# Configuration of the Session Replay models generator.
+#
+# This file is the only reference this repository keeps to rum-events-format:
+# the schemas are fetched at `commit` when generating, and are never committed.
+
+rum_events_format:
+  repository: https://github.com/DataDog/rum-events-format.git
+  # Full SHA of the rum-events-format commit the models are generated from.
+  commit: 748d7fe6d0e36624b7ea64e26731e43e347637b5
+
+# Entry point of the schemas, relative to the rum-events-format repository root.
+root_schema: schemas/session-replay-mobile-schema.json
+
+# Generated file, relative to this directory.
+output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart
+
+# Generated type names: `type_prefix` + the schema title without the words in
+# `strip_from_titles` (`MobileSegment` -> `SRSegment`).
+type_prefix: SR
+strip_from_titles:
+  - Mobile
+
+# Generated name, or schema location (`file#pointer`) -> the name to use.
+# These keep the names of the hand-written Flutter models. An inline type is
+# named after its owner's final name, so `SRAlignment`'s enums start as
+# `SRAlignmentHorizontal`, not `SRTextPositionAlignmentHorizontal`.
+type_renames:
+  SRWireframeClip: SRContentClip
+  SRTextPositionAlignment: SRAlignment
+  SRAlignmentHorizontal: SRHorizontalAlignment
+  SRAlignmentVertical: SRVerticalAlignment
+  SRTextPositionPadding: SRPadding
+  SRPointerInteractionDataPointerEventType: SRPointerEventType
+  SRPointerInteractionDataPointerType: SRPointerType
+  SRIncrementalData: SRIncrementalSnapshotData
+  SRMutationData: SRIncrementalMutationData
+  SRIncrementalMutationDataAdds: SRIncrementalAdd
+  SRIncrementalMutationDataRemoves: SRIncrementalRemove
+  SRWireframeUpdateMutation: SRIncrementalUpdate

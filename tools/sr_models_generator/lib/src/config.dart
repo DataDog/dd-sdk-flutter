@@ -1,0 +1,211 @@
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2026-Present Datadog, Inc.
+
+import 'dart:io';
+
+import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
+import 'package:yaml/yaml.dart';
+
+import 'resolver.dart';
+import 'schema_source.dart';
+
+/// The generator configuration, read from `sr_models_generator.yaml`.
+@immutable
+final class GeneratorConfig {
+  GeneratorConfig({
+    required this.file,
+    required this.repository,
+    required this.commit,
+    required this.rootSchema,
+    required this.output,
+    this.naming = const NamingOptions(),
+  });
+
+  /// Reads and validates the configuration file at [path].
+  factory GeneratorConfig.load(String path) {
+    final file = File(path);
+    if (!file.existsSync()) {
+      throw ConfigException('Configuration file not found', path);
+    }
+    return GeneratorConfig.parse(file.readAsStringSync(), file: path);
+  }
+
+  /// Parses [source], the contents of the configuration file at [file].
+  ///
+  /// Relative paths in the configuration are resolved against the directory
+  /// of [file].
+  factory GeneratorConfig.parse(String source, {required String file}) {
+    final Object? yaml;
+    try {
+      yaml = loadYaml(source);
+    } on YamlException catch (e) {
+      throw ConfigException('Invalid YAML: ${e.message}', file);
+    }
+    if (yaml is! YamlMap) {
+      throw ConfigException('Expected a YAML map', file);
+    }
+
+    String readString(YamlMap map, String key, String path) {
+      final value = map[key];
+      if (value is! String || value.trim().isEmpty) {
+        throw ConfigException('"$path" must be a non-empty string', file);
+      }
+      return value;
+    }
+
+    bool isNonEmptyString(Object? value) =>
+        value is String && value.trim().isNotEmpty;
+
+    List<String>? readStrings(YamlMap map, String key) {
+      final value = map[key];
+      if (value == null) return null;
+      if (value is! YamlList || !value.every(isNonEmptyString)) {
+        throw ConfigException(
+          '"$key" must be a list of non-empty strings',
+          file,
+        );
+      }
+      return value.whereType<String>().toList();
+    }
+
+    Map<String, String>? readRenames(YamlMap map) {
+      final value = map['type_renames'];
+      if (value == null) return null;
+      if (value is! YamlMap ||
+          !value.keys.every(isNonEmptyString) ||
+          !value.values.every(isNonEmptyString)) {
+        throw ConfigException(
+          '"type_renames" must map non-empty strings to non-empty strings',
+          file,
+        );
+      }
+      return {
+        for (final entry in value.entries)
+          if (entry case MapEntry(
+            key: final String from,
+            value: final String to,
+          ))
+            from: to,
+      };
+    }
+
+    final rumEventsFormat = yaml['rum_events_format'];
+    if (rumEventsFormat is! YamlMap) {
+      throw ConfigException('"rum_events_format" must be a map', file);
+    }
+    final commit = readString(
+      rumEventsFormat,
+      'commit',
+      'rum_events_format.commit',
+    );
+    commit.checkIsFullCommitSha(file: file);
+
+    return GeneratorConfig(
+      file: file,
+      repository: readString(
+        rumEventsFormat,
+        'repository',
+        'rum_events_format.repository',
+      ),
+      commit: commit,
+      rootSchema: readString(yaml, 'root_schema', 'root_schema'),
+      output: p.normalize(
+        p.join(p.dirname(file), readString(yaml, 'output', 'output')),
+      ),
+      naming: NamingOptions(
+        typePrefix: yaml.containsKey('type_prefix')
+            ? readString(yaml, 'type_prefix', 'type_prefix')
+            : const NamingOptions().typePrefix,
+        stripFromTitles:
+            readStrings(yaml, 'strip_from_titles') ??
+            const NamingOptions().stripFromTitles,
+        renames: readRenames(yaml) ?? const NamingOptions().renames,
+      ),
+    );
+  }
+
+  /// Path of the configuration file this was read from.
+  final String file;
+
+  /// Git URL of rum-events-format.
+  final String repository;
+
+  /// Full SHA of the pinned rum-events-format commit.
+  final String commit;
+
+  /// Entry point of the schemas, relative to the rum-events-format root.
+  final String rootSchema;
+
+  /// Path of the generated file, resolved against the configuration's
+  /// directory.
+  final String output;
+
+  /// How generated types are named; each setting defaults to
+  /// [NamingOptions]'s when the file does not set it.
+  final NamingOptions naming;
+
+  /// Pins [sha] in the configuration file, keeping its comments and layout.
+  void writeCommit(String sha) {
+    final source = File(file).readAsStringSync();
+    File(file).writeAsStringSync(replaceCommit(source, sha, file: file));
+  }
+
+  /// Returns [source] with the pinned commit replaced by [sha].
+  ///
+  /// Only the value of `rum_events_format.commit` changes, so comments,
+  /// formatting and quotes around the value are kept. The result is parsed
+  /// again to make sure the edit changed the right key.
+  static String replaceCommit(
+    String source,
+    String sha, {
+    required String file,
+  }) {
+    sha.checkIsFullCommitSha(file: file);
+    final pattern = RegExp(
+      r'''^([ \t]+commit:[ \t]*['"]?)[0-9A-Za-z]+''',
+      multiLine: true,
+    );
+    final matches = pattern.allMatches(source).length;
+    if (matches != 1) {
+      throw ConfigException(
+        'Expected exactly one "commit:" entry, found $matches',
+        file,
+      );
+    }
+    final updated = source.replaceFirstMapped(pattern, (m) => '${m[1]}$sha');
+    if (GeneratorConfig.parse(updated, file: file).commit != sha) {
+      throw ConfigException(
+        'Could not update "rum_events_format.commit"',
+        file,
+      );
+    }
+    return updated;
+  }
+}
+
+extension on String {
+  /// The pin must be an exact commit, not a branch or tag that can move.
+  void checkIsFullCommitSha({required String file}) {
+    if (!isFullCommitSha(this)) {
+      throw ConfigException(
+        '"rum_events_format.commit" must be a full 40-character commit SHA, '
+        'got "$this"',
+        file,
+      );
+    }
+  }
+}
+
+/// The configuration file is missing or invalid.
+@immutable
+final class ConfigException implements Exception {
+  ConfigException(this.message, this.file);
+
+  final String message;
+  final String file;
+
+  @override
+  String toString() => '$file: $message';
+}

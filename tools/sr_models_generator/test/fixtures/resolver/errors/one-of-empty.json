@@ -1,0 +1,9 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "oneOf": []
+    }
+  }
+}

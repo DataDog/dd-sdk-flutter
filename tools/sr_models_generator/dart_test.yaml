@@ -1,0 +1,4 @@
+tags:
+  # Downloads the pinned rum-events-format commit on the first run.
+  rum-events-format:
+    timeout: 2x

@@ -1,0 +1,15 @@
+{
+  "title": "Gradient",
+  "oneOf": [{ "$ref": "#/definitions/linear" }],
+  "definitions": {
+    "linear": {
+      "title": "LinearGradient",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "linear" },
+        "stops": { "type": "array", "items": { "type": "number" } }
+      }
+    }
+  }
+}

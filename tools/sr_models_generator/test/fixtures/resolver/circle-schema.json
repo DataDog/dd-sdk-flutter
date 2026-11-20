@@ -1,0 +1,15 @@
+{
+  "title": "Circle",
+  "type": "object",
+  "allOf": [
+    { "$ref": "_common-schema.json" },
+    {
+      "required": ["type", "radius"],
+      "properties": {
+        "type": { "type": "string", "const": "circle", "description": "The kind of shape." },
+        "radius": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    }
+  ]
+}

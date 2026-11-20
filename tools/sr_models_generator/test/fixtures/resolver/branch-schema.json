@@ -1,0 +1,19 @@
+{
+  "title": "Branch",
+  "type": "object",
+  "required": [
+    "type"
+  ],
+  "properties": {
+    "children": {
+      "type": "array",
+      "items": {
+        "$ref": "tree-node-schema.json"
+      }
+    },
+    "type": {
+      "type": "string",
+      "const": "branch"
+    }
+  }
+}

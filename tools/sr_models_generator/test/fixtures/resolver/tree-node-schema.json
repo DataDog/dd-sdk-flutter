@@ -1,0 +1,11 @@
+{
+  "title": "TreeNode",
+  "oneOf": [
+    {
+      "$ref": "branch-schema.json"
+    },
+    {
+      "$ref": "leaf-schema.json"
+    }
+  ]
+}
