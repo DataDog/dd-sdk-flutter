@@ -1318,6 +1318,7 @@ query UserInfo($id: ID!) {
         when(
           () => mockRum.contextInjectionSetting,
         ).thenReturn(TraceContextInjection.all);
+        when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
         when(
           () => mockDatadog.headerTypesForHost(any()),
         ).thenReturn({TracingHeaderType.datadog});
@@ -1495,6 +1496,62 @@ query UserInfo($id: ID!) {
         }
       });
 
+      for (final propagateBaggage in [true, false]) {
+        test(
+          'baggage header respects propagateTraceBaggage = $propagateBaggage',
+          () {
+            when(() => mockPlatform.getContext()).thenReturn(
+              DatadogContext(
+                sessionId: 'session-id',
+                userId: 'user-id',
+                accountId: 'account-id',
+              ),
+            );
+            when(
+              () => mockRum.propagateTraceBaggageSetting,
+            ).thenReturn(propagateBaggage);
+            when(
+              () => mockRum.contextInjectionSetting,
+            ).thenReturn(TraceContextInjection.all);
+            when(
+              () => mockRum.shouldSampleTrace(any(), any()),
+            ).thenReturn(true);
+            final link = DatadogGqlLink(
+              mockDatadog,
+              Uri.parse('https://test_url/graphql'),
+            );
+            final request = Request(
+              operation: Operation(document: query, operationName: 'UserInfo'),
+            );
+
+            Request? forwardedRequest;
+            link.request(request, (request) {
+              forwardedRequest = request;
+              return const Stream<Response>.empty();
+            });
+
+            final headers = forwardedRequest!.context
+                .entry<HttpLinkHeaders>()!
+                .headers;
+            final supportsBaggage =
+                headerType == TracingHeaderType.datadog ||
+                headerType == TracingHeaderType.tracecontext;
+            if (supportsBaggage && propagateBaggage) {
+              expect(
+                headers['baggage'],
+                allOf(
+                  contains('session.id=session-id'),
+                  contains('user.id=user-id'),
+                  contains('account.id=account-id'),
+                ),
+              );
+            } else {
+              expect(headers['baggage'], isNull);
+            }
+          },
+        );
+      }
+
       test(
         'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
         () {
@@ -1502,6 +1559,7 @@ query UserInfo($id: ID!) {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.all);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final link = DatadogGqlLink(
             mockDatadog,
             Uri.parse('https://test_url/graphql'),
@@ -1535,6 +1593,7 @@ query UserInfo($id: ID!) {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final link = DatadogGqlLink(
             mockDatadog,
             Uri.parse('https://test_url/graphql'),
@@ -1568,6 +1627,7 @@ query UserInfo($id: ID!) {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.all);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final link = DatadogGqlLink(
             mockDatadog,
             Uri.parse('https://test_url/graphql'),
@@ -1601,6 +1661,7 @@ query UserInfo($id: ID!) {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final link = DatadogGqlLink(
             mockDatadog,
             Uri.parse('https://test_url/graphql'),
@@ -1632,6 +1693,7 @@ query UserInfo($id: ID!) {
         when(
           () => mockRum.contextInjectionSetting,
         ).thenReturn(TraceContextInjection.sampled);
+        when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
         final link = DatadogGqlLink(
           mockDatadog,
           Uri.parse('https://test_url/graphql'),

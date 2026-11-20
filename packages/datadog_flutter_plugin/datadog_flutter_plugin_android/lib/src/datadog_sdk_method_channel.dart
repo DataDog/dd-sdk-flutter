@@ -183,6 +183,8 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
       traceSampleRate: configuration.rumConfiguration?.traceSampleRate,
       traceContextInjection:
           configuration.rumConfiguration?.traceContextInjection,
+      propagateTraceBaggage:
+          configuration.rumConfiguration?.propagateTraceBaggage,
       resourceHeadersExtractor:
           configuration.rumConfiguration?.trackResourceHeaders,
       firstPartyHosts: configuration.firstPartyHostsWithTracingHeaders,
@@ -214,6 +216,7 @@ class DatadogSdkMethodChannel extends DatadogSdkPlatform {
           rumEnabled: response.rumEnabled,
           traceSampleRate: attachConfig.traceSampleRate,
           traceContextInjection: attachConfig.traceContextInjection,
+          propagateTraceBaggage: attachConfig.propagateTraceBaggage,
           resourceHeadersExtractor: attachConfig.trackResourceHeaders,
           firstPartyHosts: attachConfig.firstPartyHostsWithTracingHeaders,
           configuredPlugins: backgroundPlugins,

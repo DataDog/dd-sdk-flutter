@@ -61,8 +61,11 @@ class SimulatorCommand extends Command {
           'Must supply an API target (sdk) or emulator name (device) to launch an Android emulator.');
       return;
     }
-    print(
-        'Launching Android Emulator: API Target: $sdk, Emulator Name $device');
+    final target = [
+      if (sdk != null) 'API $sdk',
+      if (device != null) 'AVD $device',
+    ].join(', ');
+    print('Launching Android emulator ($target)');
     if (!await launchAndroidEmulator(apiLevel: sdk, emulatorName: device)) {
       exit(1);
     }

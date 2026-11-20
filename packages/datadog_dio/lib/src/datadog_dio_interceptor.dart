@@ -175,6 +175,7 @@ class DatadogDioInterceptor extends Interceptor {
             context,
             tracingHeaders,
             rum.contextInjectionSetting,
+            rum.propagateTraceBaggageSetting,
           );
         }
 
@@ -219,6 +220,7 @@ class DatadogDioInterceptor extends Interceptor {
     TracingContext context,
     Set<TracingHeaderType> tracingHeaderTypes,
     TraceContextInjection contextInjection,
+    bool propagateBaggage,
   ) {
     var attributes = <String, Object?>{};
 
@@ -234,6 +236,7 @@ class DatadogDioInterceptor extends Interceptor {
           headerType,
           requestOptions.headers,
           contextInjection: contextInjection,
+          propagateBaggage: propagateBaggage,
         );
       }
     }

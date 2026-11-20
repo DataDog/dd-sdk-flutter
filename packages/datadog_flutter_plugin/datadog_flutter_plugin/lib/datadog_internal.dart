@@ -21,4 +21,5 @@ export 'src/webview_slot_registry.dart';
 
 extension DatadogRumInternal on DatadogRum {
   TraceContextInjection get contextInjectionSetting => traceContextInjection;
+  bool get propagateTraceBaggageSetting => propagateTraceBaggage;
 }
