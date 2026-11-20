@@ -11,7 +11,7 @@ import 'package:ci_helpers/ios_helpers.dart';
 /// A platform that integration tests run on with `flutter test -d <device>`.
 enum TestPlatform {
   ios(device: 'iPhone', recoverDevice: rebootBootedIosSimulators),
-  android(device: 'emulator', recoverDevice: rebootAndroidEmulators),
+  android(device: 'emulator', recoverDevice: recoverAndroidEmulators),
   macos(device: 'macos', beforeEachFile: _deleteStaleDatadogData),
   linux(device: 'linux', beforeEachFile: _deleteStaleDatadogData),
   windows(device: 'windows', beforeEachFile: _deleteStaleDatadogData);

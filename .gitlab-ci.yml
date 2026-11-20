@@ -195,6 +195,7 @@ build-flutter:
   script:
     - !reference [.pre-tart, script]
     - pushd tools/releaser && dart pub get && dart test && popd
+    - (cd tools/ci && dart test)
     - melos dartfmt_check
     - melos run analyze:dart
     - melos run unit_test:flutter

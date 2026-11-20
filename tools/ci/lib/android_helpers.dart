@@ -60,34 +60,48 @@ Future<void> killAllEmulators() async {
   }
 }
 
-/// Reboots every running emulator and waits until Android has finished booting.
-///
-/// Throws if an emulator doesn't come back within five minutes.
-Future<void> rebootAndroidEmulators() async {
-  for (final id in (await _getRunningDevices()).keys) {
-    print('Rebooting $id');
-    final deadline = DateTime.now().add(const Duration(minutes: 5));
-    await shellRun(
-      adbCommand,
-      ['-s', id, 'reboot'],
-      timeout: deadline.difference(DateTime.now()),
-    );
+const _emulatorBootTimeout = Duration(minutes: 5);
+const _emulatorPollInterval = Duration(seconds: 5);
 
-    await shellRun(
-      adbCommand,
-      ['-s', id, 'wait-for-device'],
-      timeout: deadline.difference(DateTime.now()),
-    );
+String _ciEmulatorName(String apiLevel) => 'ci_emu_api_$apiLevel';
+
+/// Restores a booted emulator after a failed integration test launch.
+Future<void> recoverAndroidEmulators() async {
+  final devices = await _getRunningDevices();
+  if (devices.isEmpty) {
+    final apiLevel = Platform.environment['ANDROID_EMULATOR_SDK'];
+    if (apiLevel == null || apiLevel.isEmpty) {
+      throw StateError(
+        'No Android emulator is connected. Set ANDROID_EMULATOR_SDK to relaunch the CI emulator.',
+      );
+    }
+    final emulatorName = _ciEmulatorName(apiLevel);
+    print('No Android emulator is connected. Relaunching $emulatorName.');
+    if (!await _startEmulator(emulatorName)) {
+      throw StateError('Failed to relaunch $emulatorName.');
+    }
+    return;
+  }
+
+  for (final id in devices.keys) {
+    print('Rebooting $id');
+    final deadline = DateTime.now().add(_emulatorBootTimeout);
+    await shellRun(adbCommand, [
+      '-s',
+      id,
+      'reboot',
+    ], timeout: deadline.difference(DateTime.now()));
+
+    await shellRun(adbCommand, [
+      '-s',
+      id,
+      'wait-for-device',
+    ], timeout: deadline.difference(DateTime.now()));
 
     var booted = false;
     while (!booted && DateTime.now().isBefore(deadline)) {
-      final bootCompleted = await shellRun(
-        adbCommand,
-        ['-s', id, 'shell', 'getprop', 'sys.boot_completed'],
-        timeout: deadline.difference(DateTime.now()),
-      );
-      booted = bootCompleted.trim() == '1';
-      if (!booted) await Future.delayed(const Duration(seconds: 5));
+      booted = await _hasBooted(id, deadline);
+      if (!booted) await Future.delayed(_emulatorPollInterval);
     }
     if (!booted) throw Exception('Timed out waiting for $id to finish booting');
   }
@@ -110,7 +124,7 @@ Future<bool> launchAndroidEmulator({
       needEmulatorCreate = false;
     }
   } else if (apiLevel != null) {
-    emulatorName = 'ci_emu_api_$apiLevel';
+    emulatorName = _ciEmulatorName(apiLevel);
     needEmulatorCreate = !(await _emulatorExists(emulatorName));
   }
 
@@ -170,11 +184,13 @@ Future<bool> _emulatorExists(String emulatorName) async {
   return emulators.contains(emulatorName);
 }
 
-Future<Map<String, String>> _getRunningDevices() async {
+Future<Map<String, String>> _getRunningDevices({
+  Duration timeout = _emulatorBootTimeout,
+}) async {
   final emulatorRegex = RegExp(r'^(?<emulator>emulator-\d*)[\s+](?<state>.*)');
 
   final result = <String, String>{};
-  final devicesLog = await shellRun(adbCommand, ['devices']);
+  final devicesLog = await shellRun(adbCommand, ['devices'], timeout: timeout);
   for (var line in devicesLog.split('\n')) {
     final match = emulatorRegex.firstMatch(line);
     if (match != null) {
@@ -185,8 +201,23 @@ Future<Map<String, String>> _getRunningDevices() async {
   return result;
 }
 
-/// The file the emulator's output is written to, relative to the working
-/// directory.
+Future<bool> _hasBooted(String id, DateTime deadline) async {
+  try {
+    final result = await shellRun(adbCommand, [
+      '-s',
+      id,
+      'shell',
+      'getprop',
+      'sys.boot_completed',
+    ], timeout: deadline.difference(DateTime.now()));
+    return result.trim() == '1';
+  } on Exception {
+    // ADB can lose the transport briefly during boot.
+    return false;
+  }
+}
+
+/// The name of the file that collects output from all emulator launches.
 const emulatorLogFile = 'emulator.log';
 
 Future<bool> _startEmulator(String emulatorName) async {
@@ -200,50 +231,57 @@ Future<bool> _startEmulator(String emulatorName) async {
     print(kvmInfo.stderr);
   }
 
-  print("Starting device, logging to $emulatorLogFile");
+  final ciProjectDir = Platform.environment['CI_PROJECT_DIR'];
+  final logPath = ciProjectDir == null
+      ? emulatorLogFile
+      : path.join(ciProjectDir, 'tools', 'ci', emulatorLogFile);
+  print('Starting $emulatorName, logging to $logPath');
 
-  // The emulator outlives this process, so its output goes to a file rather
-  // than a pipe.
-  await Process.start(
-      'sh',
-      [
-        '-c',
-        'exec "\$0" "\$@" > $emulatorLogFile 2>&1',
-        emulatorCmd,
-        "@$emulatorName",
-        '-verbose',
-        '-show-kernel',
-        '-no-audio',
-        '-no-window',
-        '-netdelay',
-        'none',
-        '-no-snapshot',
-        '-wipe-data'
-      ],
-      mode: ProcessStartMode.detached);
+  // The detached shell collects output and records the emulator's exit status.
+  await Process.start('sh', [
+    '-c',
+    r'''
+log_file=$1
+shift
+{
+  printf '\n[%s] Starting Android emulator %s\n' "$(date -u +%FT%TZ)" "$2"
+  "$@"
+  status=$?
+  printf '\n[%s] Android emulator exited with status %s\n' "$(date -u +%FT%TZ)" "$status"
+  exit "$status"
+} >> "$log_file" 2>&1
+''',
+    'android-emulator',
+    logPath,
+    emulatorCmd,
+    "@$emulatorName",
+    '-verbose',
+    '-show-kernel',
+    '-no-audio',
+    '-no-window',
+    // Use software GLES rendering on headless GitLab runners.
+    if (ciProjectDir != null) ...['-gpu', 'swiftshader', '-feature', '-Vulkan'],
+    '-netdelay',
+    'none',
+    '-no-snapshot',
+    '-wipe-data',
+  ], mode: ProcessStartMode.detached);
 
-  var launched = false;
-  final timeoutTime = DateTime.now().add(Duration(minutes: 5));
-  while (DateTime.now().isBefore(timeoutTime)) {
-    await Future.delayed(Duration(seconds: 5));
-    print('Checking if emulator is running... ');
-    final devices = await _getRunningDevices();
-    if (devices.entries.firstOrNull?.value == 'device') {
-      print('${devices.entries.first.value} running.');
-      launched = true;
-      break;
+  final deadline = DateTime.now().add(_emulatorBootTimeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final devices = await _getRunningDevices(
+      timeout: deadline.difference(DateTime.now()),
+    );
+    final device = devices.entries.firstWhereOrNull(
+      (device) => device.value == 'device',
+    );
+    if (device != null && await _hasBooted(device.key, deadline)) {
+      print('${device.key} finished booting.');
+      return true;
     }
+    await Future.delayed(_emulatorPollInterval);
   }
 
-  // Delay another 10 seconds, make sure the emulator has some extra
-  // time to boot.
-  if (launched) {
-    await Future.delayed(Duration(seconds: 10));
-  } else {
-    print('Emulator failed to start. Output from $emulatorLogFile:');
-    final log = File(emulatorLogFile);
-    print(log.existsSync() ? log.readAsStringSync() : '(no log written)');
-  }
-
-  return launched;
+  print('Emulator failed to boot. See $logPath for output.');
+  return false;
 }
