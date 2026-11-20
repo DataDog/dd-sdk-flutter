@@ -10,7 +10,8 @@ import 'package:path/path.dart' as p;
 
 import 'package_root.dart';
 
-/// A JSON document to decode with `<type>.fromJson`.
+/// A JSON value to decode with `<type>.fromJson`: an object for a class,
+/// a string for an enum.
 @immutable
 final class RoundTripCase {
   const RoundTripCase(this.name, this.type, this.json);
@@ -21,7 +22,7 @@ final class RoundTripCase {
   /// The Dart type that decodes [json], e.g. `SRSegment`.
   final String type;
 
-  final Map<String, Object?> json;
+  final Object? json;
 }
 
 /// What went wrong with one [RoundTripCase].
@@ -44,8 +45,8 @@ final class RoundTripResult {
 ///   each missing, unexpected or changed value with its path;
 /// * decoding that JSON again gives a model `==` to the first one.
 ///
-/// Each type of [cases] must have a `fromJson(Map<String, Object?>)`
-/// factory and a `toJson()` method.
+/// Each type of [cases] must have a `fromJson` factory taking the decoded
+/// JSON value, and a `toJson()` method.
 ///
 /// Throws a [StateError] with the compiler output when [library] does not
 /// compile.
@@ -99,7 +100,7 @@ import 'dart:io';
 
 import 'models.dart';
 
-final decoders = <String, Object Function(Map<String, Object?>)>{
+final decoders = <String, Function>{
 ${[for (final type in types) "  '$type': $type.fromJson,"].join('\n')}
 };
 
@@ -135,10 +136,10 @@ void main(List<String> args) {
     final errors = <String>[];
     try {
       final decode = decoders[c['type']]!;
-      final model = decode(c['json'] as Map<String, Object?>);
-      final encoded = jsonDecode(jsonEncode(model)) as Map<String, Object?>;
+      final model = Function.apply(decode, [c['json']]);
+      final encoded = jsonDecode(jsonEncode(model));
       diff(c['json'], encoded, r'\$', errors);
-      if (decode(encoded) != model) {
+      if (Function.apply(decode, [encoded]) != model) {
         errors.add('decoding the encoded JSON gives a model that is not ==');
       }
     } catch (e) {
