@@ -69,7 +69,7 @@ class DatadogSdkPluginTest {
             on { getPackageInfo(any<String>(), any<Int>()) } doReturn mockPackageInfo
         }
         val mockPreferences = mock<SharedPreferences>()
-        mockContext = mock<Context>() {
+        mockContext = mock<Context> {
             on { applicationInfo } doReturn mock()
             on { applicationContext } doReturn this.mock
             on { packageName } doReturn "fakePackage"
@@ -302,7 +302,7 @@ class DatadogSdkPluginTest {
         val config = plugin.configurationBuilderFromEncoded(encoded)!!.build()
 
         // THEN
-        val coreConfig: Any = config.getFieldValue("coreConfig")
+        val coreConfig = config.getRequiredPrivate("coreConfig")
         assertThat(config.getPrivate("crashReportsEnabled")).isEqualTo(true)
         assertThat(coreConfig.getPrivate("site")).isEqualTo(DatadogSite.US3)
         assertThat(coreConfig.getPrivate("batchSize")).isEqualTo(BatchSize.SMALL)
@@ -316,8 +316,7 @@ class DatadogSdkPluginTest {
     @Test
     fun `M initialize Datadog W called through MethodChannel`(
         @StringForgery clientToken: String,
-        @StringForgery environment: String,
-        @StringForgery applicationId: String
+        @StringForgery environment: String
     ) {
         // GIVEN
         val methodCall = MethodCall(
@@ -346,7 +345,6 @@ class DatadogSdkPluginTest {
     fun `M initialize dartVersion telemetry W called through MethodChannel { dartVersion }`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
-        @StringForgery applicationId: String,
         @StringForgery dartVersion: String
     ) {
         // GIVEN
@@ -375,7 +373,6 @@ class DatadogSdkPluginTest {
     fun `M initialize trackResourceHeaders telemetry W called through MethodChannel { trackResourceHeaders }`(
         @StringForgery clientToken: String,
         @StringForgery environment: String,
-        @StringForgery applicationId: String,
         forge: Forge
     ) {
         // GIVEN
@@ -636,12 +633,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe execution of setting tracking consent before trying to read it
         Thread.sleep(10)
-        val trackingConsent: TrackingConsent? = coreFeature
-            .getFieldValue<Any, Any>("trackingConsentProvider")
-            .getFieldValue("consent")
+        val trackingConsentProvider = coreFeature.getRequiredPrivate("trackingConsentProvider")
+        val trackingConsent = trackingConsentProvider.getPrivate("consent") as TrackingConsent?
         assertThat(trackingConsent).isEqualTo(TrackingConsent.NOT_GRANTED)
         verify(mockResult).success(null)
     }
@@ -676,12 +672,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe execution of setting tracking consent before trying to read it
         Thread.sleep(10)
-        val userInfo: UserInfo? = coreFeature
-            .getFieldValue<Any, Any>("userInfoProvider")
-            .getFieldValue("internalUserInfo")
+        val userInfoProvider = coreFeature.getRequiredPrivate("userInfoProvider")
+        val userInfo = userInfoProvider.getPrivate("internalUserInfo") as UserInfo?
         assertThat(userInfo?.id).isEqualTo(id)
         assertThat(userInfo?.name).isEqualTo(name)
         assertThat(userInfo?.email).isEqualTo(email)
@@ -720,12 +715,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe write before attempting to read
         Thread.sleep(10)
-        val userInfo: UserInfo? = coreFeature
-            .getFieldValue<Any, Any>("userInfoProvider")
-            .getFieldValue("internalUserInfo")
+        val userInfoProvider = coreFeature.getRequiredPrivate("userInfoProvider")
+        val userInfo = userInfoProvider.getPrivate("internalUserInfo") as UserInfo?
         assertThat(userInfo?.id).isEqualTo(id)
         assertThat(userInfo?.name).isEqualTo(name)
         assertThat(userInfo?.email).isEqualTo(email)
@@ -760,12 +754,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe write before attempting to read
         Thread.sleep(10)
-        val userInfo: UserInfo? = coreFeature
-            .getFieldValue<Any, Any>("userInfoProvider")
-            .getFieldValue("internalUserInfo")
+        val userInfoProvider = coreFeature.getRequiredPrivate("userInfoProvider")
+        val userInfo = userInfoProvider.getPrivate("internalUserInfo") as UserInfo?
         assertThat(userInfo?.additionalProperties).isEqualTo(extraInfo)
         verify(mockResult).success(null)
     }
@@ -806,12 +799,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe write before attempting to read
         Thread.sleep(10)
-        val userInfo: UserInfo? = coreFeature
-            .getFieldValue<Any, Any>("userInfoProvider")
-            .getFieldValue("internalUserInfo")
+        val userInfoProvider = coreFeature.getRequiredPrivate("userInfoProvider")
+        val userInfo = userInfoProvider.getPrivate("internalUserInfo") as UserInfo?
         assertThat(userInfo?.id).isNull()
         assertThat(userInfo?.name).isNull()
         assertThat(userInfo?.email).isNull()
@@ -847,12 +839,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe execution of setting tracking consent before trying to read it
         Thread.sleep(10)
-        val accountInfo: AccountInfo? = coreFeature
-            .getFieldValue<Any, Any>("accountInfoProvider")
-            .getFieldValue("internalAccountInfo")
+        val accountInfoProvider = coreFeature.getRequiredPrivate("accountInfoProvider")
+        val accountInfo = accountInfoProvider.getPrivate("internalAccountInfo") as AccountInfo?
         assertThat(accountInfo?.id).isEqualTo(id)
         assertThat(accountInfo?.name).isEqualTo(name)
         assertThat(accountInfo?.extraInfo).isNotNull().isEmpty()
@@ -888,12 +879,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe write before attempting to read
         Thread.sleep(10)
-        val accountInfo: AccountInfo? = coreFeature
-            .getFieldValue<Any, Any>("accountInfoProvider")
-            .getFieldValue("internalAccountInfo")
+        val accountInfoProvider = coreFeature.getRequiredPrivate("accountInfoProvider")
+        val accountInfo = accountInfoProvider.getPrivate("internalAccountInfo") as AccountInfo?
         assertThat(accountInfo?.id).isEqualTo(id)
         assertThat(accountInfo?.name).isEqualTo(name)
         assertThat(accountInfo?.extraInfo).isEqualTo(extraInfo)
@@ -933,12 +923,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe write before attempting to read
         Thread.sleep(10)
-        val accountInfo: AccountInfo? = coreFeature
-            .getFieldValue<Any, Any>("accountInfoProvider")
-            .getFieldValue("internalAccountInfo")
+        val accountInfoProvider = coreFeature.getRequiredPrivate("accountInfoProvider")
+        val accountInfo = accountInfoProvider.getPrivate("internalAccountInfo") as AccountInfo?
         assertThat(accountInfo?.extraInfo).isEqualTo(extraInfo)
         verify(mockResult).success(null)
     }
@@ -954,8 +943,6 @@ class DatadogSdkPluginTest {
         )
         plugin.initialize(config, TrackingConsent.GRANTED)
 
-        val id = forge.aString()
-        val extraInfo = forge.exhaustiveAttributes()
         val methodCall = MethodCall(
             "clearAccountInfo",
             mapOf<String, Any?>()
@@ -967,12 +954,11 @@ class DatadogSdkPluginTest {
 
         // THEN
         val core = Datadog.getInstance()
-        val coreFeature: Any = core.getPrivate("coreFeature")!!
+        val coreFeature = core.getRequiredPrivate("coreFeature")
         // Ensure safe write before attempting to read
         Thread.sleep(10)
-        val accountInfo: UserInfo? = coreFeature
-            .getFieldValue<Any, Any>("accountInfoProvider")
-            .getFieldValue("internalAccountInfo")
+        val accountInfoProvider = coreFeature.getRequiredPrivate("accountInfoProvider")
+        val accountInfo = accountInfoProvider.getPrivate("internalAccountInfo")
         assertThat(accountInfo).isNull()
         verify(mockResult).success(null)
     }
@@ -1034,16 +1020,12 @@ class DatadogSdkPluginTest {
     }
 }
 
-@Suppress("EmptyCatchBlock")
-fun Any.getPrivate(varName: String): Any? {
-    var value: Any? = null
-    try {
-        val field = javaClass.getDeclaredField(varName)
-        field.isAccessible = true
-        value = field.get(this)
-    } catch (_: NoSuchFieldException) {
+internal fun Any.getPrivate(fieldName: String): Any? {
+    val field = javaClass.getDeclaredField(fieldName)
+    field.isAccessible = true
+    return field.get(this)
+}
 
-    }
-
-    return value
+internal fun Any.getRequiredPrivate(fieldName: String): Any {
+    return checkNotNull(getPrivate(fieldName)) { "Expected $fieldName to be non-null" }
 }

@@ -9,8 +9,8 @@ package com.datadoghq.flutter.sessionreplay.feature
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.datadoghq.flutter.sessionreplay.forge.SRForgeConfigurator
-import com.datadoghq.flutter.sessionreplay.models.EnrichedRecord
-import fr.xgouchet.elmyr.annotation.Forgery
+import com.datadoghq.flutter.sessionreplay.forge.anEnrichedRecord
+import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.junit5.ForgeConfiguration
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import java.util.zip.Inflater
@@ -23,10 +23,10 @@ import org.junit.jupiter.api.extension.Extensions
 internal class BytesCompressorTest {
     @RepeatedTest(20)
     fun `M compress the provided bytearray W compressBytes`(
-        @Forgery fakeEnrichedRecord: EnrichedRecord
+        forge: Forge
     ) {
         // Given
-        val fakeData = fakeEnrichedRecord.toJson()
+        val fakeData = forge.anEnrichedRecord().toJson()
         val fakeDataAsByteArray = fakeData.toByteArray()
 
         // When

@@ -13,7 +13,10 @@ import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.datadoghq.flutter.sessionreplay.forge.SRForgeConfigurator
+import com.datadoghq.flutter.sessionreplay.forge.anEnrichedRecord
 import com.datadoghq.flutter.sessionreplay.models.EnrichedRecord
+import com.google.gson.Gson
+import com.google.gson.JsonParser
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.junit5.ForgeConfiguration
 import fr.xgouchet.elmyr.junit5.ForgeExtension
@@ -36,21 +39,17 @@ internal class SegmentParserTest {
     @Test
     fun `M return the records and view id W parse`(forge: Forge) {
         // Given
-        val fakeEnrichedRecord = forge.getForgery<EnrichedRecord>()
+        val fakeEnrichedRecord = forge.anEnrichedRecord()
+        val segmentJson = fakeEnrichedRecord.toJson()
 
         // When
-        val parsed = segmentParser.parse(fakeEnrichedRecord.toJson())
+        val parsed = segmentParser.parse(segmentJson)
 
         // Then
         assertThat(parsed).isNotNull()
         assertThat(parsed!!.viewId).isEqualTo(fakeEnrichedRecord.viewId)
-        assertThat(parsed.records).hasSize(fakeEnrichedRecord.records.size())
-        parsed.records.forEachIndexed { index, record ->
-            val expected = fakeEnrichedRecord.records[index].asJsonObject
-            expected.entrySet().forEach { (key, value) ->
-                assertThat(record[key]).isEqualTo(value.asString)
-            }
-        }
+        val expectedRecords = JsonParser.parseString(segmentJson).asJsonObject[EnrichedRecord.RECORDS_KEY]
+        assertThat(Gson().toJsonTree(parsed.records)).isEqualTo(expectedRecords)
     }
 
     @Test
