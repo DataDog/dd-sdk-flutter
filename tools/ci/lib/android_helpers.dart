@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:ci_helpers/shell_helpers.dart';
 import 'package:collection/collection.dart';
@@ -237,21 +238,13 @@ Future<bool> _startEmulator(String emulatorName) async {
       : path.join(ciProjectDir, 'tools', 'ci', emulatorLogFile);
   print('Starting $emulatorName, logging to $logPath');
 
-  // The detached shell collects output and records the emulator's exit status.
-  await Process.start('sh', [
-    '-c',
-    r'''
-log_file=$1
-shift
-{
-  printf '\n[%s] Starting Android emulator %s\n' "$(date -u +%FT%TZ)" "$2"
-  "$@"
-  status=$?
-  printf '\n[%s] Android emulator exited with status %s\n' "$(date -u +%FT%TZ)" "$status"
-  exit "$status"
-} >> "$log_file" 2>&1
-''',
-    'android-emulator',
+  final helperLibrary = (await Isolate.resolvePackageUri(
+    Uri.parse('package:ci_helpers/android_helpers.dart'),
+  ))!;
+  final logger = helperLibrary.resolve('../bin/run_android_emulator.dart');
+  // Keep recording output after the launcher exits once Android has booted.
+  await Process.start(Platform.resolvedExecutable, [
+    logger.toFilePath(),
     logPath,
     emulatorCmd,
     "@$emulatorName",

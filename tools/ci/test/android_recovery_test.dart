@@ -44,10 +44,14 @@ esac
         'emulator/emulator': r'''#!/bin/sh
 [ "$1" = '-accel-check' ] && exit 0
 printf '%s\n' "$@" > "$ANDROID_HOME/launched"
-echo 'Output from the relaunched emulator'
 attempts=0
 while [ "$attempts" -lt 150 ]; do
-  [ -f "$ANDROID_HOME/booted" ] && exit 23
+  if [ -f "$ANDROID_HOME/finish" ]; then
+    echo 'Output from the relaunched emulator'
+    echo 'Error output from the relaunched emulator' >&2
+    ulimit -c 0
+    kill -ILL "$$"
+  fi
   attempts=$((attempts + 1))
   sleep 0.1
 done
@@ -90,7 +94,8 @@ Future<void> main() => TestPlatform.android.recoverDevice!();
       );
       expect(await File(path.join(sdkPath, 'booted')).exists(), isTrue);
 
-      const exitLog = 'Android emulator exited with status 23';
+      await File(path.join(sdkPath, 'finish')).create();
+      const exitLog = 'Android emulator exited with status 132';
       final deadline = DateTime.now().add(const Duration(seconds: 3));
       var output = await log.readAsString();
       while (!output.contains(exitLog) && DateTime.now().isBefore(deadline)) {
@@ -99,6 +104,7 @@ Future<void> main() => TestPlatform.android.recoverDevice!();
       }
       expect(output, contains('Output from the original emulator'));
       expect(output, contains('Output from the relaunched emulator'));
+      expect(output, contains('Error output from the relaunched emulator'));
       expect(output, contains(exitLog));
     },
     skip: Platform.isWindows,
