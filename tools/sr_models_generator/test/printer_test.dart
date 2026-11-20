@@ -95,27 +95,126 @@ void main() {
     );
   });
 
-  final notPrintedYet = {
-    'a union': UnionDefinition(
-      name: 'SRShape',
-      location: 'shape.json',
-      description: null,
-    ),
-  };
-  for (final MapEntry(key: kind, value: definition) in notPrintedYet.entries) {
-    test('does not print $kind yet', () {
-      expect(
-        () => const DartPrinter().printLibrary([definition]),
-        throwsA(
-          isA<UnsupportedError>().having(
-            (e) => e.message,
-            'message',
-            'Printing ${definition.name} is not supported yet',
-          ),
-        ),
-      );
+  group('unions', () {
+    late String library;
+    late Map<String, RoundTripResult> results;
+    late Map<String, Comparison> comparisons;
+
+    const circle = {'id': 1, 'type': 'circle', 'radius': 1.5, 'label': 'a'};
+    const square = {'id': 2, 'type': 'square', 'side': 3};
+
+    // Case -> the errors the round trip must report.
+    final cases = {
+      const RoundTripCase('a circle, from the union', 'SRShape', circle):
+          <String>[],
+      const RoundTripCase('a square, from the union', 'SRShape', square):
+          <String>[],
+      const RoundTripCase('a square, from its class', 'SRSquare', square):
+          <String>[],
+      const RoundTripCase('an integer discriminator', 'SREvent', {
+        'source': 2,
+        'x': 1,
+      }): <String>[],
+      const RoundTripCase('another integer discriminator', 'SREvent', {
+        'source': 3,
+        'delta': 0.5,
+      }): <String>[],
+      const RoundTripCase('a single variant', 'SRGradient', {
+        'type': 'linear',
+        'stops': [0.0, 1.0],
+      }): <String>[],
+      const RoundTripCase('fields and lists of unions', 'SRDrawing', {
+        'shapes': [circle, square],
+        'main': square,
+        'background': circle,
+        'events': [
+          {'source': 2, 'x': 1},
+        ],
+        'gradient': {'type': 'linear'},
+      }): <String>[],
+      const RoundTripCase('a union used by its variant', 'SRTreeNode', {
+        'type': 'branch',
+        'children': [
+          {'type': 'leaf'},
+          {'type': 'branch', 'children': <Object?>[]},
+        ],
+      }): <String>[],
+      const RoundTripCase('an unknown discriminator value', 'SRShape', {
+        'id': 1,
+        'type': 'triangle',
+      }): [
+        'threw FormatException: Unknown SRShape type: triangle',
+      ],
+      const RoundTripCase('a missing discriminator', 'SRShape', {'id': 1}): [
+        'threw FormatException: Unknown SRShape type: null',
+      ],
+    };
+
+    // Case -> whether the two models are equal.
+    final equality = {
+      const ComparisonCase('the same circle', 'SRShape', circle, {...circle}):
+          true,
+      const ComparisonCase('a circle and a square', 'SRShape', circle, {
+        'id': 1,
+        'type': 'square',
+        'side': 1,
+      }): false,
+    };
+
+    setUpAll(() async {
+      final root = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
+      final resolver = ModelResolver(SchemaLoader(root))
+        ..resolveRoot('drawing-schema.json')
+        ..resolveRoot('tree-node-schema.json');
+      library = const DartPrinter().printLibrary(resolver.definitions);
+      results = {
+        for (final result in await roundTrip(library, [...cases.keys]))
+          result.name: result,
+      };
+      comparisons = {
+        for (final result in await compareModels(library, [...equality.keys]))
+          result.name: result,
+      };
     });
-  }
+
+    for (final MapEntry(key: roundTripCase, value: errors) in cases.entries) {
+      test('round-trips ${roundTripCase.name}', () {
+        expect(results[roundTripCase.name]?.errors, errors);
+      });
+    }
+
+    for (final MapEntry(key: comparison, value: equal) in equality.entries) {
+      test('== is $equal for ${comparison.name}', () {
+        expect(comparisons[comparison.name]?.equal, equal);
+      });
+    }
+
+    test('prints a sealed class that its variants implement', () {
+      expect(library, contains('@immutable\nsealed class SRShape {'));
+      expect(library, contains('final class SRCircle implements SRShape {'));
+      expect(library, contains('final class SRTapEvent implements SREvent {'));
+    });
+
+    test('exposes the fields every variant shares', () {
+      final union = RegExp(
+        r'sealed class SRShape \{.*?\n\}',
+        dotAll: true,
+      ).firstMatch(library)?[0];
+      expect(union, isNotNull);
+      expect(union, contains('  int get id;'));
+      expect(union, contains('  SRPoint? get clip;'));
+      expect(union, contains('  String get type;'));
+      expect(union, contains('  Map<String, Object?> toJson();'));
+      // `label` has another type in each variant.
+      expect(union, isNot(contains('label')));
+    });
+
+    test('marks the shared fields of a variant as overrides', () {
+      expect(library, contains('  @override\n  final int id;'));
+      expect(library, contains("  @override\n  String get type => 'circle';"));
+      expect(library, contains('  @override\n  Map<String, Object?> toJson()'));
+    });
+  });
 
   group('classes', () {
     // Fixtures with objects, lists, enums and const fields, but no unions.
