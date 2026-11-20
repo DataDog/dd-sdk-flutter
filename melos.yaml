@@ -158,11 +158,16 @@ scripts:
         - "*integration_test_app*"
         - "*e2e_test_app*"
 
+  # Fetch shared Flags conformance fixtures at the pinned ffe-system-test-data commit and embed them for web runs.
+  feature-flags:fixtures:
+    run: dart run ci/sync-feature-flags-precomputed-fixtures.dart && dart ci/embed-feature-flags-precomputed-fixtures.dart
+
   unit_test:all:
     run: melos unit_test:flutter && melos unit_test:ios && melos unit_test:android && melos unit_test:web
 
   unit_test:flutter:
     run: 
+      melos run feature-flags:fixtures &&
       mkdir -p .build/test-results &&
       melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
     packageFilters:
@@ -171,14 +176,14 @@ scripts:
         - 'datadog_flutter_plugin_web'
 
   unit_test:windows:
-    run: melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
+    run: melos run feature-flags:fixtures && melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
     packageFilters:
       dirExists: 'test'
       ignore:
         - 'datadog_flutter_plugin_web'
 
   unit_test:linux:
-    run: melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
+    run: melos run feature-flags:fixtures && melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit.xml -- flutter test --machine"
     packageFilters:
       dirExists: 'test'
       ignore:
@@ -209,6 +214,7 @@ scripts:
   # Test all browser-compatible core and conformance tests on both compilers.
   unit_test:openfeature-web:
     run:
+      melos run feature-flags:fixtures &&
       mkdir -p $MELOS_ROOT_PATH/.build/test-results &&
       melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web.xml -- dart test --reporter json --platform chrome" &&
       melos exec -c 1 -- "dart $MELOS_ROOT_PATH/tools/ci/bin/run_with_junit.dart --output $MELOS_ROOT_PATH/.build/test-results/\$MELOS_PACKAGE_NAME_unit_web_wasm.xml -- dart test --reporter json --platform chrome --compiler dart2wasm"
@@ -499,10 +505,11 @@ scripts:
         - integration_test_app/ios
         - integration_test_app/macos
 
+  # Fetches the git-ignored Flags fixtures here, so `dart analyze` and `dart test` work before any unit_test script runs.
   prepare:
-    run: melos pub:get && melos generate_env && melos generate_env:e2e
+    run: melos pub:get && melos run feature-flags:fixtures && melos generate_env && melos generate_env:e2e
     description: |
-      Run `flutter pub get` on all packages and generate `dd.env` files for all package examples
+      Run `flutter pub get` on all packages, fetch the Flags precomputed fixtures, and generate `dd.env` files for all package examples
 
   pub:get:
     exec:

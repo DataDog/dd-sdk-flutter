@@ -61,6 +61,15 @@ Structure evaluations accept JSON objects (`Map<String, Object?>`). A list or
 scalar assignment returns the default with `ErrorCode.typeMismatch`. Failed
 evaluations do not emit exposures. Successful structure values are immutable.
 
+Numeric evaluations use the exact JSON number from the assignment response.
+`getIntegerValue` returns the default with `ErrorCode.typeMismatch` when the
+value is fractional, such as `1.5` or `1.00000000000000001`. It also returns the
+default when the platform integer cannot represent the value exactly.
+`getDoubleValue` rounds a fractional value to the nearest `double`. It returns
+the default with `ErrorCode.typeMismatch` when a whole value has no exact
+`double`, or when the value overflows or underflows to zero. Stored assignments
+follow the same rules.
+
 Details include the variant, reason, error code, and provider metadata.
 The provider supplies `allocationKey`, `doLog`, and `variationType`, available
 through `DatadogProvider.allocationKeyMetadata` and `doLogMetadata`. The
