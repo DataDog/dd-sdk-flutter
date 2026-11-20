@@ -30,8 +30,11 @@ class DefaultDatadogFlagsClient implements DatadogFlagsClient {
         _evaluationAggregator = evaluationAggregator;
 
   @override
-  Future<void> initialize(FlagsEvaluationContext context) async {
-    await _repository.initialize(context);
+  Future<void> initialize(
+    FlagsEvaluationContext context, {
+    bool throwOnFailure = false,
+  }) async {
+    await _repository.initialize(context, throwOnFailure: throwOnFailure);
   }
 
   @override

@@ -363,3 +363,14 @@ dart run datadog_flags_example:typed_evaluation \
 The repository also includes a Flutter example screen in `examples/simple_example`
 that can initialize the SDK, refresh assignments, and evaluate multiple flag
 types.
+
+### Waiting for successful context reconciliation
+
+`await client.initialize(context)` waits asynchronously. By default, assignment
+fetch failures use the SDK's cache fallback. Call
+`await client.initialize(context, throwOnFailure: true)` when evaluation must
+follow a successful reconciliation; failures and superseded operations then
+complete the future with an error. Configure `initializationTimeout: null` to
+wait until the underlying operation finishes. An initialization timeout returns
+early and leaves that operation running. Serialize context changes and evaluation
+when sharing a client between concurrent requests.

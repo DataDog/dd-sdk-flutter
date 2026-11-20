@@ -56,14 +56,17 @@ class FlagsRepository {
 
   bool get isRestoredFromStore => _state?.restoredFromStore ?? false;
 
-  Future<void> initialize(FlagsEvaluationContext context) {
+  Future<void> initialize(
+    FlagsEvaluationContext context, {
+    bool throwOnFailure = false,
+  }) {
     _currentToken?.cancel();
     final token = _CancelToken();
     _currentToken = token;
 
     final timeout = _takeInitializationTimeout();
     if (timeout == null) {
-      return _initialize(context, token);
+      return _initialize(context, token, throwOnFailure: throwOnFailure);
     }
 
     final timeoutCompletion = Completer<void>();
@@ -77,7 +80,8 @@ class FlagsRepository {
         StackTrace.current,
       ),
     );
-    final operation = _initialize(context, token);
+    final operation =
+        _initialize(context, token, throwOnFailure: throwOnFailure);
     return Future.any<void>([
       operation,
       timeoutCompletion.future,
@@ -86,10 +90,15 @@ class FlagsRepository {
 
   Future<void> _initialize(
     FlagsEvaluationContext context,
-    _CancelToken token,
-  ) async {
+    _CancelToken token, {
+    required bool throwOnFailure,
+  }) async {
     final cached = store == null ? null : await _readCached();
     if (token.isCanceled) {
+      if (throwOnFailure) {
+        throw FlagsException.clientNotInitialized(
+            'Context operation superseded');
+      }
       return;
     }
 
@@ -107,6 +116,10 @@ class FlagsRepository {
     try {
       final assignments = await fetcher.fetch(context);
       if (token.isCanceled) {
+        if (throwOnFailure) {
+          throw FlagsException.clientNotInitialized(
+              'Context operation superseded');
+        }
         return;
       }
       final data = FlagsData(
@@ -116,9 +129,16 @@ class FlagsRepository {
       );
       _state = _InstalledFlagsState(data: data, restoredFromStore: false);
       await _writeCached(data);
-    } catch (_) {
+      if (token.isCanceled && throwOnFailure) {
+        throw FlagsException.clientNotInitialized(
+            'Context operation superseded');
+      }
+    } catch (error, stackTrace) {
       if (!token.isCanceled && matchingCached == null) {
         _state = null;
+      }
+      if (throwOnFailure) {
+        Error.throwWithStackTrace(error, stackTrace);
       }
     }
   }

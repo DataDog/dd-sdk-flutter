@@ -14,7 +14,14 @@ class NoOpDatadogFlagsClient implements DatadogFlagsClient {
   const NoOpDatadogFlagsClient({required this.name});
 
   @override
-  Future<void> initialize(FlagsEvaluationContext context) async {}
+  Future<void> initialize(
+    FlagsEvaluationContext context, {
+    bool throwOnFailure = false,
+  }) async {
+    if (throwOnFailure) {
+      throw FlagsException.clientNotInitialized('Flags SDK is not enabled');
+    }
+  }
 
   @override
   FlagDetails<bool> getBooleanDetails({

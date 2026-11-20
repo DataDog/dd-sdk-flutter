@@ -26,11 +26,21 @@ abstract interface class DatadogFlagsClient {
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
+  /// Set [throwOnFailure] to report assignment fetch/decoding failures and
+  /// superseded operations through this future, even when matching cached
+  /// assignments remain available. By default those failures are handled by
+  /// the SDK's cache fallback. Every call attempts reconciliation, including
+  /// calls with an unchanged context.
+  ///
+  /// To wait for the entire underlying operation, disable the configured
+  /// initialization timeout. Timing out does not cancel the operation.
+  ///
   /// Evaluations made before initialization completes return their provided
   /// default value with a `providerNotReady` error.
   Future<void> initialize(
-    FlagsEvaluationContext context,
-  );
+    FlagsEvaluationContext context, {
+    bool throwOnFailure = false,
+  });
 
   /// Evaluates a boolean flag and returns details about the result.
   FlagDetails<bool> getBooleanDetails({
