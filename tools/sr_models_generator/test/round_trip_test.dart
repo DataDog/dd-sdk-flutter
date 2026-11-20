@@ -194,6 +194,45 @@ final class NoEquality {
     expect(result.errors, isEmpty);
   });
 
+  group('compareModels', () {
+    // Case -> (equal, same hashCode).
+    final cases = {
+      const ComparisonCase('the same point', 'Point', point, point): (
+        true,
+        true,
+      ),
+      const ComparisonCase('different points', 'Point', {'x': 1}, {'x': 2}): (
+        false,
+        false,
+      ),
+      const ComparisonCase(
+        'a model without ==',
+        'NoEquality',
+        {'x': 1},
+        {'x': 1},
+      ): (
+        false,
+        false,
+      ),
+    };
+    late Map<String, Comparison> results;
+
+    setUpAll(() async {
+      results = {
+        for (final result in await compareModels(library, [...cases.keys]))
+          result.name: result,
+      };
+    });
+
+    for (final MapEntry(key: comparison, value: (equal, sameHash))
+        in cases.entries) {
+      test('reports whether ${comparison.name} are equal', () {
+        expect(results[comparison.name]?.equal, equal);
+        expect(results[comparison.name]?.sameHash, sameHash);
+      });
+    }
+  });
+
   test('reports what fromJson throws', () async {
     final [result] = await roundTrip(library, [
       const RoundTripCase('an invalid point', 'Point', {'x': 'one'}),

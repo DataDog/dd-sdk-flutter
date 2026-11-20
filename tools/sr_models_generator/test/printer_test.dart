@@ -230,18 +230,27 @@ void main() {
       ],
     };
 
+    late String resolverFixtures;
+
+    /// The definitions of the resolver fixture [file] alone.
+    List<Definition> definitionsOf(String file) => (ModelResolver(
+      SchemaLoader(resolverFixtures),
+    )..resolveRoot(file)).definitions;
+
     setUpAll(() async {
-      final root = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
-      final resolver = ModelResolver(SchemaLoader(root));
+      resolverFixtures = p.join(
+        await packageRoot(),
+        'test',
+        'fixtures',
+        'resolver',
+      );
+      final resolver = ModelResolver(SchemaLoader(resolverFixtures));
       for (final fixture in fixtures) {
         resolver.resolveRoot(fixture);
       }
       library = const DartPrinter().printLibrary(resolver.definitions);
       results = {
-        // == comes with its own commit.
-        for (final result in await roundTrip(library, [
-          ...cases.keys,
-        ], checkEquality: false))
+        for (final result in await roundTrip(library, [...cases.keys]))
           result.name: result,
       };
     });
@@ -276,6 +285,138 @@ void main() {
       expect(enumsOnly, isNot(contains('_invalid')));
       expect(enumsOnly, isNot(contains("import 'package:meta/meta.dart';")));
       expect(library, contains("import 'package:meta/meta.dart';"));
+    });
+
+    group('==', () {
+      const primitives = {'count': 1, 'ratio': 0.5, 'text': 'a'};
+      const shapes = {
+        'tags': ['a'],
+        'grid': [
+          [1, 2],
+        ],
+        'points': [
+          {'x': 1, 'y': 2},
+        ],
+        'origin': {'x': 0, 'y': 0},
+      };
+      Map<String, Object?> withValue(String key, Object? value) => {
+        ...shapes,
+        key: value,
+      };
+
+      // Case -> whether the two models are equal.
+      final cases = {
+        const ComparisonCase('the same JSON', 'SRPrimitives', primitives, {
+          ...primitives,
+        }): true,
+        const ComparisonCase('another value', 'SRPrimitives', primitives, {
+          'count': 2,
+          'ratio': 0.5,
+          'text': 'a',
+        }): false,
+        ComparisonCase(
+          'an optional field left out',
+          'SRPrimitives',
+          primitives,
+          {
+            for (final MapEntry(:key, :value) in primitives.entries)
+              if (key != 'ratio') key: value,
+          },
+        ): false,
+        const ComparisonCase('equal lists, at any depth', 'SRShapes', shapes, {
+          ...shapes,
+        }): true,
+        ComparisonCase(
+          'another value in a nested list',
+          'SRShapes',
+          shapes,
+          withValue('grid', [
+            [1, 3],
+          ]),
+        ): false,
+        ComparisonCase(
+          'a list with another length',
+          'SRShapes',
+          shapes,
+          withValue('tags', ['a', 'b']),
+        ): false,
+        ComparisonCase(
+          'another value in a listed object',
+          'SRShapes',
+          shapes,
+          withValue('points', [
+            {'x': 1, 'y': 3},
+          ]),
+        ): false,
+        ComparisonCase(
+          'another value in a nested object',
+          'SRShapes',
+          shapes,
+          withValue('origin', {'x': 0, 'y': 1}),
+        ): false,
+        const ComparisonCase(
+          'enums and const fields',
+          'SRText',
+          {
+            'type': 'text',
+            'version': 0,
+            'truncation_mode': 'tail',
+            'platform': 'ios',
+          },
+          {
+            'type': 'text',
+            'version': 0,
+            'truncation_mode': 'tail',
+            'platform': 'ios',
+          },
+        ): true,
+        const ComparisonCase(
+          'another enum value',
+          'SRText',
+          {
+            'type': 'text',
+            'version': 0,
+            'truncation_mode': 'tail',
+            'platform': 'ios',
+          },
+          {
+            'type': 'text',
+            'version': 0,
+            'truncation_mode': 'clip',
+            'platform': 'ios',
+          },
+        ): false,
+        const ComparisonCase(
+          'a class without fields',
+          'SRShapesMetaSize',
+          {'width': 1},
+          {'width': 1},
+        ): true,
+      };
+      late Map<String, Comparison> comparisons;
+
+      setUpAll(() async {
+        comparisons = {
+          for (final result in await compareModels(library, [...cases.keys]))
+            result.name: result,
+        };
+      });
+
+      for (final MapEntry(key: comparison, value: equal) in cases.entries) {
+        test('is $equal for ${comparison.name}', () {
+          expect(comparisons[comparison.name]?.equal, equal);
+          if (equal) expect(comparisons[comparison.name]?.sameHash, isTrue);
+        });
+      }
+
+      test('compares lists item by item only when the class has lists', () {
+        final primitivesOnly = const DartPrinter().printLibrary(
+          definitionsOf('primitives-schema.json'),
+        );
+        expect(primitivesOnly, contains('other.count == count'));
+        expect(primitivesOnly, isNot(contains('_equals')));
+        expect(library, contains('_equals(other.grid, grid)'));
+      });
     });
   });
 

@@ -56,6 +56,94 @@ Future<List<RoundTripResult>> roundTrip(
   List<RoundTripCase> cases, {
   bool checkEquality = true,
 }) async {
+  final lines = await _run(
+    library,
+    _roundTripRunner({for (final c in cases) c.type}),
+    [
+      for (final c in cases) {'name': c.name, 'type': c.type, 'json': c.json},
+    ],
+    [if (checkEquality) '--check-equality'],
+  );
+  return [
+    for (final line in lines)
+      if (jsonDecode(line) case {
+        'name': final String name,
+        'errors': final List<Object?> errors,
+      })
+        RoundTripResult(name, [...errors.whereType<String>()]),
+  ];
+}
+
+/// Two JSON values to decode with `<type>.fromJson` and compare.
+@immutable
+final class ComparisonCase {
+  const ComparisonCase(this.name, this.type, this.a, this.b);
+
+  /// Identifies the case in the results.
+  final String name;
+
+  /// The Dart type that decodes [a] and [b].
+  final String type;
+
+  final Object? a;
+  final Object? b;
+}
+
+/// How the two models of a [ComparisonCase] compare.
+@immutable
+final class Comparison {
+  const Comparison(this.name, {required this.equal, required this.sameHash});
+
+  final String name;
+
+  /// Whether the models are `==`.
+  final bool equal;
+
+  /// Whether their `hashCode`s are the same.
+  final bool sameHash;
+
+  @override
+  String toString() => '$name: equal $equal, same hashCode $sameHash';
+}
+
+/// Compiles [library] (generated models), decodes both values of every case
+/// of [cases], and compares the two models.
+///
+/// Throws a [StateError] with the compiler output when [library] does not
+/// compile.
+Future<List<Comparison>> compareModels(
+  String library,
+  List<ComparisonCase> cases,
+) async {
+  final lines = await _run(
+    library,
+    _comparisonRunner({for (final c in cases) c.type}),
+    [
+      for (final c in cases)
+        {'name': c.name, 'type': c.type, 'a': c.a, 'b': c.b},
+    ],
+    const [],
+  );
+  return [
+    for (final line in lines)
+      if (jsonDecode(line) case {
+        'name': final String name,
+        'equal': final bool equal,
+        'sameHash': final bool sameHash,
+      })
+        Comparison(name, equal: equal, sameHash: sameHash),
+  ];
+}
+
+/// Writes [library] as `models.dart`, [runner] as `main.dart` and [input]
+/// as JSON in a scratch directory, runs `main.dart` with the input file and
+/// [arguments], and returns the lines it printed.
+Future<List<String>> _run(
+  String library,
+  String runner,
+  Object? input,
+  List<String> arguments,
+) async {
   // Inside the package, so that `package:` imports of the generated code
   // (e.g. `package:meta`) resolve with the package's own configuration.
   final scratch = Directory(
@@ -63,54 +151,73 @@ Future<List<RoundTripResult>> roundTrip(
   ).createTempSync('round_trip_');
   try {
     File(p.join(scratch.path, 'models.dart')).writeAsStringSync(library);
-    final input = File(p.join(scratch.path, 'cases.json'))
-      ..writeAsStringSync(
-        jsonEncode([
-          for (final c in cases)
-            {'name': c.name, 'type': c.type, 'json': c.json},
-        ]),
-      );
-    final runner = File(p.join(scratch.path, 'main.dart'))
-      ..writeAsStringSync(_runner({for (final c in cases) c.type}));
+    final inputFile = File(p.join(scratch.path, 'input.json'))
+      ..writeAsStringSync(jsonEncode(input));
+    final main = File(p.join(scratch.path, 'main.dart'))
+      ..writeAsStringSync(runner);
 
     final result = await Process.run('dart', [
       'run',
-      runner.path,
-      input.path,
-      if (checkEquality) '--check-equality',
+      main.path,
+      inputFile.path,
+      ...arguments,
     ]);
     if (result.exitCode != 0) {
       throw StateError(
-        'The round trip runner failed (exit code ${result.exitCode}):\n'
+        'The models runner failed (exit code ${result.exitCode}):\n'
         '${result.stdout}${result.stderr}',
       );
     }
-    return [
-      for (final line in LineSplitter.split(result.stdout.toString()))
-        if (jsonDecode(line) case {
-          'name': final String name,
-          'errors': final List<Object?> errors,
-        })
-          RoundTripResult(name, [...errors.whereType<String>()]),
-    ];
+    return LineSplitter.split(result.stdout.toString()).toList();
   } finally {
     scratch.deleteSync(recursive: true);
   }
 }
 
-/// A script that round-trips the cases of the JSON file given as argument
-/// and prints one JSON line per case: `{"name": ..., "errors": [...]}`.
-String _runner(Set<String> types) =>
+/// The `decoders` map of a runner: type name -> its `fromJson`.
+String _decoders(Set<String> types) =>
+    '''
+final decoders = <String, Function>{
+${[for (final type in types) "  '$type': $type.fromJson,"].join('\n')}
+};
+''';
+
+/// A script that decodes both values of the cases of the JSON file given
+/// as argument, and prints one JSON line per case:
+/// `{"name": ..., "equal": ..., "sameHash": ...}`.
+String _comparisonRunner(Set<String> types) =>
     '''
 import 'dart:convert';
 import 'dart:io';
 
 import 'models.dart';
 
-final decoders = <String, Function>{
-${[for (final type in types) "  '$type': $type.fromJson,"].join('\n')}
-};
+${_decoders(types)}
+void main(List<String> args) {
+  final cases = jsonDecode(File(args.first).readAsStringSync()) as List<Object?>;
+  for (final c in cases.cast<Map<String, Object?>>()) {
+    final decode = decoders[c['type']]!;
+    final a = Function.apply(decode, [c['a']]);
+    final b = Function.apply(decode, [c['b']]);
+    stdout.writeln(jsonEncode({
+      'name': c['name'],
+      'equal': a == b,
+      'sameHash': a.hashCode == b.hashCode,
+    }));
+  }
+}
+''';
 
+/// A script that round-trips the cases of the JSON file given as argument
+/// and prints one JSON line per case: `{"name": ..., "errors": [...]}`.
+String _roundTripRunner(Set<String> types) =>
+    '''
+import 'dart:convert';
+import 'dart:io';
+
+import 'models.dart';
+
+${_decoders(types)}
 void diff(Object? expected, Object? actual, String path, List<String> errors) {
   if (expected is Map && actual is Map) {
     for (final key in {...expected.keys, ...actual.keys}) {

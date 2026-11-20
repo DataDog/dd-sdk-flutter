@@ -86,7 +86,7 @@ final class _Library {
   List<String> helpers() => [
     for (final helper in _Helper.values)
       if (_used.contains(helper) ||
-          (helper == _Helper.invalid && _used.isNotEmpty))
+          (helper == _Helper.invalid && _used.any((h) => h.decodes)))
         helper.code,
   ];
 
@@ -96,6 +96,9 @@ final class _Library {
     final arguments = <String>[];
     final members = <String>[];
     final entries = <String>[];
+    // Const fields are the same in every instance, so == ignores them.
+    final comparisons = <String>[];
+    final hashes = <String>[];
     for (final field in c.fields) {
       final type = _dartType(field.type);
       if (!field.isConst) {
@@ -106,6 +109,17 @@ final class _Library {
         members.add(
           '  final $type${field.isRequired ? '' : '?'} ${field.dartName};',
         );
+        if (field.type is ListType) {
+          // List == compares identity; lists are compared item by item.
+          _used.addAll([_Helper.equals, _Helper.hash]);
+          comparisons.add(
+            '_equals(other.${field.dartName}, ${field.dartName})',
+          );
+          hashes.add('_hash(${field.dartName})');
+        } else {
+          comparisons.add('other.${field.dartName} == ${field.dartName}');
+          hashes.add(field.dartName);
+        }
       } else {
         // A const field is a getter: neither a parameter nor decoded.
         final value = switch (field.constValue) {
@@ -136,6 +150,14 @@ ${members.isEmpty ? '' : '\n${members.join('\n')}\n'}
   Map<String, Object?> toJson() => {
 ${entries.join('\n')}
   };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ${c.name}${[for (final comparison in comparisons) ' && $comparison'].join()};
+
+  @override
+  int get hashCode => Object.hashAll([${hashes.join(', ')}]);
 }
 ''';
   }
@@ -257,9 +279,26 @@ List<T> _list<T>(
   invalid('_invalid', r'''
 FormatException _invalid(Object? json, String where) =>
     FormatException('Invalid $where: $json');
-''');
+'''),
+  equals('_equals', r'''
+bool _equals(Object? a, Object? b) {
+  if (a is List<Object?> && b is List<Object?>) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_equals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}
+''', decodes: false),
+  hash('_hash', r'''
+int _hash(Object? value) => value is List<Object?>
+    ? Object.hashAll([for (final item in value) _hash(item)])
+    : value.hashCode;
+''', decodes: false);
 
-  const _Helper(this.function, this.code);
+  const _Helper(this.function, this.code, {this.decodes = true});
 
   /// The helper decoding [primitive].
   factory _Helper.of(Primitive primitive) => switch (primitive) {
@@ -274,6 +313,9 @@ FormatException _invalid(Object? json, String where) =>
 
   /// Its declaration.
   final String code;
+
+  /// Whether it decodes JSON, and so reports errors with [invalid].
+  final bool decodes;
 }
 
 extension on TypeRef {
