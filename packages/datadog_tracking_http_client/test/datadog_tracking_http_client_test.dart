@@ -94,6 +94,7 @@ void main() {
     when(
       () => mockRum.contextInjectionSetting,
     ).thenReturn(TraceContextInjection.all);
+    when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
     when(() => mockRum.traceSampleRate).thenReturn(50.0);
 
     mockClient = MockHttpClient();
@@ -118,6 +119,17 @@ void main() {
       });
     });
     when(() => mockHeaders.add(any(), any())).thenAnswer((invocation) {
+      headerCache[invocation.positionalArguments[0]] = invocation
+          .positionalArguments[1]
+          .toString();
+    });
+    when(
+      () => mockHeaders.set(
+        any(),
+        any(),
+        preserveHeaderCase: any(named: 'preserveHeaderCase'),
+      ),
+    ).thenAnswer((invocation) {
       headerCache[invocation.positionalArguments[0]] = invocation
           .positionalArguments[1]
           .toString();
@@ -943,6 +955,57 @@ void main() {
         );
       });
 
+      for (final propagateBaggage in [true, false]) {
+        test(
+          'baggage header respects propagateTraceBaggage = $propagateBaggage',
+          () async {
+            when(() => mockPlatform.getContext()).thenReturn(
+              DatadogContext(
+                sessionId: 'session-id',
+                userId: 'user-id',
+                accountId: 'account-id',
+              ),
+            );
+            when(
+              () => mockRum.propagateTraceBaggageSetting,
+            ).thenReturn(propagateBaggage);
+            when(
+              () => mockRum.contextInjectionSetting,
+            ).thenReturn(TraceContextInjection.all);
+            var url = Uri.parse('https://test_url/path');
+            var completer = setupMockRequest(url);
+            var mockResponse = setupMockClientResponse(200);
+
+            final client = DatadogTrackingHttpClient(
+              mockDatadog,
+              DdHttpTrackingPluginConfiguration(),
+              mockClient,
+            );
+
+            var request = await client.openUrl('get', url);
+            completer.complete(mockResponse);
+            var _ = await request.done;
+
+            final requestHeaders = request.headers.toMap();
+            final supportsBaggage =
+                headerType == TracingHeaderType.datadog ||
+                headerType == TracingHeaderType.tracecontext;
+            if (supportsBaggage && propagateBaggage) {
+              expect(
+                requestHeaders['baggage'],
+                allOf(
+                  contains('session.id=session-id'),
+                  contains('user.id=user-id'),
+                  contains('account.id=account-id'),
+                ),
+              );
+            } else {
+              expect(requestHeaders['baggage'], isNull);
+            }
+          },
+        );
+      }
+
       test(
         'sets trace headers for first party urls { sampled, TraceContextInjection.all }',
         () async {
@@ -1006,6 +1069,7 @@ void main() {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           var url = Uri.parse('https://test_url/path');
           var completer = setupMockRequest(url);
           var mockResponse = setupMockClientResponse(200);
@@ -1038,6 +1102,7 @@ void main() {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           var url = Uri.parse('https://test_url/path');
           var completer = setupMockRequest(url);
           var mockResponse = setupMockClientResponse(200);

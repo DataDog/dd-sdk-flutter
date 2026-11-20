@@ -11,6 +11,7 @@ DatadogFlagsConfig? flagsExampleConfiguration({
   required String clientToken,
   required String env,
   String? applicationId,
+  String? service,
 }) {
   final flagsSite = datadogFlagsSiteFor(site);
   if (flagsSite == null || clientToken.isEmpty) return null;
@@ -19,5 +20,6 @@ DatadogFlagsConfig? flagsExampleConfiguration({
     env: env,
     site: flagsSite,
     applicationId: applicationId,
+    service: service,
   );
 }

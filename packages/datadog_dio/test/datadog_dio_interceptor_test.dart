@@ -680,6 +680,7 @@ void main() {
         when(
           () => mockRum.contextInjectionSetting,
         ).thenReturn(TraceContextInjection.all);
+        when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
         // ignore: invalid_use_of_internal_member
         when(() => mockDatadog.internalLogger).thenReturn(InternalLoggerMock());
 
@@ -687,6 +688,47 @@ void main() {
         when(() => mockRum.traceSampleRate).thenReturn(50.0);
         when(() => mockDatadog.rum).thenReturn(mockRum);
       });
+
+      for (final propagateBaggage in [true, false]) {
+        test(
+          'baggage header respects propagateTraceBaggage = $propagateBaggage',
+          () {
+            when(() => mockPlatform.getContext()).thenReturn(
+              DatadogContext(
+                sessionId: 'session-id',
+                userId: 'user-id',
+                accountId: 'account-id',
+              ),
+            );
+            when(
+              () => mockRum.propagateTraceBaggageSetting,
+            ).thenReturn(propagateBaggage);
+            final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
+            final request = RequestOptions(
+              path: "https://test_url/post",
+              method: 'POST',
+            );
+
+            interceptor.onRequest(request, RequestInterceptorHandler());
+
+            final supportsBaggage =
+                headerType == TracingHeaderType.datadog ||
+                headerType == TracingHeaderType.tracecontext;
+            if (supportsBaggage && propagateBaggage) {
+              expect(
+                request.headers['baggage'],
+                allOf(
+                  contains('session.id=session-id'),
+                  contains('user.id=user-id'),
+                  contains('account.id=account-id'),
+                ),
+              );
+            } else {
+              expect(request.headers, isNot(contains('baggage')));
+            }
+          },
+        );
+      }
 
       test(
         'does not set trace attributes when should sample returns false',
@@ -788,6 +830,7 @@ void main() {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.all);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
           final request = RequestOptions(
             path: "https://test_url/post",
@@ -814,6 +857,7 @@ void main() {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
           final request = RequestOptions(
             path: "https://test_url/post",
@@ -840,6 +884,7 @@ void main() {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.all);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
           final request = RequestOptions(
             path: "https://test_url/post",
@@ -866,6 +911,7 @@ void main() {
           when(
             () => mockRum.contextInjectionSetting,
           ).thenReturn(TraceContextInjection.sampled);
+          when(() => mockRum.propagateTraceBaggageSetting).thenReturn(true);
           final interceptor = DatadogDioInterceptor(datadogSdk: mockDatadog);
           final request = RequestOptions(
             path: "https://test_url/post",

@@ -8,6 +8,6 @@ import 'package:openfeature_client_provider_contract/client_provider_contract.da
 import 'support/datadog_provider_fixture.dart';
 
 void main() => runClientProviderContract(
-  providerName: 'Datadog',
+  providerName: 'datadog',
   createFixture: DatadogProviderFixture.new,
 );

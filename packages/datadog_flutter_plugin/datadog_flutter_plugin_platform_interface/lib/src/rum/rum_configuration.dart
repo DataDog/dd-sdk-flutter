@@ -128,6 +128,15 @@ class DatadogRumConfiguration {
   /// Defaults to [TraceContextInjection.sampled].
   TraceContextInjection traceContextInjection = TraceContextInjection.sampled;
 
+  /// Whether to add `session.id`, `user.id`, and `account.id` to the W3C
+  /// `baggage` header of traced requests.
+  ///
+  /// When `false`, the `baggage` header is left unchanged. Disable this on web
+  /// if CSP or CORS restrictions reject the additional header.
+  ///
+  /// Defaults to `true`.
+  bool propagateTraceBaggage;
+
   /// Enable or disable detection of "long tasks"
   ///
   /// Long task detection attempts to detect when an application is doing too
@@ -291,6 +300,7 @@ class DatadogRumConfiguration {
     double sessionSamplingRate = 100.0,
     double traceSampleRate = 100.0,
     this.traceContextInjection = TraceContextInjection.sampled,
+    this.propagateTraceBaggage = true,
     this.detectLongTasks = true,
     double longTaskThreshold = 0.1,
     this.trackFrustrations = true,

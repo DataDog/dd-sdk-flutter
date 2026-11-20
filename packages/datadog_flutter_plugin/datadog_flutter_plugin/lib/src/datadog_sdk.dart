@@ -269,6 +269,7 @@ class DatadogSdk {
             attachResponse.capturedConfiguration.traceSampleRate ?? 100.0,
             attachResponse.capturedConfiguration.traceContextInjection ??
                 TraceContextInjection.sampled,
+            attachResponse.capturedConfiguration.propagateTraceBaggage ?? true,
             attachResponse.capturedConfiguration.resourceHeadersExtractor,
           );
         }

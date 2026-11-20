@@ -226,6 +226,7 @@ void injectTracingHeaders(
   TracingHeaderType headersType,
   Map<String, dynamic> headers, {
   TraceContextInjection contextInjection = TraceContextInjection.sampled,
+  bool propagateBaggage = true,
 }) {
   const String baggageHeaderName = 'baggage';
 
@@ -257,10 +258,12 @@ void injectTracingHeaders(
         addHeader(DatadogHttpTracingHeaders.origin, 'rum');
         addHeader(DatadogHttpTracingHeaders.samplingPriority, sampledString);
 
-        headers[baggageHeaderName] = mergeW3CBaggageHeader(
-          context,
-          headers[baggageHeaderName],
-        );
+        if (propagateBaggage) {
+          headers[baggageHeaderName] = mergeW3CBaggageHeader(
+            context,
+            headers[baggageHeaderName],
+          );
+        }
       }
       break;
     case TracingHeaderType.b3:
@@ -317,10 +320,12 @@ void injectTracingHeaders(
         addHeader(W3CTracingHeaders.traceparent, parentHeaderValue);
         addHeader(W3CTracingHeaders.tracestate, 'dd=$stateHeaderValue');
 
-        headers[baggageHeaderName] = mergeW3CBaggageHeader(
-          context,
-          headers[baggageHeaderName],
-        );
+        if (propagateBaggage) {
+          headers[baggageHeaderName] = mergeW3CBaggageHeader(
+            context,
+            headers[baggageHeaderName],
+          );
+        }
       }
       break;
   }

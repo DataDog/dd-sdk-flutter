@@ -82,6 +82,9 @@ class DatadogRum {
 
   final TraceContextInjection traceContextInjection;
 
+  /// See [DatadogRumConfiguration.propagateTraceBaggage]
+  final bool propagateTraceBaggage;
+
   /// The extractor for capturing HTTP request/response headers in RUM
   /// resource events, or `null` if header capture is disabled.
   @internal
@@ -117,6 +120,7 @@ class DatadogRum {
       _traceSampler = DeterministicSampler(config.traceSampleRate),
       _sessionSampleRate = null,
       traceContextInjection = config.traceContextInjection,
+      propagateTraceBaggage = config.propagateTraceBaggage,
       resourceHeadersExtractor = config.trackResourceHeaders,
       logger = core.internalLogger,
       _core = core {
@@ -132,6 +136,7 @@ class DatadogRum {
     DatadogSdk core,
     this.traceSampleRate,
     this.traceContextInjection,
+    this.propagateTraceBaggage,
     this.resourceHeadersExtractor,
   ) : _traceSampler = DeterministicSampler(traceSampleRate),
       _sessionSampleRate = null,
@@ -150,6 +155,7 @@ class DatadogRum {
       _traceSampler = DeterministicSampler(configuration.traceSampleRate),
       _sessionSampleRate = configuration.sessionSamplingRate,
       traceContextInjection = configuration.traceContextInjection,
+      propagateTraceBaggage = configuration.propagateTraceBaggage,
       resourceHeadersExtractor = configuration.trackResourceHeaders,
       logger = core.internalLogger,
       _core = core {

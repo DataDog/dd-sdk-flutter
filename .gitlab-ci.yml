@@ -100,7 +100,8 @@ stages:
     - xcode-select -p
     - xcodebuild -runFirstLaunch
     - xcodebuild -downloadPlatform iOS
-    - pushd tools/ci && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR && popd
+    # A subshell, so a failed start_sim fails the job; errexit ignores a failure in the middle of an `&&` list.
+    - (cd tools/ci && dart run ci_helpers start_sim --platform ios --sdk $IOS_SDK --device $IOS_SIMULATOR)
 
 .pre-macos:
   script:

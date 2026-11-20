@@ -9,6 +9,7 @@ import 'default_flags_client.dart';
 import 'evaluation_aggregator.dart';
 import 'exposure_logger.dart';
 import 'flag_assignments_fetcher.dart';
+import 'flag_selection.dart';
 import 'flags_client.dart';
 import 'flags_configuration.dart';
 import 'flags_repository.dart';
@@ -21,7 +22,7 @@ import 'no_op_flags_client.dart';
 /// isolates must use their own [DatadogFlags] instance, create any clients they
 /// need, and initialize each client before evaluating flags.
 @Deprecated(
-  'Use OpenFeatureAPI with DatadogOpenFeatureProvider. Removal is planned for the next major version.',
+  'Use OpenFeatureAPI with DatadogProvider. Removal is planned for the next major version.',
 )
 class DatadogFlags {
   /// Name used for the shared client when no explicit client name is provided.
@@ -121,6 +122,7 @@ class DatadogFlags {
       datadogConfig: datadogConfig,
       configuration: configuration,
       httpClient: httpClient,
+      dropLog: flagSelectionDropLogFor(this),
     );
     final runtime = FlagsRuntime(
       configuration: configuration,

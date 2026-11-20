@@ -8,7 +8,7 @@
 
 export 'package:datadog_flags/datadog_flags.dart'
     show
-        DatadogOpenFeatureProvider,
+        DatadogProvider,
         DatadogFlagsConfig,
         DatadogFlagsClient,
         DatadogFlagsConfiguration,
@@ -20,8 +20,11 @@ export 'package:datadog_flags/datadog_flags.dart'
         FlagDetails,
         FlagEvaluationError,
         FlagsInitializationTimeoutException,
+        FlagsLoggerLevel,
         FlagsData,
-        FlagsEvaluationContext;
+        FlagSelection,
+        FlagsEvaluationContext,
+        strictContextSwitchingAttribute;
 
 export 'src/datadog_flags_plugin.dart';
 

@@ -48,7 +48,9 @@ class SimulatorCommand extends Command {
     }
     final device = args.option('device');
     print('Launching iOS Simulator: SDK: $sdk, Device Name: $device');
-    await launchIosSimulator(sdk, device);
+    if (!await launchIosSimulator(sdk, device)) {
+      exit(1);
+    }
   }
 
   Future<void> _startAndroid(ArgResults args) async {

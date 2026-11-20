@@ -301,6 +301,7 @@ class DatadogGqlLink extends Link {
               headerType,
               headers,
               contextInjection: rum.contextInjectionSetting,
+              propagateBaggage: rum.propagateTraceBaggageSetting,
             );
           }
 

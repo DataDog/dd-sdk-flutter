@@ -8,13 +8,14 @@ import 'package:meta/meta.dart';
 
 import 'datadog_flags_config.dart';
 import 'flags_client.dart';
+import 'flag_selection.dart';
 import 'flags_error.dart';
 import 'flags_store.dart';
 
 /// Runtime configuration for Datadog feature flag clients.
 @immutable
 final class DatadogFlagsConfiguration {
-  /// Default wall-clock budget for the first evaluation context.
+  /// Default wall-clock budget for loading assignments.
   static const defaultInitializationTimeout = Duration(seconds: 5);
 
   /// Default interval for aggregating and sending flag evaluation telemetry.
@@ -36,7 +37,7 @@ final class DatadogFlagsConfiguration {
   /// Additional headers sent with precompute assignment requests.
   final Map<String, String>? customFlagsHeaders;
 
-  /// Wall-clock budget for the first evaluation context.
+  /// Wall-clock budget for loading assignments.
   ///
   /// If initialization is still active, the SDK stops waiting when Dart runs
   /// the timeout timer. Synchronous work can block the Dart isolate, so the
@@ -52,13 +53,13 @@ final class DatadogFlagsConfiguration {
   /// assignment operation continues after this timeout and can make assignments
   /// available when it completes.
   ///
-  /// Legacy clients do not limit how large this value can be.
   /// The OpenFeature provider requires a positive timeout of at most 20 seconds.
+  /// It applies this budget to initialization, each context change, and each refresh.
   ///
-  /// The timeout applies only to the first
-  /// [DatadogFlagsClient.initialize] call for each client. A `null`, zero, or
-  /// negative value disables the timeout. If a later call supersedes the first
-  /// call, only the first call remains bounded by this timeout.
+  /// For legacy clients, the timeout applies only to the first
+  /// [DatadogFlagsClient.initialize] call for each client, and its size is not
+  /// limited. A `null`, zero, or negative value disables it. If a later call
+  /// supersedes the first call, only the first call remains bounded by this timeout.
   final Duration? initializationTimeout;
 
   /// Overrides the exposure intake endpoint.
@@ -89,6 +90,23 @@ final class DatadogFlagsConfiguration {
   /// Clock used for timestamps in stored assignments and telemetry.
   final DateTime Function() dateProvider;
 
+  /// Loads only the flags that match these tags or key patterns.
+  ///
+  /// Every client created with this configuration uses the selection. Stored
+  /// assignments fetched under a different selection are not restored: after
+  /// the selection the SDK sends is added, changed, or removed, a client
+  /// starts without stored assignments until its next successful fetch. See
+  /// [FlagSelection] for the matching rules, limits, and fallbacks.
+  ///
+  /// The SDK reports a selection the server ignored through the
+  /// `DD-Flag-Selection-Ignored` response header. On web, a
+  /// [customFlagsEndpoint] proxy must forward this header and list it in
+  /// `Access-Control-Expose-Headers`; otherwise the full configuration still
+  /// loads, but the SDK logs nothing.
+  ///
+  /// When omitted, every flag is loaded.
+  final FlagSelection? flagSelection;
+
   /// Creates SDK runtime configuration.
   const DatadogFlagsConfiguration({
     this.customFlagsEndpoint,
@@ -103,6 +121,7 @@ final class DatadogFlagsConfiguration {
     this.datadogConfig,
     this.store,
     this.dateProvider = DateTime.now,
+    this.flagSelection,
   }) : _evaluationFlushInterval = evaluationFlushInterval;
 
   /// Flush interval coerced to the same 1s-60s bounds used by the iOS and

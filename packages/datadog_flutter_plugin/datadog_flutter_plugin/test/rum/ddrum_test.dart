@@ -91,6 +91,7 @@ void main() {
     expect(configuration.sessionSamplingRate, 100.0);
     expect(configuration.traceSampleRate, 100.0);
     expect(configuration.traceContextInjection, TraceContextInjection.sampled);
+    expect(configuration.propagateTraceBaggage, true);
     expect(configuration.detectLongTasks, true);
     expect(configuration.longTaskThreshold, 0.1);
     expect(configuration.vitalUpdateFrequency, VitalsFrequency.average);
