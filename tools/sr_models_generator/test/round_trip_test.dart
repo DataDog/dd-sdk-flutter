@@ -187,6 +187,13 @@ final class NoEquality {
     });
   }
 
+  test('can skip the == check', () async {
+    final [result] = await roundTrip(library, [
+      const RoundTripCase('a model without ==', 'NoEquality', {'x': 1}),
+    ], checkEquality: false);
+    expect(result.errors, isEmpty);
+  });
+
   test('reports what fromJson throws', () async {
     final [result] = await roundTrip(library, [
       const RoundTripCase('an invalid point', 'Point', {'x': 'one'}),

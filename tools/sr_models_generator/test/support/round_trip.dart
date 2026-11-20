@@ -43,7 +43,8 @@ final class RoundTripResult {
 /// Compiles [library] (generated models) and checks every case of [cases]:
 /// * `fromJson` followed by `toJson` gives back the same JSON, reporting
 ///   each missing, unexpected or changed value with its path;
-/// * decoding that JSON again gives a model `==` to the first one.
+/// * decoding that JSON again gives a model `==` to the first one, unless
+///   [checkEquality] is `false`.
 ///
 /// Each type of [cases] must have a `fromJson` factory taking the decoded
 /// JSON value, and a `toJson()` method.
@@ -52,8 +53,9 @@ final class RoundTripResult {
 /// compile.
 Future<List<RoundTripResult>> roundTrip(
   String library,
-  List<RoundTripCase> cases,
-) async {
+  List<RoundTripCase> cases, {
+  bool checkEquality = true,
+}) async {
   // Inside the package, so that `package:` imports of the generated code
   // (e.g. `package:meta`) resolve with the package's own configuration.
   final scratch = Directory(
@@ -71,7 +73,12 @@ Future<List<RoundTripResult>> roundTrip(
     final runner = File(p.join(scratch.path, 'main.dart'))
       ..writeAsStringSync(_runner({for (final c in cases) c.type}));
 
-    final result = await Process.run('dart', ['run', runner.path, input.path]);
+    final result = await Process.run('dart', [
+      'run',
+      runner.path,
+      input.path,
+      if (checkEquality) '--check-equality',
+    ]);
     if (result.exitCode != 0) {
       throw StateError(
         'The round trip runner failed (exit code ${result.exitCode}):\n'
@@ -131,7 +138,8 @@ void diff(Object? expected, Object? actual, String path, List<String> errors) {
 }
 
 void main(List<String> args) {
-  final cases = jsonDecode(File(args.single).readAsStringSync()) as List<Object?>;
+  final cases = jsonDecode(File(args.first).readAsStringSync()) as List<Object?>;
+  final checkEquality = args.contains('--check-equality');
   for (final c in cases.cast<Map<String, Object?>>()) {
     final errors = <String>[];
     try {
@@ -139,7 +147,7 @@ void main(List<String> args) {
       final model = Function.apply(decode, [c['json']]);
       final encoded = jsonDecode(jsonEncode(model));
       diff(c['json'], encoded, r'\$', errors);
-      if (Function.apply(decode, [encoded]) != model) {
+      if (checkEquality && Function.apply(decode, [encoded]) != model) {
         errors.add('decoding the encoded JSON gives a model that is not ==');
       }
     } catch (e) {

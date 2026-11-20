@@ -18,19 +18,31 @@ final class DartPrinter {
   final List<String> header;
 
   String printLibrary(Iterable<Definition> definitions) {
+    final library = _Library();
+    final declarations = [
+      for (final definition in definitions)
+        switch (definition) {
+          EnumDefinition() => definition.toDart(),
+          ClassDefinition() => library.classToDart(definition),
+          UnionDefinition() => throw UnsupportedError(
+            'Printing ${definition.name} is not supported yet',
+          ),
+        },
+    ];
+
     final out = StringBuffer();
     for (final line in header) {
       out.writeln(line.isEmpty ? '//' : '// $line');
     }
-    for (final definition in definitions) {
+    if (definitions.any((d) => d is ClassDefinition)) {
       out
         ..writeln()
-        ..write(switch (definition) {
-          EnumDefinition() => definition.toDart(),
-          ClassDefinition() || UnionDefinition() => throw UnsupportedError(
-            'Printing ${definition.name} is not supported yet',
-          ),
-        });
+        ..writeln("import 'package:meta/meta.dart';");
+    }
+    for (final declaration in [...declarations, ...library.helpers()]) {
+      out
+        ..writeln()
+        ..write(declaration);
     }
     return out.toString();
   }
@@ -62,6 +74,216 @@ ${cases.join(',\n')};
 }
 ''';
   }
+}
+
+/// Prints the classes of one library, and remembers which decoding helpers
+/// they use, so that the library only declares those.
+final class _Library {
+  final _used = <_Helper>{};
+
+  /// The declarations of the helpers the printed classes use, in a fixed
+  /// order.
+  List<String> helpers() => [
+    for (final helper in _Helper.values)
+      if (_used.contains(helper) ||
+          (helper == _Helper.invalid && _used.isNotEmpty))
+        helper.code,
+  ];
+
+  /// An immutable class with a `fromJson` factory and a `toJson` method.
+  String classToDart(ClassDefinition c) {
+    final parameters = <String>[];
+    final arguments = <String>[];
+    final members = <String>[];
+    final entries = <String>[];
+    for (final field in c.fields) {
+      final type = _dartType(field.type);
+      if (!field.isConst) {
+        parameters.add(
+          '${field.isRequired ? 'required ' : ''}this.${field.dartName}',
+        );
+        arguments.add('    ${field.dartName}: ${_decodeField(c, field)},');
+        members.add(
+          '  final $type${field.isRequired ? '' : '?'} ${field.dartName};',
+        );
+      } else {
+        // A const field is a getter: neither a parameter nor decoded.
+        final value = switch (field.constValue) {
+          final String value => dartString(value),
+          final value => '$value',
+        };
+        members.add('  $type get ${field.dartName} => $value;');
+      }
+      entries.add('    ${_encodeField(field)},');
+    }
+
+    final constructor = parameters.isEmpty
+        ? '  const ${c.name}();'
+        : '  const ${c.name}({${parameters.join(', ')}});';
+    final factory = arguments.isEmpty
+        ? '  factory ${c.name}.fromJson(Map<String, Object?> json) => '
+              'const ${c.name}();'
+        : '  factory ${c.name}.fromJson(Map<String, Object?> json) => '
+              '${c.name}(\n${arguments.join('\n')}\n  );';
+
+    return '''
+@immutable
+final class ${c.name} {
+$constructor
+
+$factory
+${members.isEmpty ? '' : '\n${members.join('\n')}\n'}
+  Map<String, Object?> toJson() => {
+${entries.join('\n')}
+  };
+}
+''';
+  }
+
+  /// The argument decoding [field] of [c] from `json`.
+  String _decodeField(ClassDefinition c, Field field) {
+    final where = dartString('${c.name}.${field.jsonKey}');
+    final json = 'json[${dartString(field.jsonKey)}]';
+    if (field.isRequired) return _decode(field.type, json, where);
+    return 'switch ($json) { null => null, '
+        'final value => ${_decode(field.type, 'value', where)} }';
+  }
+
+  /// An expression decoding the JSON value [json] as [type]; [where] is the
+  /// Dart expression of its location, for error messages.
+  String _decode(TypeRef type, String json, String where, [int depth = 0]) {
+    switch (type) {
+      case PrimitiveType(:final primitive):
+        final helper = _Helper.of(primitive);
+        _used.add(helper);
+        return '${helper.function}($json, $where)';
+      case ListType(item: PrimitiveType(:final primitive)):
+        _used.addAll([_Helper.list, _Helper.of(primitive)]);
+        return '_list($json, $where, ${_Helper.of(primitive).function})';
+      case ListType(:final item):
+        _used.add(_Helper.list);
+        final (value, at) = ('v$depth', 'at$depth');
+        return '_list($json, $where, ($value, $at) => '
+            '${_decode(item, value, at, depth + 1)})';
+      case NamedType(definition: EnumDefinition(:final name)):
+        _used.add(_Helper.string);
+        return '$name.fromJson(_string($json, $where))';
+      case NamedType(definition: ClassDefinition(:final name)) ||
+          NamedType(definition: UnionDefinition(:final name)):
+        _used.add(_Helper.object);
+        return '$name.fromJson(_object($json, $where))';
+    }
+  }
+
+  /// The `toJson` map entry of [field]: left out when the field is `null`.
+  String _encodeField(Field field) {
+    final key = dartString(field.jsonKey);
+    final name = field.dartName;
+    if (field.isRequired) return '$key: ${_encode(field.type, name)}';
+    return switch (field.type) {
+      PrimitiveType() => '$key: ?$name',
+      ListType() when field.type.isJson => '$key: ?$name',
+      NamedType() => '$key: ?$name?.toJson()',
+      ListType() =>
+        'if ($name case final $name?) $key: ${_encode(field.type, name)}',
+    };
+  }
+
+  /// An expression encoding the value [value] of type [type] to JSON.
+  String _encode(TypeRef type, String value, [int depth = 0]) => switch (type) {
+    PrimitiveType() => value,
+    ListType() when type.isJson => value,
+    NamedType() => '$value.toJson()',
+    ListType(:final item) =>
+      '[for (final v$depth in $value) ${_encode(item, 'v$depth', depth + 1)}]',
+  };
+
+  String _dartType(TypeRef type) => switch (type) {
+    PrimitiveType(primitive: Primitive.integer) => 'int',
+    PrimitiveType(primitive: Primitive.number) => 'double',
+    PrimitiveType(primitive: Primitive.string) => 'String',
+    PrimitiveType(primitive: Primitive.boolean) => 'bool',
+    ListType(:final item) => 'List<${_dartType(item)}>',
+    NamedType(:final definition) => definition.name,
+  };
+}
+
+/// The private functions generated classes decode JSON values with. Each
+/// checks the type of the value and fails with its location.
+enum _Helper {
+  integer('_int', r'''
+int _int(Object? json, String where) => switch (json) {
+  final int value => value,
+  final double value when value == value.truncateToDouble() => value.toInt(),
+  _ => throw _invalid(json, where),
+};
+'''),
+  number('_double', r'''
+double _double(Object? json, String where) => switch (json) {
+  final num value => value.toDouble(),
+  _ => throw _invalid(json, where),
+};
+'''),
+  string('_string', r'''
+String _string(Object? json, String where) => switch (json) {
+  final String value => value,
+  _ => throw _invalid(json, where),
+};
+'''),
+  boolean('_bool', r'''
+bool _bool(Object? json, String where) => switch (json) {
+  final bool value => value,
+  _ => throw _invalid(json, where),
+};
+'''),
+  object('_object', r'''
+Map<String, Object?> _object(Object? json, String where) => switch (json) {
+  final Map<String, Object?> value => value,
+  _ => throw _invalid(json, where),
+};
+'''),
+  list('_list', r'''
+List<T> _list<T>(
+  Object? json,
+  String where,
+  T Function(Object? json, String where) item,
+) => switch (json) {
+  final List<Object?> items => [
+    for (final (i, value) in items.indexed) item(value, '$where[$i]'),
+  ],
+  _ => throw _invalid(json, where),
+};
+'''),
+  invalid('_invalid', r'''
+FormatException _invalid(Object? json, String where) =>
+    FormatException('Invalid $where: $json');
+''');
+
+  const _Helper(this.function, this.code);
+
+  /// The helper decoding [primitive].
+  factory _Helper.of(Primitive primitive) => switch (primitive) {
+    Primitive.integer => integer,
+    Primitive.number => number,
+    Primitive.string => string,
+    Primitive.boolean => boolean,
+  };
+
+  /// The name of the function.
+  final String function;
+
+  /// Its declaration.
+  final String code;
+}
+
+extension on TypeRef {
+  /// Whether values of this type are already JSON: primitives, and lists of
+  /// them at any depth.
+  bool get isJson => switch (this) {
+    PrimitiveType() => true,
+    ListType(:final item) => item.isJson,
+    NamedType() => false,
+  };
 }
 
 /// A Dart single-quoted string literal with the value [value].

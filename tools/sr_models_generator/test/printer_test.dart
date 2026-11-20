@@ -96,11 +96,6 @@ void main() {
   });
 
   final notPrintedYet = {
-    'a class': ClassDefinition(
-      name: 'SRPoint',
-      location: 'point.json',
-      description: null,
-    ),
     'a union': UnionDefinition(
       name: 'SRShape',
       location: 'shape.json',
@@ -121,6 +116,168 @@ void main() {
       );
     });
   }
+
+  group('classes', () {
+    // Fixtures with objects, lists, enums and const fields, but no unions.
+    const fixtures = [
+      'primitives-schema.json',
+      'shapes-schema.json',
+      'text-schema.json',
+      'wireframe-schema.json',
+      'tree-schema.json',
+    ];
+    late String library;
+    late Map<String, RoundTripResult> results;
+
+    // Case -> the errors the round trip must report.
+    final cases = {
+      const RoundTripCase('every primitive', 'SRPrimitives', {
+        'count': 1,
+        'ratio': 0.5,
+        'text': 'a',
+        'is_visible': true,
+      }): <String>[],
+      const RoundTripCase('only the required keys', 'SRPrimitives', {
+        'count': 1,
+        'text': 'a',
+      }): <String>[],
+      const RoundTripCase('an integer written as 2.0', 'SRPrimitives', {
+        'count': 2.0,
+        'text': 'a',
+      }): <String>[],
+      const RoundTripCase('a number written as 1', 'SRPrimitives', {
+        'count': 1,
+        'ratio': 1,
+        'text': 'a',
+      }): <String>[],
+      const RoundTripCase('lists, nested and inline objects', 'SRShapes', {
+        'tags': ['a', 'b'],
+        'grid': [
+          [1, 2],
+          [3],
+        ],
+        'points': [
+          {'x': 1, 'y': 2},
+        ],
+        'origin': {'x': 0, 'y': 0},
+        'center': {'x': 5, 'y': 5},
+        'meta': {
+          'size': {'width': 3},
+        },
+        'stops': [
+          {'offset': 0.5},
+        ],
+        'alias': {'x': 1, 'y': 1},
+      }): <String>[],
+      const RoundTripCase('enums and const fields', 'SRText', {
+        'type': 'text',
+        'version': 0,
+        'truncation_mode': 'tail',
+        'platform': 'react-native',
+        'fallback_platform': 'ios',
+        'alignments': ['left', 'right'],
+      }): <String>[],
+      const RoundTripCase('merged allOf parts', 'SRShapeWireframe', {
+        'id': 1,
+        'clip': {'x': 0, 'y': 0},
+        'border': 'red',
+        'style': {'color': 'blue'},
+        'type': 'shape',
+      }): <String>[],
+      const RoundTripCase('a class that uses itself', 'SRTree', {
+        'children': [
+          {'children': <Object?>[]},
+          <String, Object?>{},
+        ],
+      }): <String>[],
+      const RoundTripCase('a missing required key', 'SRPrimitives', {
+        'text': 'a',
+      }): [
+        'threw FormatException: Invalid SRPrimitives.count: null',
+      ],
+      const RoundTripCase('a value of the wrong type', 'SRPrimitives', {
+        'count': 'one',
+        'text': 'a',
+      }): [
+        'threw FormatException: Invalid SRPrimitives.count: one',
+      ],
+      const RoundTripCase('a decimal for an integer', 'SRPrimitives', {
+        'count': 1.5,
+        'text': 'a',
+      }): [
+        'threw FormatException: Invalid SRPrimitives.count: 1.5',
+      ],
+      const RoundTripCase('a list item of the wrong type', 'SRShapes', {
+        'tags': ['a', 1],
+        'points': <Object?>[],
+      }): [
+        'threw FormatException: Invalid SRShapes.tags[1]: 1',
+      ],
+      const RoundTripCase('a nested object that is not one', 'SRShapes', {
+        'tags': <Object?>[],
+        'points': <Object?>[],
+        'origin': 'here',
+      }): [
+        'threw FormatException: Invalid SRShapes.origin: here',
+      ],
+      const RoundTripCase('an unknown enum value', 'SRText', {
+        'type': 'text',
+        'version': 0,
+        'truncation_mode': 'nope',
+        'platform': 'ios',
+      }): [
+        'threw FormatException: Unknown SRTextTruncationMode value: nope',
+      ],
+    };
+
+    setUpAll(() async {
+      final root = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
+      final resolver = ModelResolver(SchemaLoader(root));
+      for (final fixture in fixtures) {
+        resolver.resolveRoot(fixture);
+      }
+      library = const DartPrinter().printLibrary(resolver.definitions);
+      results = {
+        // == comes with its own commit.
+        for (final result in await roundTrip(library, [
+          ...cases.keys,
+        ], checkEquality: false))
+          result.name: result,
+      };
+    });
+
+    for (final MapEntry(key: roundTripCase, value: errors) in cases.entries) {
+      test('round-trips ${roundTripCase.name}', () {
+        expect(results[roundTripCase.name]?.errors, errors);
+      });
+    }
+
+    test('prints immutable final classes with a const constructor', () {
+      expect(library, contains('@immutable\nfinal class SRPoint {'));
+      expect(
+        library,
+        contains('const SRPoint({required this.x, required this.y});'),
+      );
+    });
+
+    test('prints const fields as getters, not constructor parameters', () {
+      expect(library, contains("String get type => 'text';"));
+      expect(library, contains('int get version => 0;'));
+      final constructor = RegExp(
+        r'const SRText\(\{[^}]*\}\);',
+      ).firstMatch(library)?[0];
+      expect(constructor, isNotNull);
+      expect(constructor, isNot(contains('this.type')));
+      expect(constructor, isNot(contains('this.version')));
+    });
+
+    test('declares only the decoding helpers it uses', () {
+      final enumsOnly = const DartPrinter().printLibrary([quirky]);
+      expect(enumsOnly, isNot(contains('_invalid')));
+      expect(enumsOnly, isNot(contains("import 'package:meta/meta.dart';")));
+      expect(library, contains("import 'package:meta/meta.dart';"));
+    });
+  });
 
   group('dartString', () {
     final literals = {
