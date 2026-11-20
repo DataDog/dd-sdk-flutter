@@ -2,11 +2,13 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2025-Present Datadog, Inc.
 
+import 'dart:async';
 import 'dart:ffi' as ffi;
 
 import 'package:datadog_flutter_plugin_platform_interface/datadog_flutter_plugin_platform_interface.dart';
 import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart';
 import 'package:ffi/ffi.dart';
+import 'package:flutter/widgets.dart';
 
 import 'attribute_builder.dart';
 import 'ffi_bindings.dart';
@@ -17,8 +19,19 @@ class DdRumDesktopPlatform extends DdRumPlatform {
   // dd_rum_init must be called before dd_core_start, so the pointer is
   // provided here already initialized from DatadogDesktopPlatform.initialize().
   ffi.Pointer<dd_rum>? _rum;
+  final Future<void> Function() _waitForFirstFrame;
 
-  DdRumDesktopPlatform(this._sdk, ffi.Pointer<dd_rum> rum) : _rum = rum;
+  /// [waitForFirstFrame] completes when Flutter rasterizes its first frame,
+  /// which ends Time to Initial Display (TTID). It defaults to
+  /// [WidgetsBinding.waitUntilFirstFrameRasterized].
+  DdRumDesktopPlatform(
+    this._sdk,
+    ffi.Pointer<dd_rum> rum, {
+    Future<void> Function()? waitForFirstFrame,
+  }) : _rum = rum,
+       _waitForFirstFrame =
+           waitForFirstFrame ??
+           (() => WidgetsBinding.instance.waitUntilFirstFrameRasterized);
 
   @override
   String? get cachedSessionId => null;
@@ -29,6 +42,15 @@ class DdRumDesktopPlatform extends DdRumPlatform {
     DatadogRumConfiguration configuration,
   ) async {
     // Feature was initialized in DatadogDesktopPlatform.initialize() before dd_core_start.
+    unawaited(_reportAppDisplayInitialized());
+  }
+
+  /// Reports TTID once Flutter rasterizes its first frame. The C SDK measures
+  /// it from process launch to this call, and holds any TTFD until it's made.
+  Future<void> _reportAppDisplayInitialized() async {
+    await _waitForFirstFrame();
+    final rum = _rum;
+    if (rum != null) _sdk.dd_rum_report_app_display_initialized(rum);
   }
 
   @override

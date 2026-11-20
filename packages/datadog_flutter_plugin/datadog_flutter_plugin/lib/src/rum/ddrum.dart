@@ -667,7 +667,7 @@ class DatadogRum {
   /// Time to Full Display (TTFD) of the launch. Only the first call has any
   /// effect for a given RUM session.
   ///
-  /// This is not supported on Web.
+  /// This is not supported on Web or macOS.
   void reportAppFullyDisplayed() {
     wrap('rum.reportAppFullyDisplayed', logger, null, () {
       return _platform.reportAppFullyDisplayed();
