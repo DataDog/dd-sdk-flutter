@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.0
+
+### Breaking Changes
+
+- The minimum supported versions are now Dart 3.10 and Flutter 3.38; upgrade your toolchain before updating to this release.
+
+### Features
+
+- Added `FlagSelection` (via `DatadogFlagsConfiguration.flagSelection`) to request only flags matching specified tags or key patterns, reducing the size of fetched flag configurations and logging a clear message when a selection is dropped or ignored by the server.
+- Added support for routed split `HOOK` features, which now appear in flag metadata as `__dd_feature.<key>`, along with a new `ExposureHook` API to record flag exposures into your own analytics using the same evaluation and deduplication logic as Datadog.
+- Added `DatadogProvider.verbosity` (with the new `FlagsLoggerLevel` enum) to enable SDK diagnostic logging, including in release builds where the standard Dart developer log is suppressed.
+- The SDK now transparently supports obfuscated flag keys returned by the server, with no changes required to application evaluation calls.
+- Added opt-in strict evaluation context switching via the `dd_strict_evaluation_context_switching` context attribute, allowing applications to invalidate flag assignments immediately when the OpenFeature targeting key changes.
+
+### Fixes
+
+- Fixed an issue where changing the OpenFeature evaluation context could serve flag assignments for a different targeting key; by default, the SDK now returns default values until fresh assignments for the new targeting key are loaded, and retains existing assignments when the targeting key is unchanged.
+- Fixed exposure events being recorded even when a later OpenFeature hook failed; exposures are now only recorded once the entire evaluation completes successfully.
+- Fixed telemetry and caching issues around refresh failures and late responses, ensuring retries, cache recovery, and evaluation results are reported correctly.
+
 ## 1.1.1
 
 * Fix missing Flutter Web flag evaluation counts by sending only supported Datadog metadata (#1196).
