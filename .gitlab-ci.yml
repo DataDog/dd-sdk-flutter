@@ -148,6 +148,29 @@ stages:
   tags:
     - macos:tart
 
+# Tart VMs obtain AWS credentials through the AWS CLI config rather than env vars,
+# which tools such as `vault login -method=aws` and authanywhere need.
+.tart-aws-credentials:
+  script:
+    - |
+      if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+        aws_env="$(aws configure export-credentials --format env)"
+        eval "$aws_env"
+      fi
+
+# The Tart image does not ship commit-headless, so build it from source with a
+# gimme-provided Go. Pinned to 2.0.3: the releaser feeds commits on stdin, which
+# commit-headless 3.x no longer accepts (see release_publisher.dart).
+.install-commit-headless:
+  script:
+    - |
+      if ! command -v commit-headless >/dev/null 2>&1; then
+        # 1bdb1fa9 is commit-headless v2.0.3; its go.mod needs Go 1.24.10.
+        eval "$(gimme 1.24.10)"
+        GOBIN="$HOME/.local/bin" go install github.com/DataDog/commit-headless@1bdb1fa9faa14129cd95b7d8ed2929388e3d5415
+        export PATH="$HOME/.local/bin:$PATH"
+      fi
+
 .android-emulator-runner:
   extends: .infra-retry
   image: $CI_IMAGE_DOCKER
@@ -513,6 +536,7 @@ linux-integration-test:
 # grants this job's GitHub token and is scoped to the same branch set, and
 # with `preReleaseBranches` in tools/releaser/lib/publish_rules.dart.
 prepare-release:
+  extends: .tart-runner
   stage: prepare-release
   rules:
     # push-only: matches self.prepare-release.sts.yaml's trust policy.
@@ -549,16 +573,13 @@ prepare-release:
   id_tokens:
     DDOCTOSTS_ID_TOKEN:
       aud: dd-octo-sts
-  tags:
-    - macos:sequoia
-    - specific:true
   before_script:
     # We need a short-lived GitHub token to push commits and open PRs; see
     # .github/chainguard/self.prepare-release.sts.yaml.
     - dd-octo-sts --disable-tracing debug --scope DataDog/dd-sdk-flutter --policy self.prepare-release
     - dd-octo-sts --disable-tracing token --scope DataDog/dd-sdk-flutter --policy self.prepare-release > /tmp/gh-token.txt
   script:
-    - !reference [.pre, script]
+    - !reference [.pre-tart, script]
     # Runner checks out $CI_COMMIT_SHA detached; prepare_release.dart needs
     # a real branch checkout. -B (not plain checkout) resets the branch to
     # $CI_COMMIT_SHA even if this runner is reused and already has a local
@@ -573,10 +594,12 @@ prepare-release:
     - git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/DataDog/dd-sdk-flutter.git"
     # This repo requires signed commits (see CONTRIBUTING.md), so the
     # release-prep commits need commit-headless too.
+    - !reference [.install-commit-headless, script]
     - commit-headless version
     # AI Gateway token for LLM changelog generation, via authanywhere;
     # ai_gateway.dart reads this env var directly (see
     # HttpAiGatewayClient.fromEnvironment).
+    - !reference [.tart-aws-credentials, script]
     - export AI_GATEWAY_TOKEN=$(authanywhere --audience rapid-ai-platform --raw --dc us1.ddbuild.io)
     - pushd tools/releaser && dart pub get && popd
     - |
@@ -614,15 +637,13 @@ prepare-release:
 # publish_release.dart does, by requiring the commit to be the merge of a
 # `release-prep/*` PR, and exits without doing anything otherwise.
 push-release-trigger-tag:
+  extends: .tart-runner
   stage: release-trigger
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "v4-main")'
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^release\/[^\/]+\/v\d+(\.\d+)?\.x$/'
   # Same runner as prepare-release as
   # dd-octo-sts/git/gh all need to be present
-  tags:
-    - macos:sequoia
-    - specific:true
   id_tokens:
     DDOCTOSTS_ID_TOKEN:
       aud: dd-octo-sts
@@ -682,12 +703,7 @@ notify-nightly-failed:
 
 .nightly-vars:
   script:
-    # Tart VMs obtain AWS credentials through the AWS CLI config rather than env vars, which `vault login -method=aws` needs
-    - |
-      if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
-        aws_env="$(aws configure export-credentials --format env)"
-        eval "$aws_env"
-      fi
+    - !reference [.tart-aws-credentials, script]
     - vault login -method=aws -no-print
     - export DD_E2E_CLIENT_TOKEN=$(vault kv get -field=client_token kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
     - export DD_E2E_APPLICATION_ID=$(vault kv get -field=application_id kv/aws/arn:aws:iam::486234852809:role/ci-dd-sdk-flutter/e2e)
@@ -708,9 +724,6 @@ notify-nightly-failed:
   when: always
   variables:
     VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  tags:
-    - macos:sequoia
-    - specific:true
 
 nightly-min-version-test:
   extends: [.nightly, .tart-runner]
