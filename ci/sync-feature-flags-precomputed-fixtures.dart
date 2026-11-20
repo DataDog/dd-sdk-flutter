@@ -432,7 +432,7 @@ Future<void> run(List<String> args, {Directory? root}) async {
         await fetchRevision(source, ref);
         ref = 'FETCH_HEAD';
       }
-      after = snapshot(source!, ref);
+      after = snapshot(source, ref);
       // A fresh checkout has no local snapshot, so read the pinned one to compare.
       if (update && provenance(after)['commit'] != pin && pinned == null) {
         try {
