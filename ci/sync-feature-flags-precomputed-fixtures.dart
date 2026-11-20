@@ -422,17 +422,39 @@ Future<void> run(List<String> args, {Directory? root}) async {
     after = before;
   } else {
     final temporary = Directory.systemTemp.createTempSync('ffe-precompute-');
+    var pinned = current == pin ? before : null;
     try {
-      if (source == null) {
+      final fetched = source == null;
+      if (fetched) {
         source = Directory(p.join(temporary.path, 'source')).path;
         Directory(source).createSync();
         git(source, ['init', '-q']);
         await fetchRevision(source, ref);
         ref = 'FETCH_HEAD';
       }
-      after = snapshot(source, ref);
+      after = snapshot(source!, ref);
+      // A fresh checkout has no local snapshot, so read the pinned one to compare.
+      if (update && provenance(after)['commit'] != pin && pinned == null) {
+        try {
+          if (fetched) {
+            await fetchRevision(source, pin);
+            pinned = snapshot(source, 'FETCH_HEAD');
+          } else {
+            pinned = snapshot(source, pin);
+          }
+        } on Object {
+          // Without a readable pinned snapshot, the new commit counts as a change.
+          pinned = null;
+        }
+      }
     } finally {
       temporary.deleteSync(recursive: true);
+    }
+    // An upstream commit that changes no imported file keeps the pin.
+    if (pinned != null &&
+        provenance(after)['commit'] != pin &&
+        sameSnapshot(pinned, after, includeProvenance: false)) {
+      after = pinned;
     }
     if (!sameSnapshot(before, after)) replaceSnapshot(destination, after);
   }

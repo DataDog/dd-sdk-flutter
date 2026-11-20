@@ -204,6 +204,48 @@ void main() {
     );
   });
 
+  test('--update keeps the pin when no imported file changed', () async {
+    final pinned = commitFixture('same', '{"value":5.0}');
+    await importer.run([
+      '--source',
+      source.path,
+      '--update',
+      '--ref',
+      pinned,
+    ], root: root);
+    final config = File(
+      p.join(root.path, 'ci/feature-flags-precomputed-fixtures.json'),
+    );
+    // A new upstream commit that only touches files outside the import.
+    write(p.join(source.path, 'unrelated/notes.md'), 'notes\n');
+    final unrelated = commitFixture('same', '{"value":5.0}');
+    expect(unrelated, isNot(pinned));
+    for (final freshCheckout in [false, true]) {
+      if (freshCheckout) destination.deleteSync(recursive: true);
+      await importer.run([
+        '--source',
+        source.path,
+        '--update',
+        '--ref',
+        unrelated,
+      ], root: root);
+      expect((jsonDecode(config.readAsStringSync()) as Map)['commit'], pinned);
+      expect(
+        importer.provenance(importer.readSnapshot(destination))['commit'],
+        pinned,
+      );
+    }
+    final changed = commitFixture('same', '{"value":6.0}');
+    await importer.run([
+      '--source',
+      source.path,
+      '--update',
+      '--ref',
+      changed,
+    ], root: root);
+    expect((jsonDecode(config.readAsStringSync()) as Map)['commit'], changed);
+  });
+
   test('refuses to overwrite unrelated destination files', () async {
     final sha = commitFixture('numeric', '{}');
     await importer.run([
