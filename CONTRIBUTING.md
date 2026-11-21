@@ -216,3 +216,86 @@ line is needed for a patch release,  such as a `release/3.6.x` line.
 If a change is needed for a patch release, that change should **first be made on `develop`**,
 then cherry-picked into its release line branch. The patch release can then be made from
 this release line branch, and the changelog change cherry-picked back into `develop`.
+
+## Shared precomputed response tests
+
+The Flags module tests use a snapshot of the JSON contract from [ffe-system-test-data](https://github.com/DataDog/ffe-system-test-data/tree/main/precomputed-assignments).
+The snapshot keeps response behavior consistent across mobile SDKs. It contains test data only.
+It adds no runtime dependency and requires no Git submodule.
+
+`ci/feature-flags-precomputed-fixtures.json` pins an upstream commit.
+The snapshot is fetched into the git-ignored `packages/datadog_flags/test/fixtures/precomputed` folder, and its embedded text into the git-ignored `precomputed_text.dart`. Neither is committed or published.
+Its `SOURCE.json` records the source commit and file digests.
+Each fixture is a JSON test case with a response, evaluations, and expected results.
+The test runner (`packages/datadog_flags/test/precomputed_fixture_files_test.dart`) runs the fixtures from generated embedded text.
+Snapshot generation discovers all nested JSON fixtures.
+To add a fixture, change it upstream and move the pin.
+You do not need to change the test runner or maintain a filename list.
+Missing fixtures or an empty snapshot fail verification.
+The shared `_include` and `_skip` fields define platform applicability for fixtures, evaluations, and event expectations.
+Do not add local exclusions to hide failures.
+
+Numeric semantics follow the [shared contract](https://github.com/DataDog/ffe-system-test-data/blob/main/precomputed-assignments/README.md#mobile-conformance-and-numeric-types).
+
+### Fixture coverage
+
+A generated obfuscated companion is a fixture with encoded response-map keys and the same expected public results as its plain fixture.
+Upstream CI requires a companion for each applicable plain fixture.
+It rejects missing, stale, or orphaned companions.
+Edit the plain fixture upstream, then regenerate its companion.
+Dedicated malformed-encoding fixtures and fixed digest vectors are maintained separately from generated companions. They do not require plain-fixture counterparts.
+
+Fixtures cover values, defaults, errors, reasons, variants, event emission conditions, duplicate evaluations, and numeric boundaries.
+Obfuscation fixtures cover fixed digests, salts, Unicode, whitespace, malformed metadata, and plaintext event identity.
+
+The fixture tests use the public client with a test HTTP transport.
+They check the exposure and evaluation payloads it sends.
+Each applicable fixture with a valid response also runs after JSON cache restoration.
+The tests run the same embedded fixtures on VM, dart2js, and dart2wasm.
+On dart2js, fixtures restricted to native Int64 values are reported as skipped.
+After the fixture tests, the runner prints a report with the fixture revision, the number of executed evaluations, and each excluded fixture, evaluation, and event matcher.
+An event matcher `_count` that is not a positive integer fails the test.
+These tests do not cover the native bridge, which has separate tests.
+
+### Run the fixture tests
+
+To fetch the snapshot and run the fixture tests, run the following from the repository root:
+
+```sh
+dart pub get
+melos run feature-flags:fixtures
+(cd packages/datadog_flags && dart test test/precomputed_fixture_files_test.dart)
+```
+
+`melos run feature-flags:fixtures` fetches the pinned commit, verifies its digests, and regenerates the embedded text.
+When the local snapshot already matches the pin, it only verifies, without networking.
+Otherwise, it makes up to three fetch attempts, and each attempt has a two-minute timeout.
+Verification ignores `.DS_Store` files. Other files that are not in the snapshot fail verification.
+`melos prepare` and the melos `unit_test` scripts run it first.
+`melos prepare` runs it so that `dart analyze` and `dart test` find the generated `precomputed_text.dart` file.
+
+### Move the pin
+
+From the repository root, move the pin to a reviewed upstream commit:
+
+```sh
+dart pub get
+dart run ci/sync-feature-flags-precomputed-fixtures.dart --update --ref <full-upstream-sha>
+dart ci/embed-feature-flags-precomputed-fixtures.dart
+```
+
+The importer (`ci/sync-feature-flags-precomputed-fixtures.dart`) copies committed bytes, regenerates the fixture index, and removes deleted fixtures.
+Do not edit fetched JSON or its checksums.
+Use `--update --source <local-checkout> --ref <commit>` to test an upstream fixture branch before publication.
+`--verify` checks that the local snapshot matches the pin without networking.
+
+### Automatic fixture updates
+
+The weekly `Feature flags precomputed fixtures` workflow opens a draft update PR that moves the pin when fixture content changes.
+It runs only in `DataDog/dd-sdk-flutter`, not in forks.
+It requests a short-lived write token restricted to the default branch and this workflow, and only when the pin changed.
+If it cannot open the PR, it deletes the update branch.
+A PR that changes only the pin runs the fixture tests in normal SDK CI.
+It waits when an update PR is already open. Normal SDK CI must pass before the update PR merges.
+Merge the upstream fixture contract before merging its consumer PRs.
+The update workflow never merges or publishes an SDK release.

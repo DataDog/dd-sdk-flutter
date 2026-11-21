@@ -78,7 +78,7 @@ class FlagsData {
       flags: flags.map((key, value) {
         return MapEntry(
           key,
-          FlagAssignment.fromJson(Map<String, Object?>.from(value as Map)),
+          FlagAssignment.fromCacheJson(Map<String, Object?>.from(value as Map)),
         );
       }),
       context: FlagsEvaluationContext.fromJson(
@@ -92,6 +92,10 @@ class FlagsData {
   }
 
   /// Converts this snapshot to persisted JSON.
+  ///
+  /// Numeric values retain their runtime JSON representation and exact token
+  /// metadata. Overflow and nonzero underflow use explicit token markers.
+  /// Older SDKs reject snapshots that contain these unsupported markers.
   Map<String, Object?> toJson() {
     return {
       // Older SDKs read only `flags`. Keep encoded assignments separate so a

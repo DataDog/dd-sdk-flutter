@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'assignment.dart';
+import 'numeric_value.dart';
 import 'datadog_flags_config.dart';
 import 'flags_configuration.dart';
 import 'evaluation_context.dart';
@@ -76,7 +77,7 @@ class FlagAssignmentsFetcher {
 
     try {
       final decoded = PrecomputeResponse.fromJson(
-        _asObject(jsonDecode(response.body), 'response'),
+        decodeNumericAssignments(response.body),
       );
       final attributes = decoded.data.attributes;
       for (final assignment in attributes.flags.values) {
@@ -115,11 +116,4 @@ class FlagAssignmentsFetcher {
       ...?configuration.customFlagsHeaders,
     };
   }
-}
-
-Map<String, Object?> _asObject(Object? value, String name) {
-  if (value is Map) {
-    return Map<String, Object?>.from(value);
-  }
-  throw FormatException('$name must be a JSON object');
 }

@@ -1,0 +1,6 @@
+# Shared feature flags conformance fixtures: fetched by `melos run feature-flags:fixtures` from ffe-system-test-data at the
+# commit pinned in ci/feature-flags-precomputed-fixtures.json, then embedded for web/wasm test runs.
+precomputed/
+precomputed_text.dart
+# Staging folder that the importer creates and removes while it replaces the snapshot.
+.precompute-*/
