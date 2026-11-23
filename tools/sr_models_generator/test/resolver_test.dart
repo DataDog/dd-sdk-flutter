@@ -409,6 +409,55 @@ void main() {
     });
   });
 
+  group('local schemas', () {
+    // flutter/ is test/fixtures/local_resolver, whose schemas refer to
+    // the resolver fixtures.
+    ModelResolver mounted() => ModelResolver(
+      SchemaLoader(
+        fixtures,
+        mounts: {'flutter': p.join(p.dirname(fixtures), 'local_resolver')},
+      ),
+    );
+
+    test('use the types of the schemas they refer to', () {
+      final resolver = mounted()..resolveRoot('point-schema.json');
+      final root = resolver.resolveRoot('flutter/envelope-schema.json');
+      final resolved = Resolved(root, resolver.definitions);
+
+      expect(resolved.root, resolved.named('SREnvelope'));
+      expect(resolved['SREnvelope'].location, 'flutter/envelope-schema.json');
+      expect(
+        resolved['SREnvelope'].field('point').type,
+        resolved.named('SRPoint'),
+      );
+      expect(
+        resolved['SREnvelope'].field('shapes').type,
+        ListType(resolved.named('SRShape')),
+      );
+      // The same schema, reached from a root and from a local schema.
+      expect(resolved.names.where((name) => name == 'SRPoint'), hasLength(1));
+    });
+
+    test('have their keywords checked', () {
+      expect(
+        () => mounted().resolveRoot('flutter/bad-schema.json'),
+        throwsA(
+          isA<SchemaException>()
+              .having(
+                (e) => e.message,
+                'message',
+                'Unsupported keyword "patternProperties"',
+              )
+              .having(
+                (e) => e.node?.location,
+                'location',
+                'flutter/bad-schema.json#/properties/value',
+              ),
+        ),
+      );
+    });
+  });
+
   group('fails on schemas it does not support', () {
     Matcher throwsSchemaException(String message) => throwsA(
       isA<SchemaException>().having((e) => e.message, 'message', message),

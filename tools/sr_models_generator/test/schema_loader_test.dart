@@ -177,4 +177,89 @@ void main() {
       });
     }
   });
+
+  group('mounts', () {
+    late SchemaLoader mounted;
+    late String local;
+
+    setUp(() {
+      local = p.join(p.dirname(fixtures), 'local_loader');
+      mounted = SchemaLoader(fixtures, mounts: {'flutter': local});
+    });
+
+    SchemaNode envelope(String name) =>
+        mounted.load('flutter/envelope.json').child('properties').child(name);
+
+    test('loads a mounted file under its folder', () {
+      final node = mounted.load('flutter/envelope.json');
+      expect(node.location, 'flutter/envelope.json');
+      expect(node.json['title'], 'Envelope');
+    });
+
+    // Property of flutter/envelope.json -> where its `$ref` points.
+    final references = {
+      'document': 'document.json',
+      'note': 'flutter/note.json',
+      'remote': 'sibling.json#/definitions/remote',
+    };
+    for (final MapEntry(key: name, value: location) in references.entries) {
+      test('resolves the "$name" reference to $location', () {
+        expect(mounted.resolveRef(envelope(name)).location, location);
+      });
+    }
+
+    test('reports the real path of a missing mounted file', () {
+      expect(
+        () => mounted.load('flutter/missing.json'),
+        throwsSchemaException(p.join(local, 'missing.json')),
+      );
+    });
+
+    test('hides a folder of the root with the same name', () {
+      final hiding = SchemaLoader(fixtures, mounts: {'nested': local});
+      expect(hiding.load('nested/note.json').json['title'], 'Note');
+      expect(
+        () => hiding.load('nested/child.json'),
+        throwsSchemaException('not found'),
+      );
+    });
+
+    for (final name in ['', 'a/b', '.', '..']) {
+      test('rejects "$name" as a mount', () {
+        expect(
+          () => SchemaLoader(fixtures, mounts: {name: local}),
+          throwsArgumentError,
+        );
+      });
+    }
+  });
+
+  group('files outside the schemas', () {
+    test('fails on a reference that leaves them', () {
+      final mounted = SchemaLoader(
+        fixtures,
+        mounts: {'flutter': p.join(p.dirname(fixtures), 'local_loader')},
+      );
+      expect(
+        () => mounted.resolveRef(
+          mounted
+              .load('flutter/envelope.json')
+              .child('properties')
+              .child('outside'),
+        ),
+        throwsSchemaException(
+          'outside the schemas: flutter/../../outside.json',
+        ),
+      );
+    });
+
+    for (final file in ['../schema_node_test.dart', '/etc/hosts']) {
+      test('fails on $file', () {
+        expect(
+          () => loader.load(file),
+          throwsSchemaException('outside the schemas'),
+        );
+      });
+    }
+  });
 }

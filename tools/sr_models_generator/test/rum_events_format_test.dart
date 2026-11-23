@@ -36,10 +36,13 @@ void main() {
       cacheDirectory: p.join(package, '.dart_tool', 'rum-events-format'),
     );
     final resolver = ModelResolver(
-      SchemaLoader(checkout.directory),
+      SchemaLoader(checkout.directory, mounts: config.schemaMounts),
       naming: config.naming,
     );
-    root = resolver.resolveRoot(config.rootSchema);
+    root = resolver.resolveRoot(config.rootSchemas.first);
+    for (final schema in config.rootSchemas.skip(1)) {
+      resolver.resolveRoot(schema);
+    }
     definitions = {for (final d in resolver.definitions) d.name: d};
   });
 

@@ -8,8 +8,11 @@ rum_events_format:
   # Full SHA of the rum-events-format commit the models are generated from.
   commit: 748d7fe6d0e36624b7ea64e26731e43e347637b5
 
-# Entry point of the schemas, relative to the rum-events-format repository root.
-root_schema: schemas/session-replay-mobile-schema.json
+# Entry points of the schemas, relative to the rum-events-format repository
+# root. The schemas of `local_schemas` (a folder of this repository, relative
+# to this directory) appear under `flutter/`.
+root_schemas:
+  - schemas/session-replay-mobile-schema.json
 
 # Generated file, relative to this directory.
 output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart

@@ -18,10 +18,15 @@ final class GeneratorConfig {
     required this.file,
     required this.repository,
     required this.commit,
-    required this.rootSchema,
+    required this.rootSchemas,
     required this.output,
+    this.localSchemas,
     this.naming = const NamingOptions(),
   });
+
+  /// The folder under which the schemas of [localSchemas] appear to the
+  /// rum-events-format schemas, e.g. `flutter/enriched-record-schema.json`.
+  static const localSchemasFolder = 'flutter';
 
   /// Reads and validates the configuration file at [path].
   factory GeneratorConfig.load(String path) {
@@ -110,7 +115,24 @@ final class GeneratorConfig {
         'rum_events_format.repository',
       ),
       commit: commit,
-      rootSchema: readString(yaml, 'root_schema', 'root_schema'),
+      rootSchemas: switch (readStrings(yaml, 'root_schemas')) {
+        final schemas? when schemas.isNotEmpty => schemas,
+        _ => throw ConfigException(
+          '"root_schemas" must be a non-empty list of non-empty strings',
+          file,
+        ),
+      },
+      localSchemas: switch (yaml['local_schemas']) {
+        null => null,
+        final String path when path.trim().isNotEmpty => _directory(
+          p.normalize(p.join(p.dirname(file), path)),
+          file,
+        ),
+        _ => throw ConfigException(
+          '"local_schemas" must be a non-empty string',
+          file,
+        ),
+      },
       output: p.normalize(
         p.join(p.dirname(file), readString(yaml, 'output', 'output')),
       ),
@@ -135,8 +157,16 @@ final class GeneratorConfig {
   /// Full SHA of the pinned rum-events-format commit.
   final String commit;
 
-  /// Entry point of the schemas, relative to the rum-events-format root.
-  final String rootSchema;
+  /// Entry points of the schemas, relative to the rum-events-format root;
+  /// the schemas of [localSchemas] are under [localSchemasFolder].
+  final List<String> rootSchemas;
+
+  /// The directory of the schemas kept in this repository, resolved
+  /// against the configuration's directory, if any.
+  final String? localSchemas;
+
+  /// The `mounts` of a `SchemaLoader` that makes [localSchemas] available.
+  Map<String, String> get schemaMounts => {localSchemasFolder: ?localSchemas};
 
   /// Path of the generated file, resolved against the configuration's
   /// directory.
@@ -183,6 +213,14 @@ final class GeneratorConfig {
     }
     return updated;
   }
+}
+
+/// [path], when it is an existing directory.
+String _directory(String path, String file) {
+  if (!Directory(path).existsSync()) {
+    throw ConfigException('"local_schemas" is not a directory: $path', file);
+  }
+  return path;
 }
 
 extension on String {

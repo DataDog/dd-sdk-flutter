@@ -13,10 +13,25 @@ import 'schema_node.dart';
 ///
 /// Files are identified by posix paths relative to [rootDirectory], so
 /// locations are the same on every platform.
+///
+/// [mounts] make other directories appear as folders of [rootDirectory]:
+/// with `{'flutter': '/path/to/schemas'}`, `flutter/a.json` is read from
+/// `/path/to/schemas/a.json`, keeps `flutter/a.json` as its location, and
+/// its relative `$ref`s reach the files of [rootDirectory] as if it were
+/// there. A mount hides a folder of [rootDirectory] with the same name.
 final class SchemaLoader {
-  SchemaLoader(this.rootDirectory);
+  SchemaLoader(this.rootDirectory, {this.mounts = const {}}) {
+    for (final name in mounts.keys) {
+      if (name.isEmpty || name.contains('/') || name == '.' || name == '..') {
+        throw ArgumentError.value(name, 'mounts', 'Must be a folder name');
+      }
+    }
+  }
 
   final String rootDirectory;
+
+  /// Folder name -> the directory it reads from.
+  final Map<String, String> mounts;
 
   /// Parsed files, so that each file is read once and the same file always
   /// yields the same [JsonMap] instance.
@@ -25,12 +40,19 @@ final class SchemaLoader {
   /// Loads [file] (relative to [rootDirectory]) and returns its root schema.
   SchemaNode load(String file) {
     final path = p.posix.normalize(file);
+    if (path == '..' || path.startsWith('../') || p.posix.isAbsolute(path)) {
+      throw SchemaException('Schema file outside the schemas: $file');
+    }
     final json = _files.putIfAbsent(path, () => _read(path));
     return SchemaNode(path, '', json);
   }
 
   JsonMap _read(String path) {
-    final file = File(p.joinAll([rootDirectory, ...p.posix.split(path)]));
+    final [first, ...rest] = p.posix.split(path);
+    final file = File(switch (mounts[first]) {
+      final mount? => p.joinAll([mount, ...rest]),
+      null => p.joinAll([rootDirectory, first, ...rest]),
+    });
     if (!file.existsSync()) {
       throw SchemaException('Schema file not found: ${file.path}');
     }

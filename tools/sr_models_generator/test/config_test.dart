@@ -20,7 +20,8 @@ rum_events_format:
   repository: https://example.com/rum-events-format.git
   # The pinned commit.
   commit: $sha  # trailing comment
-root_schema: schemas/root-schema.json
+root_schemas:
+  - schemas/root-schema.json
 output: ../out/models.dart
 ''';
   final file = p.join('config', 'sr_models_generator.yaml');
@@ -45,7 +46,9 @@ output: ../out/models.dart
       expect(config.file, file);
       expect(config.repository, 'https://example.com/rum-events-format.git');
       expect(config.commit, sha);
-      expect(config.rootSchema, 'schemas/root-schema.json');
+      expect(config.rootSchemas, ['schemas/root-schema.json']);
+      expect(config.localSchemas, isNull);
+      expect(config.schemaMounts, isEmpty);
     });
 
     test('uses the default naming when the file does not set it', () {
@@ -113,9 +116,33 @@ type_renames:
         without('commit'),
         '"rum_events_format.commit" must be a non-empty string',
       ),
-      'a missing root_schema': (
-        without('root_schema'),
-        '"root_schema" must be a non-empty string',
+      'missing root_schemas': (
+        without(
+          'root_schemas',
+        ).replaceFirst('  - schemas/root-schema.json\n', ''),
+        '"root_schemas" must be a non-empty list of non-empty strings',
+      ),
+      'empty root_schemas': (
+        valid.replaceFirst(
+          'root_schemas:\n  - schemas/root-schema.json',
+          'root_schemas: []',
+        ),
+        '"root_schemas" must be a non-empty list of non-empty strings',
+      ),
+      'a root_schemas that is not a list': (
+        valid.replaceFirst(
+          'root_schemas:\n  - schemas/root-schema.json',
+          'root_schemas: schemas/root-schema.json',
+        ),
+        '"root_schemas" must be a list of non-empty strings',
+      ),
+      'a blank local_schemas': (
+        '$valid\nlocal_schemas: " "\n',
+        '"local_schemas" must be a non-empty string',
+      ),
+      'a local_schemas that does not exist': (
+        '$valid\nlocal_schemas: missing\n',
+        '"local_schemas" is not a directory',
       ),
       'a missing output': (
         without('output'),
@@ -126,7 +153,7 @@ type_renames:
         '"output" must be a non-empty string',
       ),
       'a missing rum_events_format': (
-        'root_schema: x\noutput: y\n',
+        'root_schemas: [x]\noutput: y\n',
         '"rum_events_format" must be a map',
       ),
     };
@@ -204,7 +231,7 @@ rum_events_format:
   pinned: $sha
 other:
   commit: $sha
-root_schema: schemas/root-schema.json
+root_schemas: [schemas/root-schema.json]
 output: out.dart
 ''';
       expect(
@@ -227,6 +254,17 @@ output: out.dart
 
       expect(File(path).readAsStringSync(), valid.replaceFirst(sha, otherSha));
       expect(GeneratorConfig.load(path).commit, otherSha);
+    });
+
+    test('mounts local_schemas, relative to the file, as "flutter"', () {
+      Directory(p.join(dir.path, 'schemas')).createSync();
+      final path = p.join(dir.path, 'sr_models_generator.yaml');
+      File(path).writeAsStringSync('$valid\nlocal_schemas: schemas\n');
+
+      final config = GeneratorConfig.load(path);
+
+      expect(config.localSchemas, p.join(dir.path, 'schemas'));
+      expect(config.schemaMounts, {'flutter': p.join(dir.path, 'schemas')});
     });
 
     test('load fails when the file does not exist', () {
@@ -262,7 +300,7 @@ output: out.dart
       config.repository,
       'https://github.com/DataDog/rum-events-format.git',
     );
-    expect(config.rootSchema, 'schemas/session-replay-mobile-schema.json');
+    expect(config.rootSchemas, ['schemas/session-replay-mobile-schema.json']);
     expect(
       config.output,
       p.normalize(

@@ -1,0 +1,17 @@
+{
+  "title": "Envelope",
+  "properties": {
+    "document": {
+      "$ref": "../document.json"
+    },
+    "note": {
+      "$ref": "note.json"
+    },
+    "remote": {
+      "$ref": "../sibling.json#/definitions/remote"
+    },
+    "outside": {
+      "$ref": "../../outside.json"
+    }
+  }
+}
