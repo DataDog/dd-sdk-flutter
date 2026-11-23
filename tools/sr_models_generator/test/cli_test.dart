@@ -157,6 +157,79 @@ $extra''');
     });
   });
 
+  group('--check', () {
+    late String path;
+    late String short;
+
+    setUp(() async {
+      configure();
+      path = p.relative(p.join(package, 'out', 'models.dart'));
+      short = commit.substring(0, 7);
+    });
+
+    test('passes when the models are up to date', () async {
+      await run();
+      out.clear();
+
+      expect(await run(['--check']), 0, reason: '$err');
+      expect(
+        out.toString(),
+        '$path is up to date with rum-events-format $short.\n',
+      );
+    });
+
+    test(
+      'fails on models edited by hand, naming the first changed line',
+      () async {
+        await run();
+        final edited = output().replaceFirst('DO NOT MODIFY', 'MODIFIED');
+        File(p.join(package, 'out', 'models.dart')).writeAsStringSync(edited);
+
+        expect(await run(['--check']), 1);
+        expect(
+          err.toString(),
+          '$path is not up to date with rum-events-format $short: it differs '
+          'from line 5. Run `dart run sr_models_generator` in '
+          'tools/sr_models_generator to generate it.\n',
+        );
+        expect(output(), edited);
+      },
+    );
+
+    test(
+      'fails when the pin moved but the models were not generated',
+      () async {
+        await run();
+        final before = output();
+        // A new rum-events-format commit adds a property to SRPoint.
+        final repository = p.join(temp.path, 'remote');
+        final point = File(p.join(repository, 'schemas', 'point-schema.json'));
+        point.writeAsStringSync(
+          point.readAsStringSync().replaceFirst(
+            '"properties": {',
+            '"properties": {\n    "z": { "type": "integer" },',
+          ),
+        );
+        git(repository, ['commit', '--quiet', '-am', 'z']);
+        configure(pin: git(repository, ['rev-parse', 'HEAD']));
+
+        expect(await run(['--check']), 1);
+        expect(err.toString(), contains('is not up to date'));
+        expect(output(), before);
+      },
+    );
+
+    test('fails on missing models, without creating anything', () async {
+      expect(await run(['--check']), 1);
+      expect(
+        err.toString(),
+        '$path does not exist. Run `dart run sr_models_generator` in '
+        'tools/sr_models_generator to generate it.\n',
+      );
+      expect(Directory(p.join(package, 'out')).existsSync(), isFalse);
+    });
+  });
+
   // Problem -> (how to cause it, the error it gives).
   final failures = <String, (void Function(), String)>{
     'a missing configuration': (() {}, 'Configuration file not found'),
@@ -186,6 +259,7 @@ $extra''');
   test('prints the usage with --help', () async {
     expect(await run(['--help']), 0);
     expect(out.toString(), contains('Usage: dart run sr_models_generator'));
+    expect(out.toString(), contains('--check'));
   });
 
   test('fails with the usage on an unknown option', () async {

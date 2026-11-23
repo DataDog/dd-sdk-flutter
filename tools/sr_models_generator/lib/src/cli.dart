@@ -17,7 +17,8 @@ import 'schema_source.dart';
 ///
 /// Reads `sr_models_generator.yaml` from [packageRoot], checks out the
 /// pinned rum-events-format commit in its `.dart_tool/`, and writes the
-/// generated models to the configured output.
+/// generated models to the configured output. With `--check`, only tells
+/// whether that output is up to date.
 Future<int> runGenerator(
   List<String> arguments, {
   required String packageRoot,
@@ -32,6 +33,13 @@ Future<int> runGenerator(
       abbr: 'h',
       negatable: false,
       help: 'Print this usage information.',
+    )
+    ..addFlag(
+      'check',
+      negatable: false,
+      help:
+          'Fail if the generated models are not up to date with the pinned '
+          'schemas, without writing them.',
     );
   final ArgResults options;
   try {
@@ -62,13 +70,17 @@ Future<int> runGenerator(
       schemasRoot: checkout.directory,
       source: config.sourceUrl(checkout.commit),
     );
-    File(config.output)
+    final output = File(config.output);
+    final schemas = 'rum-events-format ${checkout.commit.substring(0, 7)}';
+    if (options.flag('check')) {
+      return _check(output, library.code, schemas, out: out, err: err);
+    }
+    output
       ..parent.createSync(recursive: true)
       ..writeAsStringSync(library.code);
     out.writeln(
       'Wrote ${library.definitions.length} types to '
-      '${p.relative(config.output)}, from rum-events-format '
-      '${checkout.commit.substring(0, 7)}.',
+      '${p.relative(config.output)}, from $schemas.',
     );
     return 0;
   } on ConfigException catch (e) {
@@ -79,6 +91,39 @@ Future<int> runGenerator(
     err.writeln('Cannot get the schemas: $e');
   }
   return 1;
+}
+
+/// Whether [output] is [code], as generated from [schemas].
+int _check(
+  File output,
+  String code,
+  String schemas, {
+  required StringSink out,
+  required StringSink err,
+}) {
+  const regenerate =
+      'Run `dart run sr_models_generator` in tools/sr_models_generator to '
+      'generate it.';
+  final path = p.relative(output.path);
+  if (!output.existsSync()) {
+    err.writeln('$path does not exist. $regenerate');
+    return 1;
+  }
+  final expected = code.split('\n');
+  final actual = output.readAsStringSync().split('\n');
+  for (var line = 0; line < expected.length || line < actual.length; line++) {
+    if (line >= expected.length ||
+        line >= actual.length ||
+        expected[line] != actual[line]) {
+      err.writeln(
+        '$path is not up to date with $schemas: it differs from line '
+        '${line + 1}. $regenerate',
+      );
+      return 1;
+    }
+  }
+  out.writeln('$path is up to date with $schemas.');
+  return 0;
 }
 
 String _usage(ArgParser parser) =>
