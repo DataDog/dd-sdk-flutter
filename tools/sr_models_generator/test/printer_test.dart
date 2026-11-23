@@ -33,7 +33,7 @@ void main() {
   setUpAll(() async {
     final fixtures = p.join(await packageRoot(), 'test', 'fixtures');
     final resolver = ModelResolver(SchemaLoader(p.join(fixtures, 'resolver')))
-      ..resolveRoot('text-schema.json');
+      ..resolveRoots(['text-schema.json']);
     enums = [...resolver.definitions.whereType<EnumDefinition>(), quirky];
     library = const DartPrinter().printLibrary(enums);
   });
@@ -165,8 +165,7 @@ void main() {
     setUpAll(() async {
       final root = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
       final resolver = ModelResolver(SchemaLoader(root))
-        ..resolveRoot('drawing-schema.json')
-        ..resolveRoot('tree-node-schema.json');
+        ..resolveRoots(['drawing-schema.json', 'tree-node-schema.json']);
       library = const DartPrinter().printLibrary(resolver.definitions);
       results = {
         for (final result in await roundTrip(library, [...cases.keys]))
@@ -335,7 +334,7 @@ void main() {
     /// The definitions of the resolver fixture [file] alone.
     List<Definition> definitionsOf(String file) => (ModelResolver(
       SchemaLoader(resolverFixtures),
-    )..resolveRoot(file)).definitions;
+    )..resolveRoots([file])).definitions;
 
     setUpAll(() async {
       resolverFixtures = p.join(
@@ -345,9 +344,7 @@ void main() {
         'resolver',
       );
       final resolver = ModelResolver(SchemaLoader(resolverFixtures));
-      for (final fixture in fixtures) {
-        resolver.resolveRoot(fixture);
-      }
+      resolver.resolveRoots(fixtures);
       library = const DartPrinter().printLibrary(resolver.definitions);
       results = {
         for (final result in await roundTrip(library, [...cases.keys]))
@@ -528,9 +525,11 @@ void main() {
     setUpAll(() async {
       final root = p.join(await packageRoot(), 'test', 'fixtures', 'resolver');
       final resolver = ModelResolver(SchemaLoader(root))
-        ..resolveRoot('primitives-schema.json')
-        ..resolveRoot('text-schema.json')
-        ..resolveRoot('drawing-schema.json');
+        ..resolveRoots([
+          'primitives-schema.json',
+          'text-schema.json',
+          'drawing-schema.json',
+        ]);
       library = const DartPrinter().printLibrary(resolver.definitions);
     });
 

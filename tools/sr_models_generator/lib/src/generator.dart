@@ -27,9 +27,7 @@ Future<GeneratedLibrary> generateLibrary(
     SchemaLoader(schemasRoot, mounts: config.schemaMounts),
     naming: config.naming,
   );
-  for (final schema in config.rootSchemas) {
-    resolver.resolveRoot(schema);
-  }
+  resolver.resolveRoots(config.rootSchemas);
   final definitions = resolver.definitions;
   final code = DartPrinter(
     header: [

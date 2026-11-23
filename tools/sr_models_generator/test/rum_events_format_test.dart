@@ -45,10 +45,7 @@ void main() {
       SchemaLoader(checkout.directory, mounts: config.schemaMounts),
       naming: config.naming,
     );
-    root = resolver.resolveRoot(config.rootSchemas.first);
-    for (final schema in config.rootSchemas.skip(1)) {
-      resolver.resolveRoot(schema);
-    }
+    root = resolver.resolveRoots(config.rootSchemas).first;
     sorted = resolver.definitions;
     definitions = {for (final d in sorted) d.name: d};
     samples = p.join(checkout.directory, 'samples', 'session-replay', 'mobile');

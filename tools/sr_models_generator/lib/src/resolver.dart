@@ -60,14 +60,18 @@ final class ModelResolver {
   List<Definition> get definitions =>
       _definitions.values.toList()..sort((a, b) => a.name.compareTo(b.name));
 
-  /// Resolves the schema in [file] (relative to the loader root) and every
-  /// schema it uses. Returns the type of the root schema.
-  TypeRef resolveRoot(String file) {
-    final root = _unwrap(loader.load(file));
-    if (root.title == null) {
-      throw SchemaException('The root schema needs a "title"', root);
+  /// Resolves the schemas in [files] (relative to the loader root) and
+  /// every schema they use. Returns the types of the root schemas, in the
+  /// order of [files].
+  List<TypeRef> resolveRoots(List<String> files) {
+    final types = <TypeRef>[];
+    for (final file in files) {
+      final root = _unwrap(loader.load(file));
+      if (root.title == null) {
+        throw SchemaException('The root schema needs a "title"', root);
+      }
+      types.add(_typeOf(root, owner: '', property: ''));
     }
-    final type = _typeOf(root, owner: '', property: '');
 
     // Every variant now has all its fields, including variants that use
     // their own union before declaring their discriminator.
@@ -77,7 +81,8 @@ final class ModelResolver {
     _unfinishedUnions.clear();
 
     // A rename that matches nothing is most likely stale after a schema
-    // change, and would silently stop applying.
+    // change, and would silently stop applying. Checked once every root is
+    // resolved, as any of them can use it.
     final unusedRenames = [
       for (final name in naming.renames.keys)
         if (!_appliedRenames.contains(name)) name,
@@ -87,7 +92,7 @@ final class ModelResolver {
         'Renames that match no generated type: ${unusedRenames.join(', ')}',
       );
     }
-    return type;
+    return types;
   }
 
   /// The type of [schema].

@@ -55,7 +55,7 @@ void main() {
     NamingOptions naming = const NamingOptions(),
   }) {
     final resolver = ModelResolver(SchemaLoader(fixtures), naming: naming);
-    final root = resolver.resolveRoot(file);
+    final [root] = resolver.resolveRoots([file]);
     return Resolved(root, resolver.definitions);
   }
 
@@ -412,16 +412,21 @@ void main() {
   group('local schemas', () {
     // flutter/ is test/fixtures/local_resolver, whose schemas refer to
     // the resolver fixtures.
-    ModelResolver mounted() => ModelResolver(
-      SchemaLoader(
-        fixtures,
-        mounts: {'flutter': p.join(p.dirname(fixtures), 'local_resolver')},
-      ),
-    );
+    ModelResolver mounted({NamingOptions naming = const NamingOptions()}) =>
+        ModelResolver(
+          SchemaLoader(
+            fixtures,
+            mounts: {'flutter': p.join(p.dirname(fixtures), 'local_resolver')},
+          ),
+          naming: naming,
+        );
 
     test('use the types of the schemas they refer to', () {
-      final resolver = mounted()..resolveRoot('point-schema.json');
-      final root = resolver.resolveRoot('flutter/envelope-schema.json');
+      final resolver = mounted();
+      final [_, root] = resolver.resolveRoots([
+        'point-schema.json',
+        'flutter/envelope-schema.json',
+      ]);
       final resolved = Resolved(root, resolver.definitions);
 
       expect(resolved.root, resolved.named('SREnvelope'));
@@ -438,9 +443,23 @@ void main() {
       expect(resolved.names.where((name) => name == 'SRPoint'), hasLength(1));
     });
 
+    test('can be renamed when they are not the first root', () {
+      final resolver = mounted(
+        naming: const NamingOptions(renames: {'SREnvelope': 'SRWrapper'}),
+      );
+      final [_, root] = resolver.resolveRoots([
+        'point-schema.json',
+        'flutter/envelope-schema.json',
+      ]);
+      final resolved = Resolved(root, resolver.definitions);
+
+      expect(resolved.root, resolved.named('SRWrapper'));
+      expect(resolved.names, isNot(contains('SREnvelope')));
+    });
+
     test('have their keywords checked', () {
       expect(
-        () => mounted().resolveRoot('flutter/bad-schema.json'),
+        () => mounted().resolveRoots(['flutter/bad-schema.json']),
         throwsA(
           isA<SchemaException>()
               .having(
