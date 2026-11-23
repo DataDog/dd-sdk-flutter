@@ -8,6 +8,8 @@ import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
+import 'support/git.dart';
+
 void main() {
   late Directory temp;
   late String remoteDir;
@@ -18,20 +20,6 @@ void main() {
   late String firstCommit;
   late String secondCommit;
   late String cache;
-
-  /// Runs git in [dir] with an identity and no signing, so that the tests do
-  /// not depend on the global git configuration.
-  String git(String dir, List<String> args) {
-    final result = Process.runSync('git', [
-      '-c', 'user.name=Test', '-c', 'user.email=test@example.com', //
-      '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false',
-      ...args,
-    ], workingDirectory: dir);
-    if (result.exitCode != 0) {
-      fail('git ${args.join(' ')} failed: ${result.stderr}');
-    }
-    return result.stdout.toString().trim();
-  }
 
   /// Writes [content] to `schema.json` in [dir] and commits it.
   String commitSchema(String dir, String content) {

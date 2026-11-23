@@ -176,6 +176,11 @@ final class GeneratorConfig {
   /// [NamingOptions]'s when the file does not set it.
   final NamingOptions naming;
 
+  /// Browsable URL of the schemas at [commit], e.g.
+  /// `https://github.com/DataDog/rum-events-format/tree/<commit>`.
+  String sourceUrl(String commit) =>
+      '${repository.replaceFirst(RegExp(r'\.git$'), '')}/tree/$commit';
+
   /// Pins [sha] in the configuration file, keeping its comments and layout.
   void writeCommit(String sha) {
     final source = File(file).readAsStringSync();
