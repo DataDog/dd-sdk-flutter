@@ -198,6 +198,7 @@ build-flutter:
     - (cd tools/ci && dart test)
     - melos dartfmt_check
     - melos run analyze:dart
+    - melos run generate:sr_models:check
     - melos run unit_test:flutter
     - melos run golden_test:flutter
   artifacts:
