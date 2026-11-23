@@ -86,8 +86,10 @@ class ReleasePublisher {
   /// Merges `origin/[from]` into the checked-out [branch] and returns the new
   /// tip. With commit-headless, [branch] must be on the remote already.
   ///
-  /// On a conflict the merge keeps [branch]'s side of everything; [from] is
-  /// still recorded as a parent.
+  /// On a conflict the merge keeps [branch]'s side of everything, and
+  /// `origin/[from]` stays an ancestor of the new tip. Plain git records [from]
+  /// as the second parent. Through the API the second parent is a one-commit
+  /// resolution branch whose parent is `origin/[from]`.
   Future<String> mergeRemoteBranchInto(
     GitDir gitDir,
     String branch,
@@ -125,18 +127,20 @@ class ReleasePublisher {
     await _run(gitDir, ['push', 'origin', 'HEAD:refs/heads/$branch']);
     var result = await _apiMerge(gitDir, branch, from);
     if (result.exitCode != 0) {
+      final firstError = '${result.stderr}${result.stdout}'.trim();
       final conflicts = await _conflictingPaths(gitDir, from);
       if (conflicts.isEmpty) {
         throw GitReleaseActionError(
           'Merging $from into $branch through the GitHub API failed: '
-          '${result.stderr}${result.stdout}',
+          '$firstError',
         );
       }
       logger.warning(
         '⚠️ Merging $from into $branch conflicted in ${conflicts.length} '
         'file(s) -- keeping this branch\'s side of every file. What $from '
-        'carries beyond this branch is the previous release\'s publish-prep commit, '
-        'which is re-derived on top of this merge.',
+        'carries beyond this branch is the previous release\'s publish-prep '
+        'commit, which is re-derived on top of this merge. GitHub answered: '
+        '$firstError',
       );
       final resolution = await _pushResolution(gitDir, branch, from, logger);
       try {
@@ -147,7 +151,8 @@ class ReleasePublisher {
       if (result.exitCode != 0) {
         throw GitReleaseActionError(
           'Merging $from into $branch through the GitHub API failed even '
-          'after resolving its conflicts: ${result.stderr}${result.stdout}',
+          'after resolving its conflicts: ${result.stderr}${result.stdout}\n'
+          '(First attempt: $firstError)',
         );
       }
     }
@@ -198,13 +203,18 @@ class ReleasePublisher {
   /// [branch]'s exact tree, and returns its name.
   ///
   /// Merging that branch into [branch] can't conflict, because both sides then
-  /// hold the same tree, and the merge result is [branch]'s tree with [from] as
-  /// a second parent. Any other tree can still conflict: git pairs renamed
-  /// files differently on each side.
+  /// hold the same tree. The merge result is [branch]'s tree, and
+  /// `origin/[from]` is reachable through the resolution commit's parent. Any
+  /// other tree can still conflict: git pairs renamed files differently on
+  /// each side.
   ///
   /// The commit is created with the REST API, reusing [branch]'s tree object on
-  /// the remote, since `commit-headless` rebuilds a commit from a file diff and
-  /// drops executable bits, which makes the tree differ.
+  /// the remote. `commit-headless` rebuilds a commit from a file diff, and its
+  /// GraphQL path records every file as a regular file (100644), so the tree it
+  /// produces can differ from [branch]'s in file modes.
+  ///
+  /// Throws if GitHub does not sign the commit, since a branch that requires
+  /// signed commits would reject the release PR.
   Future<String> _pushResolution(
     GitDir gitDir,
     String branch,
@@ -233,10 +243,11 @@ class ReleasePublisher {
       '.sha + " " + (.verification.verified | tostring)',
     ])).split(' ');
     if (created.last != 'true') {
-      logger.warning(
-        '⚠️ GitHub did not sign the conflict-resolution commit ${created.first}; '
-        'the release PR will not be mergeable into a branch that requires '
-        'signed commits.',
+      throw GitReleaseActionError(
+        'GitHub did not sign the conflict-resolution commit ${created.first}, '
+        'and a branch that requires signed commits would reject the release '
+        'PR. $branch is already pushed; merge $from into it from a local run '
+        '(without --commit-headless), which signs with your own key.',
       );
     }
     await _gh(gitDir, [

@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:releaser/git/release_git.dart';
 import 'package:releaser/git/release_publisher.dart';
@@ -227,29 +228,43 @@ echo "\$SHA"
           isA<GitReleaseActionError>().having(
             (e) => e.message,
             'message',
-            contains('boom'),
+            contains('through the GitHub API failed: boom'),
           ),
         ),
       );
     });
 
-    test('through the API, resolves conflicts in this branch\'s favor and '
-        'removes the temporary branch', () async {
-      await setUpDivergedBranches(conflicting: true);
-      final gitDir = await fixture.gitDir;
-      // Stands in for GitHub's merges API: refuses a conflicting merge like
-      // the real one, and otherwise merges for real.
-      final gh = fakeBinary(r'''
-case "$4" in
-  */git/commits)
-    SHA=$(git commit-tree "${8#tree=}" -p "${10#parents*=}" -m resolution)
-    echo "$SHA true"
+    // Stands in for GitHub's REST API: refuses a conflicting merge like the
+    // real one, and otherwise merges for real. Records every call in
+    // `gh.log`.
+    String fakeGitHub({
+      String verified = 'true',
+      bool refuseResolutionMerge = false,
+    }) => fakeBinary(
+      r'''
+echo "$*" >> "@LOG@"
+for a in "$@"; do
+  case "$a" in
+    tree=*) tree=${a#tree=} ;;
+    parents*=*) parent=${a#*=} ;;
+    ref=*) ref=${a#ref=} ;;
+    sha=*) sha=${a#sha=} ;;
+    head=*) head=${a#head=} ;;
+  esac
+done
+case "$*" in
+  *git/commits*)
+    echo "$(git commit-tree "$tree" -p "$parent" -m resolution) @VERIFIED@"
     ;;
-  */git/refs)
-    git push -q origin "${8#sha=}:${6#ref=}"
+  *git/refs*)
+    git push -q origin "$sha:$ref"
     ;;
-  */merges)
-    git fetch -q origin "${8#head=}"
+  *merges*)
+    if [ "@REFUSE@" = true ] && [ "$head" != main ]; then
+      echo "boom" >&2
+      exit 1
+    fi
+    git fetch -q origin "$head"
     if ! git merge -q --no-edit FETCH_HEAD >/dev/null 2>&1; then
       git merge --abort
       echo "Merge conflict" >&2
@@ -259,24 +274,111 @@ case "$4" in
     git reset -q --hard HEAD~1
     ;;
 esac
-''', name: 'gh');
+'''
+          .replaceAll('@LOG@', '${scripts.path}/gh.log')
+          .replaceAll('@VERIFIED@', verified)
+          .replaceAll('@REFUSE@', '$refuseResolutionMerge'),
+      name: 'gh',
+    );
 
-      final tip = await ReleasePublisher(
-        commitHeadless: true,
-        repoSlug: 'owner/repo',
-        ghBinary: gh,
-      ).mergeRemoteBranchInto(gitDir, 'release-prep/x', 'main', logger);
+    Future<String> mergeThroughApi(GitDir gitDir, String gh) =>
+        ReleasePublisher(
+          commitHeadless: true,
+          repoSlug: 'owner/repo',
+          ghBinary: gh,
+        ).mergeRemoteBranchInto(gitDir, 'release-prep/x', 'main', logger);
 
-      expect(await isMergeCommit(gitDir, tip), isTrue);
-      expect(await isAncestor(gitDir, 'origin/main', tip, logger), isTrue);
-      expect((await gitDir.currentBranch()).branchName, 'release-prep/x');
-      expect(File('${fixture.root.path}/c.txt').readAsStringSync(), 'mine');
+    Future<String> remoteResolutionBranches() async {
       final branches = await Process.run('git', [
         'branch',
         '--list',
         'merge-resolution/*',
       ], workingDirectory: bareRemote.path);
-      expect((branches.stdout as String).trim(), isEmpty);
+      return (branches.stdout as String).trim();
+    }
+
+    test('through the API, resolves conflicts in this branch\'s favor and '
+        'removes the temporary branch', () async {
+      await setUpDivergedBranches(conflicting: true);
+      final gitDir = await fixture.gitDir;
+      final tree = (await gitDir.runCommand([
+        'rev-parse',
+        'HEAD^{tree}',
+      ])).stdout.toString().trim();
+      final mainSha = (await gitDir.runCommand([
+        'rev-parse',
+        'origin/main',
+      ])).stdout.toString().trim();
+
+      final tip = await mergeThroughApi(gitDir, fakeGitHub());
+
+      expect(await isMergeCommit(gitDir, tip), isTrue);
+      expect(await isAncestor(gitDir, 'origin/main', tip, logger), isTrue);
+      expect((await gitDir.currentBranch()).branchName, 'release-prep/x');
+      expect(File('${fixture.root.path}/c.txt').readAsStringSync(), 'mine');
+      expect(await remoteResolutionBranches(), isEmpty);
+
+      final calls = File('${scripts.path}/gh.log').readAsLinesSync();
+      expect(calls, hasLength(4));
+      expect(calls[0], contains('base=release-prep/x -f head=main'));
+      expect(
+        calls[1],
+        allOf(contains('tree=$tree'), contains('parents[]=$mainSha')),
+      );
+      expect(calls[2], contains('ref=refs/heads/merge-resolution/'));
+      expect(
+        calls[3],
+        allOf(
+          contains('base=release-prep/x'),
+          contains('head=merge-resolution/release-prep-x'),
+        ),
+      );
+    });
+
+    test('through the API, throws without creating a branch when GitHub '
+        'does not sign the resolution commit', () async {
+      await setUpDivergedBranches(conflicting: true);
+      final gitDir = await fixture.gitDir;
+
+      await expectLater(
+        mergeThroughApi(gitDir, fakeGitHub(verified: 'false')),
+        throwsA(
+          isA<GitReleaseActionError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('did not sign'), contains('local run')),
+          ),
+        ),
+      );
+
+      expect(await remoteResolutionBranches(), isEmpty);
+      final calls = File('${scripts.path}/gh.log').readAsLinesSync();
+      expect(calls.where((call) => call.contains('git/refs')), isEmpty);
+      expect(
+        calls.where((call) => call.contains('head=merge-resolution')),
+        isEmpty,
+      );
+    });
+
+    test('through the API, removes the temporary branch and reports both '
+        'errors when the resolved merge is refused', () async {
+      await setUpDivergedBranches(conflicting: true);
+      final gitDir = await fixture.gitDir;
+
+      await expectLater(
+        mergeThroughApi(gitDir, fakeGitHub(refuseResolutionMerge: true)),
+        throwsA(
+          isA<GitReleaseActionError>().having(
+            (e) => e.message,
+            'message',
+            allOf(
+              contains('even after resolving its conflicts: boom'),
+              contains('First attempt: Merge conflict'),
+            ),
+          ),
+        ),
+      );
+      expect(await remoteResolutionBranches(), isEmpty);
     });
 
     test('through the API, moves the local branch onto the commit GitHub '
