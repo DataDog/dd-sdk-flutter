@@ -5,6 +5,5 @@ included:
   - ios
 
 excluded:
-  - ios/Pods
   - ios/.symlinks
   - ios/Flutter

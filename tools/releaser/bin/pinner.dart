@@ -81,10 +81,10 @@ Future<int> _pinIOS(GitDir gitDir, String package, String? version) async {
   final packageRoot = path.join(gitDir.path, package);
   final packageSwift = resolveNativeDependencyFiles(packageRoot).iosSpmManifest;
   if (packageSwift == null) {
-    Logger.root.info(
-      'ℹ️ No Package.swift with a dd-sdk-ios dependency in $package. Skipping.',
+    Logger.root.shout(
+      '❌ No Package.swift with a dd-sdk-ios dependency in $package.',
     );
-    return 0;
+    exit(1);
   }
 
   final versionArgument = version != null

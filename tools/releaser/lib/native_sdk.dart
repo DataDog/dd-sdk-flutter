@@ -323,10 +323,13 @@ Future<String?> resolveNativeSdkTarget({
   }
 
   if (isPinnedDeclaration(workingTreeDeclaration)) {
-    // A pin can carry syntax around its version (SPM's `exact: "3.16.0"`);
-    // a bare commit SHA has no version to extract and is kept as-is.
+    // Only SPM's `exact: "3.16.0"` wraps its version in syntax. Other pins
+    // are exact refs (`v1.4.0`, `2.10.0-SNAPSHOT`, a commit SHA) and are
+    // kept as written.
     final declaration = workingTreeDeclaration!.trim();
-    final pin = normalizeVersion(declaration) ?? declaration;
+    final pin = declaration.startsWith('exact:')
+        ? normalizeVersion(declaration) ?? declaration
+        : declaration;
     if (trigger != TriggerContext.support) onPinned?.call(pin);
     return pin;
   }

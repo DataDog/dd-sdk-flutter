@@ -396,6 +396,22 @@ FetchContent_Declare(some_other_dep
       expect(target, '3.13.1');
     });
 
+    for (final pin in ['v1.4.0', '2.10.0-SNAPSHOT', 'a' * 40]) {
+      test('a non-SPM pin "$pin" is kept as written', () async {
+        final target = await resolveNativeSdkTarget(
+          trigger: TriggerContext.mainline,
+          override: null,
+          workingTreeDeclaration: pin,
+          fetchLatest: () => throw StateError(
+            'should not look for a newer release when pinned',
+          ),
+          releaseExists: (version) =>
+              throw StateError('should not be called with no override'),
+        );
+        expect(target, pin);
+      });
+    }
+
     test('an override beats a pin', () async {
       String? pinned;
       final target = await resolveNativeSdkTarget(

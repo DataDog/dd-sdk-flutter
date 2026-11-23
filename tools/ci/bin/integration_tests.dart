@@ -50,7 +50,7 @@ Future<void> main(List<String> arguments) async {
     _ => TestPlatform.host,
   };
   if (platform case TestPlatform.ios || TestPlatform.macos) {
-    await requireSwiftPackageManager();
+    await requireSwiftPackageManager(['.']);
   }
 
   final testDirectory = Directory('integration_test');

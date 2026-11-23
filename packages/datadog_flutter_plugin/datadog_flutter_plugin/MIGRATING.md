@@ -18,6 +18,10 @@ The minimum supported iOS version is now 15.0 (previously 13.0). Update your Xco
 
 CocoaPods is no longer supported. The Datadog iOS SDK stopped publishing to CocoaPods after 3.20, so the Datadog Flutter packages ship only as Swift packages. Enable Flutter's [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers) integration (`flutter config --enable-swift-package-manager`, on by default from Flutter 3.44) before building for iOS or macOS. Plugins that only support CocoaPods keep working alongside it.
 
+If you embed Flutter in an existing iOS app (add-to-app), CocoaPods module embedding (`install_all_flutter_pods`, `flutter build ios-framework`) can no longer include the Datadog packages. Use `flutter build swift-package` instead, which requires Flutter 3.44 or later. See the [hybrid app example](https://github.com/DataDog/dd-sdk-flutter/tree/develop/examples/native-hybrid-app) for a working setup.
+
+If you build for Android, web, or desktop on Linux or Windows from a project with an `ios/` folder, use Flutter 3.41 or later. Earlier versions fail `flutter pub get` because Swift Package Manager can't be enabled without Xcode.
+
 ## RUM Changes
 
 The "feature operation" APIs have been renamed to "operations":

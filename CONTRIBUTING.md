@@ -51,6 +51,22 @@ variables `DD_CLIENT_TOKEN` and `DD_APPLICATION_ID` for most test apps, and
 If you need to switch environments frequently, you can use `melos generate_env` to
 only generate the environment files, without re-running other prepare steps.
 
+### iOS and macOS
+
+iOS and macOS builds require Flutter's Swift Package Manager integration. Enable it
+globally:
+
+```bash
+flutter config --enable-swift-package-manager
+```
+
+The iOS and macOS melos scripts check this setting with scripts in `tools/ci`, so fetch
+that package's dependencies before running them:
+
+```bash
+(cd tools/ci && dart pub get)
+```
+
 ## Code Style
 
 Code style is enforced with the following libraries in the following languages:

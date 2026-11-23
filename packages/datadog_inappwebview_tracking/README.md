@@ -8,6 +8,8 @@ This package is an extension to the [`datadog_flutter_plugin`][1]. It allows Rea
 > [!WARNING]
 > This plugin does not currently support Flutter Web
 
+On iOS, your app must build with Flutter's [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers) integration (`flutter config --enable-swift-package-manager`). This package does not support CocoaPods.
+
 ## Instrumenting your web views
 
 The RUM Flutter SDK provides APIs for you to control web view tracking when using the [`flutter_inappwebview`][2] package.

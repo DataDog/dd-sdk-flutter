@@ -30,6 +30,9 @@ tools/ci/venv
 ndk_crash_reports_v2/
 ndk_crash_reports_intermediary_v2/
 .fvm/
+# Flutter generates these for the macOS apps when Swift Package Manager is disabled.
+**/macos/Podfile
+**/macos/Podfile.lock
 .build
 tools/ci/.tmp
 .fvmrc

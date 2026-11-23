@@ -12,6 +12,7 @@ dependencies:
   collection: ^1.18.0
   http: ^1.6.0
   path: ^1.8.0
+  yaml: ^3.1.0
 
 dev_dependencies:
   lints: ^6.1.0

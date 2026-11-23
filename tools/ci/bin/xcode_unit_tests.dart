@@ -46,7 +46,7 @@ Future<void> main(List<String> arguments) async {
     exit(64);
   }
 
-  await requireSwiftPackageManager();
+  await requireSwiftPackageManager(['example']);
 
   final xcresultDir = Directory(path.join(rootPath, '.build', 'xcresult'))
     ..createSync(recursive: true);

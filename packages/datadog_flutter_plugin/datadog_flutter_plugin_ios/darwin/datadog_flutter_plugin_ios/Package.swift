@@ -1,7 +1,15 @@
 // swift-tools-version: 5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
+import Foundation
 import PackageDescription
+
+// Compiles in test-only APIs such as `flushAndDeinitialize`, matching dd-sdk-ios's own
+// manifest, which reads the same environment variable.
+let swiftSettings: [SwiftSetting] =
+    ProcessInfo.processInfo.environment["DD_SDK_COMPILED_FOR_TESTING"] != nil
+        ? [.define("DD_SDK_COMPILED_FOR_TESTING")]
+        : []
 
 let package = Package(
     name: "datadog_flutter_plugin_ios",
@@ -26,7 +34,8 @@ let package = Package(
                 .product(name: "DatadogRUM", package: "dd-sdk-ios"),
                 "DictionaryCoder"
             ],
-            resources: []
+            resources: [],
+            swiftSettings: swiftSettings
         )
     ]
 )

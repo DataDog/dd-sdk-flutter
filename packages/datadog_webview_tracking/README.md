@@ -3,6 +3,8 @@
 This package is an extension to the [`datadog_flutter_plugin`][1]. It allows
 Real User Monitoring to monitor web views and eliminate blind spots in your hybrid Flutter applications.
 
+On iOS, your app must build with Flutter's [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers) integration (`flutter config --enable-swift-package-manager`). This package does not support CocoaPods.
+
 ## Instrumenting your web views
 
 The RUM Flutter SDK provides APIs for you to control web view tracking when using the [`webview_flutter`][2] package.

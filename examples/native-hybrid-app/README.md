@@ -57,7 +57,7 @@ flutter pub get
 
 ### iOS
 
-The iOS host app embeds the Flutter module as a Swift package, which needs
+The iOS host app embeds the Flutter module as a Swift package, which requires
 Flutter 3.44 or later. Build the package from the Flutter module:
 
 ```bash
@@ -78,7 +78,7 @@ The build rebuilds the module's Dart code when it changes. Run
 The Xcode project adds dd-sdk-ios with Swift Package Manager. Swift Package
 Manager resolves a single dd-sdk-ios version for the app and the Flutter
 plugins, so the native and Flutter SDKs always match. Hybrid Session Replay
-needs dd-sdk-ios 3.16.0 or later.
+requires dd-sdk-ios 3.16.0 or later.
 
 ### Android
 
