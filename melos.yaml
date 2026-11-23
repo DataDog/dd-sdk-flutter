@@ -98,6 +98,21 @@ scripts:
   dartfmt:
     exec: dart format .
 
+  generate:sr_models:
+    run: cd tools/sr_models_generator && dart run sr_models_generator
+    description: |
+      Generate the Session Replay models from the rum-events-format commit pinned in tools/sr_models_generator/sr_models_generator.yaml.
+
+  generate:sr_models:check:
+    run: cd tools/sr_models_generator && dart run sr_models_generator --check
+    description: |
+      Fail if the generated Session Replay models are not up to date with the pinned rum-events-format commit.
+
+  generate:sr_models:update:
+    run: cd tools/sr_models_generator && dart run sr_models_generator --ref master
+    description: |
+      Pin the latest rum-events-format master commit and generate the Session Replay models from its schemas.
+
   lint_fix:
     run: melos lint_fix:ios && melos lint_fix:android
 

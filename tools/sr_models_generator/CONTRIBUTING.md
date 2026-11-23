@@ -41,6 +41,22 @@ hand-written Flutter models. A rename's key is a generated name, or a schema
 location (`file#pointer`, as error messages print it) to rename a single
 schema. A rename that matches nothing is an error.
 
+## Moving the pin
+
+1. `melos run generate:sr_models:update`, or `dart run sr_models_generator
+   --ref <branch, tag or SHA>` for another ref. It pins the commit only once
+   the models of its schemas are generated, and writes them.
+2. Review the diff of the generated models: new types and fields, and
+   changed names.
+3. Run `dart test`. The tests tagged `rum-events-format` check the types
+   generated from the pinned schemas; when the schemas change, update them:
+   * the expected classes, enums and unions, and how each union tells its
+     variants apart;
+   * the official samples, and the undeclared keys each may have;
+   * `type_renames`, as a rename that matches no type fails.
+4. Commit the configuration and the generated models together;
+   `melos run generate:sr_models:check` fails when they do not match.
+
 ## Tests
 
 ```sh
