@@ -57,6 +57,7 @@ void main() {
       'class': 'classValue',
       'hashCode': 'hashCodeValue',
       'to_json': 'toJsonValue',
+      'identical': 'identicalValue',
     });
     // Composition layer modifiers have a `value` property, and `type` is not
     // reserved in Dart.

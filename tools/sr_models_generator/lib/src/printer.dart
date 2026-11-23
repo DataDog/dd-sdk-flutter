@@ -69,7 +69,7 @@ sealed class $name {
   factory $name.fromJson(Map<String, Object?> json) => switch (json[$key]) {
 ${cases.join('\n')}
     final other => throw FormatException(
-      'Unknown $name ${discriminatorKey.replaceAll(r'$', r'\$')}: \$other',
+      ${dartString('Unknown $name $discriminatorKey: ')} '\$other',
     ),
   };
 
@@ -158,11 +158,12 @@ final class _Library {
           // List == compares identity; lists are compared item by item.
           _used.addAll([_Helper.equals, _Helper.hash]);
           comparisons.add(
-            '_equals(other.${field.dartName}, ${field.dartName})',
+            '_equals(other.${field.dartName}, this.${field.dartName})',
           );
           hashes.add('_hash(${field.dartName})');
         } else {
-          comparisons.add('other.${field.dartName} == ${field.dartName}');
+          // `this.`, for a field named `other`.
+          comparisons.add('other.${field.dartName} == this.${field.dartName}');
           hashes.add(field.dartName);
         }
       } else {

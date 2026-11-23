@@ -90,6 +90,22 @@ void main() {
       expect(git(cache, ['rev-list', '--count', 'HEAD']), '1');
     });
 
+    test('tells progress when downloading, not when cached', () async {
+      final messages = <String>[];
+      Future<void> checkoutReporting() => checkoutCommit(
+        repository: remote,
+        sha: firstCommit,
+        cacheDirectory: cache,
+        progress: messages.add,
+      );
+
+      await checkoutReporting();
+      expect(messages, ['Fetching $remote at $firstCommit...']);
+
+      await checkoutReporting();
+      expect(messages, hasLength(1));
+    });
+
     test('reuses a cached commit without contacting the repository', () async {
       await checkout(firstCommit);
       Directory(remoteDir).deleteSync(recursive: true);
@@ -139,6 +155,22 @@ void main() {
         expect(readSchema(result), schema);
       });
     }
+
+    test('tells progress on every download', () async {
+      final messages = <String>[];
+      for (var i = 0; i < 2; i++) {
+        await fetchLatest(
+          repository: remote,
+          branchOrTag: 'master',
+          cacheDirectory: cache,
+          progress: messages.add,
+        );
+      }
+      expect(messages, [
+        'Fetching $remote at master...',
+        'Fetching $remote at master...',
+      ]);
+    });
 
     test('sees new commits on the branch', () async {
       await latest('master');

@@ -16,11 +16,12 @@ const _reservedWords = {
   'var', 'void', 'when', 'while', 'with', 'yield',
 };
 
-/// Members every generated class declares or inherits; a field with one of
-/// these names would clash with them.
+/// Members every generated class declares or inherits, and the `dart:core`
+/// function its `==` calls; a field with one of these names would clash
+/// with them.
 const _classMembers = {
   'fromJson', 'toJson', 'hashCode', 'runtimeType', 'toString', //
-  'noSuchMethod',
+  'noSuchMethod', 'identical',
 };
 
 /// Members every generated enum declares or inherits; a case with one of

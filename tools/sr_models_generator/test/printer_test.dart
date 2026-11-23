@@ -4,6 +4,7 @@
 
 import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
+import 'package:sr_models_generator/src/naming.dart';
 import 'package:test/test.dart';
 
 import 'support/package_root.dart';
@@ -512,9 +513,9 @@ void main() {
         final primitivesOnly = const DartPrinter().printLibrary(
           definitionsOf('primitives-schema.json'),
         );
-        expect(primitivesOnly, contains('other.count == count'));
+        expect(primitivesOnly, contains('other.count == this.count'));
         expect(primitivesOnly, isNot(contains('_equals')));
-        expect(library, contains('_equals(other.grid, grid)'));
+        expect(library, contains('_equals(other.grid, this.grid)'));
       });
     });
   });
@@ -603,6 +604,86 @@ void main() {
         printed('Entries [0] to [3], or <none>.'),
         contains(r'/// Entries \[0\] to \[3\], or \<none>.'),
       );
+    });
+  });
+
+  group('names that could clash with the generated code', () {
+    // A field named `other`, like the parameter of ==, and one that would
+    // be named `identical`, like the function == calls.
+    Field field(String key, TypeRef type, {Object? constValue}) => Field(
+      jsonKey: key,
+      dartName: fieldName(key),
+      type: type,
+      isRequired: true,
+      description: null,
+      constValue: constValue,
+    );
+    const string = PrimitiveType(Primitive.string);
+    final holder =
+        ClassDefinition(
+            name: 'SRHolder',
+            location: 'holder.json',
+            description: null,
+          )
+          ..fields.addAll([
+            field('other', string),
+            field('items', const ListType(string)),
+            field('identical', string),
+          ]);
+    // A discriminator key with characters to escape in a string literal.
+    final quoted = ClassDefinition(
+      name: 'SRQuoted',
+      location: 'quoted.json',
+      description: null,
+    )..fields.add(field("kind's", string, constValue: 'q'));
+    final union = UnionDefinition(
+      name: 'SRTagged',
+      location: 'tagged.json',
+      description: null,
+    )..discriminatorKey = "kind's";
+    union.variants['q'] = quoted;
+    quoted.unions.add(union);
+
+    const json = {
+      'other': 'a',
+      'items': ['b'],
+      'identical': 'c',
+    };
+    late String library;
+    late Map<String, RoundTripResult> results;
+    late Comparison comparison;
+
+    setUpAll(() async {
+      library = const DartPrinter().printLibrary([holder, quoted, union]);
+      results = {
+        for (final result in await roundTrip(library, [
+          const RoundTripCase('holder', 'SRHolder', json),
+          const RoundTripCase('tagged', 'SRTagged', {"kind's": 'q'}),
+          const RoundTripCase('unknown tag', 'SRTagged', {"kind's": 'x'}),
+        ]))
+          result.name: result,
+      };
+      [comparison] = await compareModels(library, [
+        const ComparisonCase('the same JSON', 'SRHolder', json, json),
+      ]);
+    });
+
+    test('a field named other is compared to the other field', () {
+      expect(library, contains('other.other == this.other'));
+      expect(library, contains('_equals(other.items, this.items)'));
+      expect(comparison.equal, isTrue);
+    });
+
+    test('a field is not named identical', () {
+      expect(library, contains('final String identicalValue;'));
+      expect(results['holder']?.errors, isEmpty);
+    });
+
+    test('a discriminator key with a quote is escaped', () {
+      expect(results['tagged']?.errors, isEmpty);
+      expect(results['unknown tag']?.errors, [
+        "threw FormatException: Unknown SRTagged kind's: x",
+      ]);
     });
   });
 

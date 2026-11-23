@@ -25,11 +25,12 @@ bool isFullCommitSha(String value) => RegExp(r'^[0-9a-f]{40}$').hasMatch(value);
 /// Checks out the commit [sha] of [repository] in [cacheDirectory].
 ///
 /// [cacheDirectory] belongs to the generator: local changes in it are
-/// discarded.
+/// discarded. [progress] is told when the commit has to be downloaded.
 Future<SchemaCheckout> checkoutCommit({
   required String repository,
   required String sha,
   required String cacheDirectory,
+  void Function(String message)? progress,
 }) async {
   if (!isFullCommitSha(sha)) {
     throw ArgumentError.value(
@@ -41,7 +42,7 @@ Future<SchemaCheckout> checkoutCommit({
   }
   final dir = await _prepareCache(cacheDirectory);
   if (!await _hasCommit(dir, sha)) {
-    await _fetch(dir, repository, sha);
+    await _fetch(dir, repository, sha, progress);
   }
   final checkout = await _checkout(dir, sha);
   if (checkout.commit != sha) {
@@ -56,11 +57,12 @@ Future<SchemaCheckout> checkoutCommit({
 /// (e.g. `master`) and checks it out in [cacheDirectory].
 ///
 /// [cacheDirectory] belongs to the generator: local changes in it are
-/// discarded.
+/// discarded. [progress] is told when the commit is downloaded.
 Future<SchemaCheckout> fetchLatest({
   required String repository,
   required String branchOrTag,
   required String cacheDirectory,
+  void Function(String message)? progress,
 }) async {
   if (isFullCommitSha(branchOrTag)) {
     throw ArgumentError.value(
@@ -70,7 +72,7 @@ Future<SchemaCheckout> fetchLatest({
     );
   }
   final dir = await _prepareCache(cacheDirectory);
-  await _fetch(dir, repository, branchOrTag);
+  await _fetch(dir, repository, branchOrTag, progress);
   return _checkout(dir, 'FETCH_HEAD');
 }
 
@@ -80,8 +82,13 @@ Future<String> _prepareCache(String cacheDirectory) async {
   return dir;
 }
 
-Future<void> _fetch(String dir, String repository, String revision) async {
-  stderr.writeln('Fetching $repository at $revision...');
+Future<void> _fetch(
+  String dir,
+  String repository,
+  String revision,
+  void Function(String message)? progress,
+) async {
+  progress?.call('Fetching $repository at $revision...');
   await _git(dir, ['fetch', '--quiet', '--depth', '1', repository, revision]);
 }
 

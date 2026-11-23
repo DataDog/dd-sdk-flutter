@@ -109,9 +109,12 @@ $extra''');
       expect(await run(), 0);
       expect(
         out.toString(),
+        'Fetching $remote at $commit...\n'
         'Wrote 5 types to ${p.relative(p.join(package, 'out', 'models.dart'))}, '
         'from rum-events-format ${commit.substring(0, 7)}.\n',
       );
+      // Progress is not an error: tools showing stderr as errors (melos)
+      // must not see it.
       expect(err.toString(), isEmpty);
     });
 
@@ -273,7 +276,7 @@ $extra''');
         expect(output(), contains('  final int? z;'));
         expect(
           out.toString(),
-          startsWith(
+          contains(
             'Pinned rum-events-format ${sha.substring(0, 7)}, '
             'was ${commit.substring(0, 7)}.\n',
           ),
@@ -286,7 +289,7 @@ $extra''');
       expect(pinned(), commit);
       expect(
         out.toString(),
-        startsWith(
+        contains(
           'rum-events-format stays pinned at ${commit.substring(0, 7)}.\n',
         ),
       );

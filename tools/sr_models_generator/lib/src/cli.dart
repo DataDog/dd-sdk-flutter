@@ -88,11 +88,13 @@ Future<int> runGenerator(
         repository: config.repository,
         sha: sha,
         cacheDirectory: cache,
+        progress: out.writeln,
       ),
       final branchOrTag => await fetchLatest(
         repository: config.repository,
         branchOrTag: branchOrTag,
         cacheDirectory: cache,
+        progress: out.writeln,
       ),
     };
     final library = await generateLibrary(
