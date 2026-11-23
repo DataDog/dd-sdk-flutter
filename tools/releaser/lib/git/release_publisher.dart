@@ -86,9 +86,8 @@ class ReleasePublisher {
   /// Merges `origin/[from]` into the checked-out [branch] and returns the new
   /// tip. With commit-headless, [branch] must be on the remote already.
   ///
-  /// On a conflict, plain git retries with `-s ours`, keeping [branch]'s side
-  /// of everything; GitHub's merges API has no such option, so commit-headless
-  /// throws.
+  /// On a conflict the merge keeps [branch]'s side of everything; [from] is
+  /// still recorded as a parent.
   Future<String> mergeRemoteBranchInto(
     GitDir gitDir,
     String branch,
@@ -124,31 +123,164 @@ class ReleasePublisher {
     // The branch's current tip is already verified (it came from a prior
     // commit-headless push), so a plain push can create the ref the API needs.
     await _run(gitDir, ['push', 'origin', 'HEAD:refs/heads/$branch']);
-    final result = await Process.run(ghBinary, [
-      'api',
-      '--method',
-      'POST',
-      'repos/$repoSlug/merges',
-      '-f',
-      'base=$branch',
-      '-f',
-      'head=$from',
-    ], workingDirectory: gitDir.path);
-    // 204 (nothing to merge) prints nothing; success otherwise prints the
-    // new commit.
+    var result = await _apiMerge(gitDir, branch, from);
     if (result.exitCode != 0) {
-      throw GitReleaseActionError(
-        'Merging $from into $branch through the GitHub API failed: '
-        '${result.stderr}${result.stdout}\n'
-        'If this is a merge conflict, the dev line edited lines the previous '
-        'release\'s publish-prep commit also changed. The API cannot pick a '
-        'side, but a local run (without --commit-headless) resolves it by '
-        'keeping this branch\'s side and re-deriving that commit.',
+      final conflicts = await _conflictingPaths(gitDir, from);
+      if (conflicts.isEmpty) {
+        throw GitReleaseActionError(
+          'Merging $from into $branch through the GitHub API failed: '
+          '${result.stderr}${result.stdout}',
+        );
+      }
+      logger.warning(
+        '⚠️ Merging $from into $branch conflicted in ${conflicts.length} '
+        'file(s) -- keeping this branch\'s side of every file. What $from '
+        'carries beyond this branch is the previous release\'s publish-prep commit, '
+        'which is re-derived on top of this merge.',
       );
+      final resolution = await _pushResolution(gitDir, branch, from, logger);
+      try {
+        result = await _apiMerge(gitDir, branch, resolution);
+      } finally {
+        await _deleteRemoteBranch(gitDir, resolution, logger);
+      }
+      if (result.exitCode != 0) {
+        throw GitReleaseActionError(
+          'Merging $from into $branch through the GitHub API failed even '
+          'after resolving its conflicts: ${result.stderr}${result.stdout}',
+        );
+      }
     }
     await _run(gitDir, ['fetch', 'origin', branch]);
     await _run(gitDir, ['reset', '--hard', 'FETCH_HEAD']);
     return _head(gitDir);
+  }
+
+  /// `POST /merges`: merges [head] into [base]. GitHub signs the merge commit
+  /// but cannot resolve conflicts.
+  Future<ProcessResult> _apiMerge(GitDir gitDir, String base, String head) =>
+      Process.run(ghBinary, [
+        'api',
+        '--method',
+        'POST',
+        'repos/$repoSlug/merges',
+        '-f',
+        'base=$base',
+        '-f',
+        'head=$head',
+      ], workingDirectory: gitDir.path);
+
+  /// The files a merge of `origin/[from]` into the checked-out branch
+  /// conflicts in; empty when it merges cleanly.
+  Future<List<String>> _conflictingPaths(GitDir gitDir, String from) async {
+    final merge = await gitDir.runCommand([
+      'merge',
+      '--no-commit',
+      '--no-ff',
+      'origin/$from',
+    ], throwOnError: false);
+    try {
+      if (merge.exitCode == 0) return const [];
+      final result = await gitDir.runCommand([
+        'diff',
+        '--name-only',
+        '--diff-filter=U',
+      ]);
+      return LineSplitter.split(
+        result.stdout.toString(),
+      ).where((path) => path.isNotEmpty).toList();
+    } finally {
+      await gitDir.runCommand(['merge', '--abort'], throwOnError: false);
+    }
+  }
+
+  /// Creates a branch holding one commit on top of `origin/[from]` with
+  /// [branch]'s exact tree, and returns its name.
+  ///
+  /// Merging that branch into [branch] can't conflict, because both sides then
+  /// hold the same tree, and the merge result is [branch]'s tree with [from] as
+  /// a second parent. Any other tree can still conflict: git pairs renamed
+  /// files differently on each side.
+  ///
+  /// The commit is created with the REST API, reusing [branch]'s tree object on
+  /// the remote, since `commit-headless` rebuilds a commit from a file diff and
+  /// drops executable bits, which makes the tree differ.
+  Future<String> _pushResolution(
+    GitDir gitDir,
+    String branch,
+    String from,
+    Logger logger,
+  ) async {
+    final resolution = 'merge-resolution/${branch.replaceAll('/', '-')}';
+    final fromSha = (await gitDir.runCommand([
+      'rev-parse',
+      'origin/$from',
+    ])).stdout.toString().trim();
+    final tree = (await gitDir.runCommand([
+      'rev-parse',
+      'HEAD^{tree}',
+    ])).stdout.toString().trim();
+
+    final created = (await _gh(gitDir, [
+      'repos/$repoSlug/git/commits',
+      '-f',
+      'message=chore(release): keep $branch\'s side of conflicts with $from',
+      '-f',
+      'tree=$tree',
+      '-f',
+      'parents[]=$fromSha',
+      '--jq',
+      '.sha + " " + (.verification.verified | tostring)',
+    ])).split(' ');
+    if (created.last != 'true') {
+      logger.warning(
+        '⚠️ GitHub did not sign the conflict-resolution commit ${created.first}; '
+        'the release PR will not be mergeable into a branch that requires '
+        'signed commits.',
+      );
+    }
+    await _gh(gitDir, [
+      'repos/$repoSlug/git/refs',
+      '-f',
+      'ref=refs/heads/$resolution',
+      '-f',
+      'sha=${created.first}',
+    ]);
+    return resolution;
+  }
+
+  /// `gh api --method POST` for [args], returning stdout.
+  Future<String> _gh(GitDir gitDir, List<String> args) async {
+    final result = await Process.run(ghBinary, [
+      'api',
+      '--method',
+      'POST',
+      ...args,
+    ], workingDirectory: gitDir.path);
+    if (result.exitCode != 0) {
+      throw GitReleaseActionError(
+        'gh api ${args.first} failed: ${result.stderr}${result.stdout}',
+      );
+    }
+    return result.stdout.toString().trim();
+  }
+
+  Future<void> _deleteRemoteBranch(
+    GitDir gitDir,
+    String branch,
+    Logger logger,
+  ) async {
+    final result = await gitDir.runCommand([
+      'push',
+      'origin',
+      '--delete',
+      branch,
+    ], throwOnError: false);
+    if (result.exitCode != 0) {
+      logger.warning(
+        '⚠️ Could not delete the temporary branch $branch: ${result.stderr}',
+      );
+    }
   }
 
   /// Pushes the checked-out [branch] through `commit-headless`, then moves the

@@ -39,8 +39,8 @@ void main() {
 
   /// A stand-in for `commit-headless`: runs [body] in the checkout and prints
   /// whatever it echoes.
-  String fakeBinary(String body) {
-    final file = File('${scripts.path}/commit-headless')
+  String fakeBinary(String body, {String name = 'commit-headless'}) {
+    final file = File('${scripts.path}/$name')
       ..writeAsStringSync('#!/bin/sh\n$body\n');
     Process.runSync('chmod', ['+x', file.path]);
     return file.path;
@@ -211,11 +211,11 @@ echo "\$SHA"
       expect(await isAncestor(gitDir, 'origin/main', 'HEAD', logger), isTrue);
     });
 
-    test('through the API, throws with an explanation when GitHub refuses '
-        'the merge', () async {
-      await setUpDivergedBranches(conflicting: true);
+    test('through the API, throws when GitHub refuses a merge that does not '
+        'conflict', () async {
+      await setUpDivergedBranches(conflicting: false);
       final gitDir = await fixture.gitDir;
-      final gh = fakeBinary('echo "Merge conflict" >&2\nexit 1');
+      final gh = fakeBinary('echo "boom" >&2\nexit 1');
 
       await expectLater(
         ReleasePublisher(
@@ -227,10 +227,56 @@ echo "\$SHA"
           isA<GitReleaseActionError>().having(
             (e) => e.message,
             'message',
-            allOf(contains('Merge conflict'), contains('without')),
+            contains('boom'),
           ),
         ),
       );
+    });
+
+    test('through the API, resolves conflicts in this branch\'s favor and '
+        'removes the temporary branch', () async {
+      await setUpDivergedBranches(conflicting: true);
+      final gitDir = await fixture.gitDir;
+      // Stands in for GitHub's merges API: refuses a conflicting merge like
+      // the real one, and otherwise merges for real.
+      final gh = fakeBinary(r'''
+case "$4" in
+  */git/commits)
+    SHA=$(git commit-tree "${8#tree=}" -p "${10#parents*=}" -m resolution)
+    echo "$SHA true"
+    ;;
+  */git/refs)
+    git push -q origin "${8#sha=}:${6#ref=}"
+    ;;
+  */merges)
+    git fetch -q origin "${8#head=}"
+    if ! git merge -q --no-edit FETCH_HEAD >/dev/null 2>&1; then
+      git merge --abort
+      echo "Merge conflict" >&2
+      exit 1
+    fi
+    git push -q origin HEAD:refs/heads/release-prep/x
+    git reset -q --hard HEAD~1
+    ;;
+esac
+''', name: 'gh');
+
+      final tip = await ReleasePublisher(
+        commitHeadless: true,
+        repoSlug: 'owner/repo',
+        ghBinary: gh,
+      ).mergeRemoteBranchInto(gitDir, 'release-prep/x', 'main', logger);
+
+      expect(await isMergeCommit(gitDir, tip), isTrue);
+      expect(await isAncestor(gitDir, 'origin/main', tip, logger), isTrue);
+      expect((await gitDir.currentBranch()).branchName, 'release-prep/x');
+      expect(File('${fixture.root.path}/c.txt').readAsStringSync(), 'mine');
+      final branches = await Process.run('git', [
+        'branch',
+        '--list',
+        'merge-resolution/*',
+      ], workingDirectory: bareRemote.path);
+      expect((branches.stdout as String).trim(), isEmpty);
     });
 
     test('through the API, moves the local branch onto the commit GitHub '
