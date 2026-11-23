@@ -18,7 +18,8 @@ import 'schema_source.dart';
 /// Reads `sr_models_generator.yaml` from [packageRoot], checks out the
 /// pinned rum-events-format commit in its `.dart_tool/`, and writes the
 /// generated models to the configured output. With `--check`, only tells
-/// whether that output is up to date.
+/// whether that output is up to date. With `--ref`, pins another commit
+/// first, once the models of its schemas are generated.
 Future<int> runGenerator(
   List<String> arguments, {
   required String packageRoot,
@@ -40,6 +41,13 @@ Future<int> runGenerator(
       help:
           'Fail if the generated models are not up to date with the pinned '
           'schemas, without writing them.',
+    )
+    ..addOption(
+      'ref',
+      valueHelp: 'branch, tag or SHA',
+      help:
+          'Pin this rum-events-format commit, or the one this branch or tag '
+          'points to now, and generate the models of its schemas.',
     );
   final ArgResults options;
   try {
@@ -55,16 +63,38 @@ Future<int> runGenerator(
     out.writeln(_usage(parser));
     return 0;
   }
+  final ref = options.option('ref');
+  final usageError = switch (ref) {
+    '' => '--ref needs a branch, tag or SHA.',
+    final _? when options.flag('check') =>
+      '--ref and --check cannot be used together.',
+    _ => null,
+  };
+  if (usageError != null) {
+    err
+      ..writeln(usageError)
+      ..writeln()
+      ..writeln(_usage(parser));
+    return 64; // EX_USAGE
+  }
 
   try {
     final config = GeneratorConfig.load(
       p.join(packageRoot, 'sr_models_generator.yaml'),
     );
-    final checkout = await checkoutCommit(
-      repository: config.repository,
-      sha: config.commit,
-      cacheDirectory: p.join(packageRoot, '.dart_tool', 'rum-events-format'),
-    );
+    final cache = p.join(packageRoot, '.dart_tool', 'rum-events-format');
+    final checkout = switch (ref ?? config.commit) {
+      final sha when isFullCommitSha(sha) => await checkoutCommit(
+        repository: config.repository,
+        sha: sha,
+        cacheDirectory: cache,
+      ),
+      final branchOrTag => await fetchLatest(
+        repository: config.repository,
+        branchOrTag: branchOrTag,
+        cacheDirectory: cache,
+      ),
+    };
     final library = await generateLibrary(
       config,
       schemasRoot: checkout.directory,
@@ -74,6 +104,17 @@ Future<int> runGenerator(
     final schemas = 'rum-events-format ${checkout.commit.substring(0, 7)}';
     if (options.flag('check')) {
       return _check(output, library.code, schemas, out: out, err: err);
+    }
+    if (ref != null) {
+      // Only now that the models of the new schemas are generated.
+      config.writeCommit(checkout.commit);
+      out.writeln(
+        checkout.commit == config.commit
+            ? 'rum-events-format stays pinned at '
+                  '${checkout.commit.substring(0, 7)}.'
+            : 'Pinned rum-events-format ${checkout.commit.substring(0, 7)}, '
+                  'was ${config.commit.substring(0, 7)}.',
+      );
     }
     output
       ..parent.createSync(recursive: true)

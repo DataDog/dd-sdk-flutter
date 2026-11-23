@@ -50,6 +50,25 @@ $extra''');
   String output() =>
       File(p.join(package, 'out', 'models.dart')).readAsStringSync();
 
+  /// Commits a change of [file] in the fake rum-events-format, replacing
+  /// [from] by [to], and returns the new commit.
+  String change(String file, String from, String to) {
+    final repository = p.join(temp.path, 'remote');
+    final schema = File(p.join(repository, 'schemas', file));
+    final changed = schema.readAsStringSync().replaceFirst(from, to);
+    expect(changed, isNot(schema.readAsStringSync()), reason: 'no change');
+    schema.writeAsStringSync(changed);
+    git(repository, ['commit', '--quiet', '-am', 'change']);
+    return git(repository, ['rev-parse', 'HEAD']);
+  }
+
+  /// A new rum-events-format commit adding `z` to SRPoint.
+  String addZ() => change(
+    'point-schema.json',
+    '"properties": {',
+    '"properties": {\n    "z": { "type": "integer" },',
+  );
+
   setUp(() async {
     temp = Directory.systemTemp.createTempSync('sr_cli_test');
     final fixtures = p.join(
@@ -201,17 +220,7 @@ $extra''');
       () async {
         await run();
         final before = output();
-        // A new rum-events-format commit adds a property to SRPoint.
-        final repository = p.join(temp.path, 'remote');
-        final point = File(p.join(repository, 'schemas', 'point-schema.json'));
-        point.writeAsStringSync(
-          point.readAsStringSync().replaceFirst(
-            '"properties": {',
-            '"properties": {\n    "z": { "type": "integer" },',
-          ),
-        );
-        git(repository, ['commit', '--quiet', '-am', 'z']);
-        configure(pin: git(repository, ['rev-parse', 'HEAD']));
+        configure(pin: addZ());
 
         expect(await run(['--check']), 1);
         expect(err.toString(), contains('is not up to date'));
@@ -228,6 +237,92 @@ $extra''');
       );
       expect(Directory(p.join(package, 'out')).existsSync(), isFalse);
     });
+  });
+
+  group('--ref', () {
+    late String config;
+
+    String pinned() => GeneratorConfig.load(config).commit;
+
+    setUp(() {
+      config = p.join(package, 'sr_models_generator.yaml');
+      configure();
+    });
+
+    // How the new commit is named -> the ref to pass.
+    final refs = <String, String Function(String)>{
+      'a branch': (_) => 'master',
+      'a tag': (sha) {
+        git(p.join(temp.path, 'remote'), ['tag', 'v2', sha]);
+        return 'v2';
+      },
+      'a SHA': (sha) => sha,
+    };
+    for (final MapEntry(key: kind, value: refOf) in refs.entries) {
+      test('pins the commit of $kind and generates its models', () async {
+        final before = File(config).readAsStringSync();
+        final sha = addZ();
+
+        expect(await run(['--ref', refOf(sha)]), 0, reason: '$err');
+
+        expect(pinned(), sha);
+        expect(
+          File(config).readAsStringSync(),
+          before.replaceFirst(commit, sha),
+        );
+        expect(output(), contains('  final int? z;'));
+        expect(
+          out.toString(),
+          startsWith(
+            'Pinned rum-events-format ${sha.substring(0, 7)}, '
+            'was ${commit.substring(0, 7)}.\n',
+          ),
+        );
+      });
+    }
+
+    test('says when the pin stays the same', () async {
+      expect(await run(['--ref', commit]), 0);
+      expect(pinned(), commit);
+      expect(
+        out.toString(),
+        startsWith(
+          'rum-events-format stays pinned at ${commit.substring(0, 7)}.\n',
+        ),
+      );
+    });
+
+    test('keeps the pin when the new schemas cannot be generated', () async {
+      change('shapes-schema.json', '"type": "object",', '"anyOf": [],');
+
+      expect(await run(['--ref', 'master']), 1);
+
+      expect(
+        err.toString(),
+        contains('Invalid schema: Unsupported keyword "anyOf"'),
+      );
+      expect(pinned(), commit);
+      expect(File(p.join(package, 'out', 'models.dart')).existsSync(), isFalse);
+    });
+
+    test('keeps the pin when the ref does not exist', () async {
+      expect(await run(['--ref', 'no-such-branch']), 1);
+      expect(err.toString(), contains('Cannot get the schemas:'));
+      expect(pinned(), commit);
+    });
+
+    final misuses = {
+      ['--ref', 'master', '--check']:
+          '--ref and --check cannot be used together.',
+      ['--ref', '']: '--ref needs a branch, tag or SHA.',
+    };
+    for (final MapEntry(key: arguments, value: message) in misuses.entries) {
+      test('rejects ${arguments.join(' ')}', () async {
+        expect(await run(arguments), 64);
+        expect(err.toString(), startsWith('$message\n'));
+        expect(pinned(), commit);
+      });
+    }
   });
 
   // Problem -> (how to cause it, the error it gives).
@@ -260,6 +355,7 @@ $extra''');
     expect(await run(['--help']), 0);
     expect(out.toString(), contains('Usage: dart run sr_models_generator'));
     expect(out.toString(), contains('--check'));
+    expect(out.toString(), contains('--ref'));
   });
 
   test('fails with the usage on an unknown option', () async {
