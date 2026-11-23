@@ -513,9 +513,11 @@ void main() {
         final primitivesOnly = const DartPrinter().printLibrary(
           definitionsOf('primitives-schema.json'),
         );
-        expect(primitivesOnly, contains('other.count == this.count'));
+        expect(primitivesOnly, contains('other.count == count'));
         expect(primitivesOnly, isNot(contains('_equals')));
-        expect(library, contains('_equals(other.grid, this.grid)'));
+        expect(library, contains('_equals(other.grid, grid)'));
+        // `this.` only where a field is hidden (see the clash tests).
+        expect(library, isNot(contains('_equals(other.grid, this.grid)')));
       });
     });
   });
@@ -670,7 +672,7 @@ void main() {
 
     test('a field named other is compared to the other field', () {
       expect(library, contains('other.other == this.other'));
-      expect(library, contains('_equals(other.items, this.items)'));
+      expect(library, contains('_equals(other.items, items)'));
       expect(comparison.equal, isTrue);
     });
 

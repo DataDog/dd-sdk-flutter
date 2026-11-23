@@ -154,16 +154,16 @@ final class _Library {
           '$annotation  final $type${field.isRequired ? '' : '?'} '
           '${field.dartName};',
         );
+        // In ==, the parameter `other` hides a field named `other`, which
+        // then needs `this.`; anywhere else, `this.` is unnecessary.
+        final own = field.dartName == 'other' ? 'this.other' : field.dartName;
         if (field.type is ListType) {
           // List == compares identity; lists are compared item by item.
           _used.addAll([_Helper.equals, _Helper.hash]);
-          comparisons.add(
-            '_equals(other.${field.dartName}, this.${field.dartName})',
-          );
+          comparisons.add('_equals(other.${field.dartName}, $own)');
           hashes.add('_hash(${field.dartName})');
         } else {
-          // `this.`, for a field named `other`.
-          comparisons.add('other.${field.dartName} == this.${field.dartName}');
+          comparisons.add('other.${field.dartName} == $own');
           hashes.add(field.dartName);
         }
       } else {
