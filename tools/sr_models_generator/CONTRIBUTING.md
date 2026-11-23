@@ -16,6 +16,13 @@ change has to be ported manually.
   pinned rum-events-format commit, in `sr_models_generator.yaml`. The schemas
   are fetched at that commit when generating, into `.dart_tool/`, and are
   never committed.
+* **Schemas owned by this repository.** `schemas/` holds the schemas of data
+  that is not in rum-events-format: `enriched-record-schema.json` describes
+  the records as the plugin hands them to its iOS and Android code
+  (`EnrichedRecordJSON.swift` and `EnrichedRecord.kt` read those keys). They
+  appear to the rum-events-format schemas as the folder `flutter/`, so they
+  refer to them with relative `$ref`s, e.g.
+  `../schemas/session-replay/mobile/record-schema.json`.
 * **Dart-native.** The generator is a plain Dart package, so it runs with
   `dart run` on any CI host, with no Swift or Kotlin toolchain.
 * **Fail loudly.** JSON Schema keywords outside the subset rum-events-format

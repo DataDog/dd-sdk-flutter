@@ -15,15 +15,21 @@
 @Tags(['rum-events-format'])
 library;
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:sr_models_generator/sr_models_generator.dart';
 import 'package:test/test.dart';
 
 import 'support/package_root.dart';
+import 'support/round_trip.dart';
 
 void main() {
   late TypeRef root;
   late Map<String, Definition> definitions;
+  late List<Definition> sorted;
+  late String samples;
 
   setUpAll(() async {
     final package = await packageRoot();
@@ -43,7 +49,9 @@ void main() {
     for (final schema in config.rootSchemas.skip(1)) {
       resolver.resolveRoot(schema);
     }
-    definitions = {for (final d in resolver.definitions) d.name: d};
+    sorted = resolver.definitions;
+    definitions = {for (final d in sorted) d.name: d};
+    samples = p.join(checkout.directory, 'samples', 'session-replay', 'mobile');
   });
 
   /// The union named [name].
@@ -104,6 +112,7 @@ void main() {
     'SRContentClip',
     'SREmbeddedContentWireframe',
     'SREmbeddedContentWireframeUpdate',
+    'SREnrichedRecord',
     'SRFocusRecord',
     'SRFocusRecordData',
     'SRFullSnapshotRecord',
@@ -252,6 +261,49 @@ void main() {
       }, variants);
     });
   }
+
+  group('SREnrichedRecord', () {
+    test('has the keys the iOS and Android code read', () {
+      final envelope = switch (definitions['SREnrichedRecord']) {
+        final ClassDefinition envelope => envelope,
+        final other => throw StateError('Not a class: $other'),
+      };
+      expect(envelope.location, 'flutter/enriched-record-schema.json');
+      expect(
+        [
+          for (final field in envelope.fields)
+            (field.jsonKey, field.dartName, '${field.type}', field.isRequired),
+        ],
+        [
+          ('records', 'records', 'List<SRRecord>', true),
+          ('applicationID', 'applicationID', 'string', true),
+          ('sessionID', 'sessionID', 'string', true),
+          ('viewID', 'viewID', 'string', true),
+        ],
+      );
+    });
+
+    test('round-trips real records', () async {
+      Object? sample(String name) =>
+          jsonDecode(File(p.join(samples, 'record', name)).readAsStringSync());
+      final [result] = await roundTrip(
+        const DartPrinter().printLibrary(sorted),
+        [
+          RoundTripCase('an envelope', 'SREnrichedRecord', {
+            'records': [
+              sample('metadata-record.json'),
+              sample('has-focus-record.json'),
+              sample('view-end-record.json'),
+            ],
+            'applicationID': 'application',
+            'sessionID': 'session',
+            'viewID': 'view',
+          }),
+        ],
+      );
+      expect(result.errors, isEmpty);
+    });
+  });
 
   test('wireframes expose the fields every kind of wireframe has', () {
     final wireframe = unionNamed('SRWireframe');

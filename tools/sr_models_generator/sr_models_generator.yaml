@@ -13,6 +13,9 @@ rum_events_format:
 # to this directory) appear under `flutter/`.
 root_schemas:
   - schemas/session-replay-mobile-schema.json
+  # The records as the plugin hands them to its iOS and Android code.
+  - flutter/enriched-record-schema.json
+local_schemas: schemas
 
 # Generated file, relative to this directory.
 output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart

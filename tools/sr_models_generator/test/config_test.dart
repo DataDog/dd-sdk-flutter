@@ -300,7 +300,12 @@ output: out.dart
       config.repository,
       'https://github.com/DataDog/rum-events-format.git',
     );
-    expect(config.rootSchemas, ['schemas/session-replay-mobile-schema.json']);
+    expect(config.rootSchemas, [
+      'schemas/session-replay-mobile-schema.json',
+      'flutter/enriched-record-schema.json',
+    ]);
+    expect(config.localSchemas, p.join(root, 'schemas'));
+    expect(config.schemaMounts, {'flutter': p.join(root, 'schemas')});
     expect(
       config.output,
       p.normalize(
