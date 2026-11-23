@@ -6,6 +6,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:ci_helpers/swift_package_manager.dart';
 import 'package:path/path.dart' as path;
 
 // Runs the example app's Xcode unit tests for the current melos package.
@@ -38,10 +39,14 @@ Future<void> main(List<String> arguments) async {
   final rootPath = Platform.environment['MELOS_ROOT_PATH'];
   final packageName = Platform.environment['MELOS_PACKAGE_NAME'];
   if (rootPath == null || packageName == null) {
-    print('MELOS_ROOT_PATH and MELOS_PACKAGE_NAME must be set; run this '
-        'through `melos exec`.');
+    print(
+      'MELOS_ROOT_PATH and MELOS_PACKAGE_NAME must be set; run this '
+      'through `melos exec`.',
+    );
     exit(64);
   }
+
+  await requireSwiftPackageManager();
 
   final xcresultDir = Directory(path.join(rootPath, '.build', 'xcresult'))
     ..createSync(recursive: true);

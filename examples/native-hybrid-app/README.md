@@ -19,7 +19,7 @@ Each one runs in its own Flutter engine.
 ```
 native-hybrid-app/
 ├── flutter_module/   # The Flutter content, shared by both host apps
-├── ios/              # Native iOS host app (UIKit, CocoaPods)
+├── ios/              # Native iOS host app (UIKit, Swift Package Manager)
 └── android/          # Native Android host app (Kotlin, Gradle)
 ```
 
@@ -57,14 +57,28 @@ flutter pub get
 
 ### iOS
 
+The iOS host app embeds the Flutter module as a Swift package, which needs
+Flutter 3.44 or later. Build the package from the Flutter module:
+
 ```bash
-cd ios
-pod install
-open HybridSessionReplayExample.xcworkspace
+cd flutter_module
+flutter build swift-package --platform ios
 ```
 
-Run the `HybridSessionReplayExample` scheme. Hybrid Session Replay needs
-dd-sdk-ios 3.16.0 or later.
+Then open the Xcode project and run the `HybridSessionReplayExample` scheme:
+
+```bash
+cd ios
+open HybridSessionReplayExample.xcodeproj
+```
+
+The build rebuilds the module's Dart code when it changes. Run
+`flutter build swift-package` again after changing the module's dependencies.
+
+The Xcode project adds dd-sdk-ios with Swift Package Manager. Swift Package
+Manager resolves a single dd-sdk-ios version for the app and the Flutter
+plugins, so the native and Flutter SDKs always match. Hybrid Session Replay
+needs dd-sdk-ios 3.16.0 or later.
 
 ### Android
 

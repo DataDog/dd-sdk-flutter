@@ -6,7 +6,8 @@ import 'helpers.dart';
 
 /// Matches a `build.gradle`'s `ext.datadog_version = "..."` assignment --
 /// mirrors `native_sdk.dart`'s private matcher of the same shape, kept
-/// separate deliberately (see `cocoapod_util.dart`'s equivalent note).
+/// separate deliberately: a matcher wants to be permissive, a rewriter has
+/// to reproduce exactly what it matched.
 final _androidGradleVersionRewritePattern = RegExp(
   r'^(?<indent>\s*)(?<prefix>ext\.datadog_version\s*=\s*")(?<version>[^"]+)(?<suffix>".*)',
 );

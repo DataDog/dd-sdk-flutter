@@ -103,10 +103,6 @@ void main() {
   });
 
   group('normalizeVersion', () {
-    test('strips a CocoaPods constraint operator', () {
-      expect(normalizeVersion('~> 3.5.0'), '3.5.0');
-    });
-
     test('pulls the version out of an SPM version argument', () {
       expect(normalizeVersion('from: "3.0.0"'), '3.0.0');
     });
@@ -190,7 +186,7 @@ void main() {
     test('resolves a normal bump to its sections', () async {
       final result = await resolveNativeSdkChangelog(
         NativeSdk.ios,
-        currentDeclaration: '~> 3.15.0',
+        currentDeclaration: 'from: "3.15.0"',
         targetVersion: '3.16.0',
         fetchChangelog: fakeFetch,
       );
@@ -220,7 +216,7 @@ void main() {
       () async {
         final result = await resolveNativeSdkChangelog(
           NativeSdk.ios,
-          currentDeclaration: '~> 1.0.0',
+          currentDeclaration: 'from: "1.0.0"',
           targetVersion: '3.16.0',
           fetchChangelog: fakeFetch,
         );

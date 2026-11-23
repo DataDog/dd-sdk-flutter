@@ -12,9 +12,9 @@ import 'package:args/args.dart';
 import 'package:git/git.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/helpers.dart';
+import 'package:releaser/native_sdk.dart';
 import 'package:releaser/spm_util.dart';
 
 Future<int> main(List<String> arguments) async {
@@ -78,49 +78,23 @@ void _printUsage(ArgParser argParser) {
 }
 
 Future<int> _pinIOS(GitDir gitDir, String package, String? version) async {
-  final specDependencyPattern = RegExp(
-    r"(?<ws>\s+)pod '(?<dependency>.+)', :git => '(?<git>[^']*?)', :(?<overrideType>\w+) => '(?<override>[^']*?)'",
-  );
-
-  final podVersionString = version != null
-      ? ":tag => '$version'"
-      : ":branch => 'develop'";
-  final podFile = 'packages/$package/example/ios/Podfile';
-
-  final file = File(path.join(gitDir.path, podFile));
-  if (!file.existsSync()) {
-    Logger.root.shout('❌ Could not find file $podFile');
-    return 1;
+  final packageRoot = path.join(gitDir.path, package);
+  final packageSwift = resolveNativeDependencyFiles(packageRoot).iosSpmManifest;
+  if (packageSwift == null) {
+    Logger.root.info(
+      'ℹ️ No Package.swift with a dd-sdk-ios dependency in $package. Skipping.',
+    );
+    return 0;
   }
 
-  bool inOverride = false;
-  await transformFile(file, Logger.root, false, (line) {
-    if (inOverride) {
-      if (line.startsWith(overridesEndPattern)) {
-        inOverride = false;
-      } else {
-        final match = specDependencyPattern.firstMatch(line);
-        if (match != null) {
-          line =
-              "${match.namedGroup('ws')}pod '${match.namedGroup('dependency')}', :git => '${match.namedGroup('git')}', $podVersionString";
-        }
-      }
-    } else if (line.startsWith(overridesStartPattern)) {
-      inOverride = true;
-    }
-
-    return line;
-  });
-
-  final spmVersionString = version != null
+  final versionArgument = version != null
       ? 'exact: "$version"'
       : 'branch: "develop"';
-  await PinSwiftPackageVersion.pinSpmVersion(
-    gitDir.path,
-    package,
-    spmVersionString,
-    false,
+  await setIosSpmVersionArgument(
+    packageSwift,
+    versionArgument,
     Logger.root,
+    false,
   );
 
   return 0;

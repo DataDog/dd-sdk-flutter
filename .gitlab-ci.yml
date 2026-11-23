@@ -54,8 +54,7 @@ stages:
     - flutter upgrade --force
     - flutter --version
     - flutter doctor
-    # SPM is the exception, make sure its disabled before starting the build
-    - flutter config --no-enable-swift-package-manager
+    - flutter config --enable-swift-package-manager
     - dart pub global activate melos
     - dart pub global activate junitreport
     - melos bootstrap
@@ -238,26 +237,7 @@ build-android:
     paths:
       - .build/xcresult
 
-build-ios-spm:
-  extends: [.tart-runner, .xcode-test-artifacts]
-  stage: build
-  interruptible: true
-  except: [schedules]
-  variables:
-    VAULT_ADDR: "https://vault.us1.ddbuild.io"
-  script:
-    - !reference [.pre-tart, script]
-    - !reference [.pre-ios, script]
-    - flutter config --enable-swift-package-manager
-    - melos remove_cocoapods
-    - melos pub:get
-    - melos run analyze:ios
-    - melos run build:ios
-    - melos run unit_test:ios
-
-# dd-sdk-ios's CocoaPods podspecs don't declare macOS support (SPM-only for now), so
-# macOS can only build via Swift Package Manager until that's fixed upstream.
-build-macos-spm:
+build-macos:
   extends: [.tart-runner, .xcode-test-artifacts]
   stage: build
   interruptible: true
@@ -267,8 +247,6 @@ build-macos-spm:
   script:
     - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
-    - flutter config --enable-swift-package-manager
-    - melos remove_cocoapods
     - melos pub:get
     - melos run build:macos
     - melos run unit_test:macos
@@ -283,9 +261,7 @@ build-ios:
   script:
     - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
-    - pod repo update
     - melos pub:get
-    - melos remove_podfile_lock --no-select
     - melos run analyze:ios
     - melos run build:ios
     - melos run unit_test:ios
@@ -398,9 +374,7 @@ ios-integration-test:
   script:
     - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
-    - pod repo update
     - melos pub:get
-    - melos remove_podfile_lock --no-select
     - melos run integration_test:ios
   artifacts:
     paths:
@@ -423,8 +397,6 @@ macos-integration-test:
   script:
     - !reference [.pre-tart, script]
     - !reference [.pre-macos, script]
-    - flutter config --enable-swift-package-manager
-    - melos remove_cocoapods
     - melos pub:get
     - melos run integration_test:macos
   artifacts:
@@ -775,10 +747,8 @@ nightly-beta-test-ios:
     - !reference [.use-fvm-beta, script]
     - fvm flutter precache --ios
     - fvm exec dart pub global activate melos
-    - pod repo update
     - flutter doctor
     - fvm exec melos pub:get
-    - fvm exec melos remove_podfile_lock --no-select
     - fvm exec melos run analyze:ios
     - fvm exec melos run build:ios
     - fvm exec melos run unit_test:ios
@@ -835,9 +805,7 @@ nightly-ios:
     - !reference [.nightly-vars, script]
     - !reference [.pre-tart, script]
     - !reference [.pre-ios, script]
-    - pod repo update
     - melos pub:get
-    - melos remove_podfile_lock --no-select
     - melos run e2e_tests:ios
   artifacts:
     paths:
