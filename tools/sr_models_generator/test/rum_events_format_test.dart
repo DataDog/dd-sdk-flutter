@@ -262,6 +262,72 @@ void main() {
     });
   }
 
+  group('the official mobile samples', () {
+    // Every sample of samples/session-replay/mobile -> the differences its
+    // round trip may have: keys that no mobile schema declares, which the
+    // generated models drop. The samples still validate
+    // because the schemas allow additional properties.
+    const undeclaredStyleType = 'textStyle.type: missing';
+    final differencesBySample = {
+      'record/full-snapshot-record.json': [
+        '\$.data.wireframes[0].$undeclaredStyleType',
+      ],
+      'record/full-snapshot-record-with-composition-tree.json': [
+        '\$.data.wireframes[1].$undeclaredStyleType',
+      ],
+      'record/has-focus-record.json': <String>[],
+      'record/incremental-snapshot-record.json': [
+        '\$.data.adds[0].wireframe.$undeclaredStyleType',
+        '\$.data.updates[0].$undeclaredStyleType',
+      ],
+      'record/incremental-snapshot-record-composition-tree-mutation.json':
+          <String>[],
+      'record/metadata-record.json': <String>[],
+      'record/view-end-record.json': <String>[],
+      'segment/segment.json': [
+        // The schema calls it has_full_snapshot.
+        r'$.has_full_snapshot_record: missing',
+        // Only in the browser segment schema.
+        r'$.creation_reason: missing',
+        '\$.records[0].data.wireframes[1].$undeclaredStyleType',
+        '\$.records[1].data.adds[0].wireframe.$undeclaredStyleType',
+        '\$.records[1].data.updates[0].$undeclaredStyleType',
+      ],
+    };
+    late Map<String, RoundTripResult> results;
+
+    setUpAll(() async {
+      results = {
+        for (final result
+            in await roundTrip(const DartPrinter().printLibrary(sorted), [
+              for (final sample in differencesBySample.keys)
+                RoundTripCase(
+                  sample,
+                  sample.startsWith('segment/') ? 'SRSegment' : 'SRRecord',
+                  jsonDecode(File(p.join(samples, sample)).readAsStringSync()),
+                ),
+            ]))
+          result.name: result,
+      };
+    });
+
+    test('are all listed here', () {
+      final files = [
+        for (final file in Directory(samples).listSync(recursive: true))
+          if (file is File && file.path.endsWith('.json'))
+            p.posix.joinAll(p.split(p.relative(file.path, from: samples))),
+      ];
+      expect(files, unorderedEquals(differencesBySample.keys));
+    });
+
+    for (final MapEntry(key: sample, value: differences)
+        in differencesBySample.entries) {
+      test('round-trip $sample', () {
+        expect(results[sample]?.errors, unorderedEquals(differences));
+      });
+    }
+  });
+
   group('SREnrichedRecord', () {
     test('has the keys the iOS and Android code read', () {
       final envelope = switch (definitions['SREnrichedRecord']) {
