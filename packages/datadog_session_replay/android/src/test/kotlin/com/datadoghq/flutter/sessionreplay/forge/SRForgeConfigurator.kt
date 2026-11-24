@@ -6,12 +6,6 @@
 
 package com.datadoghq.flutter.sessionreplay.forge
 
-import com.datadog.android.internal.tests.elmyr.GsonJsonArrayForgeryFactory
-import com.datadog.android.internal.tests.elmyr.GsonJsonObjectForgeryFactory
-import com.datadog.android.internal.tests.elmyr.GsonJsonPrimitiveForgeryFactory
-import com.datadog.android.internal.tests.elmyr.OrgJSONArrayForgeryFactory
-import com.datadog.android.internal.tests.elmyr.OrgJSONObjectForgeryFactory
-import com.datadog.android.tests.elmyr.useCoreFactories
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.ForgeConfigurator
 import fr.xgouchet.elmyr.jvm.useJvmFactories
@@ -20,11 +14,10 @@ internal class SRForgeConfigurator : ForgeConfigurator {
     override fun configure(forge: Forge) {
         forge.useJvmFactories()
 
-        forge.useCoreFactories()
-        forge.addFactory(GsonJsonArrayForgeryFactory())
+        forge.addFactory(DatadogContextForgeryFactory())
+        forge.addFactory(EnrichedRecordForgeryFactory())
         forge.addFactory(GsonJsonObjectForgeryFactory())
-        forge.addFactory(GsonJsonPrimitiveForgeryFactory())
-        forge.addFactory(OrgJSONArrayForgeryFactory())
-        forge.addFactory(OrgJSONObjectForgeryFactory())
+        forge.addFactory(MobileSegmentForgeryFactory())
+        forge.addFactory(RawBatchEventForgeryFactory())
     }
 }

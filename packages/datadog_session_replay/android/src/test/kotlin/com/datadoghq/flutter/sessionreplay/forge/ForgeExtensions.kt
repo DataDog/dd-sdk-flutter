@@ -6,41 +6,20 @@
 
 package com.datadoghq.flutter.sessionreplay.forge
 
-import com.datadoghq.flutter.sessionreplay.models.EnrichedRecord
-import com.datadoghq.flutter.sessionreplay.models.MobileSegment
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import fr.xgouchet.elmyr.Forge
-import java.util.UUID
 
-internal fun Forge.anEnrichedRecord(): EnrichedRecord {
-    return EnrichedRecord(
-        applicationId = getForgery<UUID>().toString(),
-        sessionId = getForgery<UUID>().toString(),
-        viewId = getForgery<UUID>().toString(),
-        records = aFakeRecordsArray()
-    )
-}
-
-internal fun Forge.aMobileSegment(): MobileSegment {
-    return MobileSegment(
-        application = MobileSegment.Application(getForgery<UUID>().toString()),
-        session = MobileSegment.Session(getForgery<UUID>().toString()),
-        view = MobileSegment.View(getForgery<UUID>().toString()),
-        start = aPositiveLong(),
-        end = aPositiveLong(),
-        recordsCount = aPositiveLong(),
-        indexInView = aNullable { aPositiveLong() },
-        hasFullSnapshot = aNullable { aBool() },
-        source = aString(),
-        records = aFakeRecordsArray()
-    )
-}
-
-private fun Forge.aFakeRecordsArray(): JsonArray {
-    val records = JsonArray()
-    repeat(anInt(min = 1, max = 5)) {
-        records.add(getForgery<JsonObject>())
+/**
+ * A fake `records` array — 1 to 5 forged JSON objects standing in for actual session replay
+ * records — shared by every factory whose forgery carries one (`EnrichedRecord`, `MobileSegment`).
+ */
+internal fun Forge.aFakeRecordsArray(): JsonArray {
+    val fakeRecords = JsonArray()
+    aList(size = anInt(min = 1, max = 5)) {
+        getForgery<JsonObject>()
+    }.forEach {
+        fakeRecords.add(it)
     }
-    return records
+    return fakeRecords
 }

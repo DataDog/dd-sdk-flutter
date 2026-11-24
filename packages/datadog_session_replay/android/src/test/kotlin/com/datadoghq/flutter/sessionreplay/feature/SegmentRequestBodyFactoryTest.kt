@@ -11,7 +11,7 @@ import assertk.assertions.hasSize
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import com.datadoghq.flutter.sessionreplay.forge.SRForgeConfigurator
-import com.datadoghq.flutter.sessionreplay.forge.aMobileSegment
+import com.datadoghq.flutter.sessionreplay.models.MobileSegment
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import fr.xgouchet.elmyr.Forge
@@ -34,7 +34,7 @@ internal class SegmentRequestBodyFactoryTest {
     ) {
         // Given
         val fakeGroupedSegments = forge.aList(size = forge.anInt(min = 1, max = 10)) {
-            val mobileSegment = aMobileSegment()
+            val mobileSegment = forge.getForgery<MobileSegment>()
             Pair(mobileSegment, mobileSegment.toJson() as JsonObject)
         }
         val compressedData = fakeGroupedSegments.map {

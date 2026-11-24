@@ -15,7 +15,6 @@ import assertk.assertions.startsWith
 import com.datadog.android.api.context.DatadogContext
 import com.datadog.android.api.net.RequestFactory
 import com.datadoghq.flutter.sessionreplay.forge.SRForgeConfigurator
-import com.datadoghq.flutter.sessionreplay.forge.aMobileSegment
 import com.datadoghq.flutter.sessionreplay.models.MobileSegment
 import com.google.gson.JsonObject
 import fr.xgouchet.elmyr.Forge
@@ -160,7 +159,7 @@ internal class SegmentRequestFactoryTest {
     }
 
     private fun fakeMobileSegment(forge: Forge): Pair<MobileSegment, JsonObject> {
-        val mobileSegment = forge.aMobileSegment()
+        val mobileSegment = forge.getForgery<MobileSegment>()
 
         // This is not actually what's stored in the Pair, but for testing purposes it should work.
         return Pair(mobileSegment, mobileSegment.toJson() as JsonObject)
