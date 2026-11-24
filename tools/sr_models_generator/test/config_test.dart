@@ -192,14 +192,13 @@ type_renames:
     });
 
     for (final quote in ['"', "'"]) {
-      test('keeps the $quote quotes around the commit', () {
+      test('replaces a commit between $quote quotes', () {
         final quoted = valid.replaceFirst(sha, '$quote$sha$quote');
         final updated = GeneratorConfig.replaceCommit(
           quoted,
           otherSha,
           file: file,
         );
-        expect(updated, quoted.replaceFirst(sha, otherSha));
         expect(GeneratorConfig.parse(updated, file: file).commit, otherSha);
       });
     }
@@ -208,35 +207,6 @@ type_renames:
       expect(
         () => GeneratorConfig.replaceCommit(valid, 'master', file: file),
         throwsConfigException('full 40-character commit SHA'),
-      );
-    });
-
-    test('fails when there is not exactly one commit entry', () {
-      expect(
-        () => GeneratorConfig.replaceCommit(
-          '$valid\nother:\n  commit: $sha\n',
-          otherSha,
-          file: file,
-        ),
-        throwsConfigException('found 2'),
-      );
-    });
-
-    test('fails when the edit does not change rum_events_format.commit', () {
-      // The only indented "commit:" is under another key.
-      const misplaced =
-          '''
-rum_events_format:
-  repository: https://example.com/rum-events-format.git
-  pinned: $sha
-other:
-  commit: $sha
-root_schemas: [schemas/root-schema.json]
-output: out.dart
-''';
-      expect(
-        () => GeneratorConfig.replaceCommit(misplaced, otherSha, file: file),
-        throwsA(isA<ConfigException>()),
       );
     });
   });

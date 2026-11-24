@@ -4,7 +4,6 @@
 
 import 'dart:io';
 
-import 'package:args/args.dart';
 import 'package:path/path.dart' as p;
 
 import 'config.dart';
@@ -12,77 +11,34 @@ import 'generator.dart';
 import 'schema_node.dart';
 import 'schema_source.dart';
 
-/// Runs the generator as `dart run sr_models_generator [arguments]` does,
-/// for the package at [packageRoot], and returns the exit code.
+/// The name of the configuration file, in the directory the generator
+/// runs from.
+const configFileName = 'sr_models_generator.yaml';
+
+/// What to generate: with `check`, only tell whether the generated models
+/// are up to date; with `ref` (a branch, tag or SHA), pin another
+/// rum-events-format commit first.
+typedef GeneratorOptions = ({bool check, String? ref});
+
+/// Generates the models configured in [directory]'s `sr_models_generator.yaml`
+/// as [options] say, and returns the exit code.
 ///
-/// Reads `sr_models_generator.yaml` from [packageRoot], checks out the
-/// pinned rum-events-format commit in its `.dart_tool/`, and writes the
-/// generated models to the configured output. With `--check`, only tells
-/// whether that output is up to date. With `--ref`, pins another commit
-/// first, once the models of its schemas are generated.
+/// The pinned rum-events-format commit is checked out in [directory]'s
+/// `.tmp/`, and the generated models are written to the configured output.
+/// With `ref`, its commit is pinned once the models of its schemas are
+/// generated.
 Future<int> runGenerator(
-  List<String> arguments, {
-  required String packageRoot,
+  GeneratorOptions options, {
+  required String directory,
   StringSink? out,
   StringSink? err,
 }) async {
   out ??= stdout;
   err ??= stderr;
-  final parser = ArgParser()
-    ..addFlag(
-      'help',
-      abbr: 'h',
-      negatable: false,
-      help: 'Print this usage information.',
-    )
-    ..addFlag(
-      'check',
-      negatable: false,
-      help:
-          'Fail if the generated models are not up to date with the pinned '
-          'schemas, without writing them.',
-    )
-    ..addOption(
-      'ref',
-      valueHelp: 'branch, tag or SHA',
-      help:
-          'Pin this rum-events-format commit, or the one this branch or tag '
-          'points to now, and generate the models of its schemas.',
-    );
-  final ArgResults options;
+  final (:check, :ref) = options;
   try {
-    options = parser.parse(arguments);
-  } on FormatException catch (e) {
-    err
-      ..writeln(e.message)
-      ..writeln()
-      ..writeln(_usage(parser));
-    return 64; // EX_USAGE
-  }
-  if (options.flag('help')) {
-    out.writeln(_usage(parser));
-    return 0;
-  }
-  final ref = options.option('ref');
-  final usageError = switch (ref) {
-    '' => '--ref needs a branch, tag or SHA.',
-    final _? when options.flag('check') =>
-      '--ref and --check cannot be used together.',
-    _ => null,
-  };
-  if (usageError != null) {
-    err
-      ..writeln(usageError)
-      ..writeln()
-      ..writeln(_usage(parser));
-    return 64; // EX_USAGE
-  }
-
-  try {
-    final config = GeneratorConfig.load(
-      p.join(packageRoot, 'sr_models_generator.yaml'),
-    );
-    final cache = p.join(packageRoot, '.dart_tool', 'rum-events-format');
+    final config = GeneratorConfig.load(p.join(directory, configFileName));
+    final cache = p.join(directory, '.tmp', 'rum-events-format');
     final checkout = switch (ref ?? config.commit) {
       final sha when isFullCommitSha(sha) => await checkoutCommit(
         repository: config.repository,
@@ -104,7 +60,7 @@ Future<int> runGenerator(
     );
     final output = File(config.output);
     final schemas = 'rum-events-format ${checkout.commit.substring(0, 7)}';
-    if (options.flag('check')) {
+    if (check) {
       return _check(output, library.code, schemas, out: out, err: err);
     }
     if (ref != null) {
@@ -136,7 +92,8 @@ Future<int> runGenerator(
   return 1;
 }
 
-/// Whether [output] is [code], as generated from [schemas].
+/// The exit code telling whether [output] is [code], as generated from
+/// [schemas]: 0 when it is, 1 otherwise.
 int _check(
   File output,
   String code,
@@ -168,10 +125,3 @@ int _check(
   out.writeln('$path is up to date with $schemas.');
   return 0;
 }
-
-String _usage(ArgParser parser) =>
-    'Generates the Dart Session Replay models from rum-events-format.\n'
-    '\n'
-    'Usage: dart run sr_models_generator [options]\n'
-    '\n'
-    '${parser.usage}';

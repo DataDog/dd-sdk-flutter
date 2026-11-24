@@ -206,6 +206,14 @@ void main() {
         );
       },
     );
+
+    test('strips only a prefix from titles', () {
+      final names = resolve(
+        'wireframe-schema.json',
+        naming: const NamingOptions(stripFromTitles: ['Wireframe']),
+      ).names;
+      expect(names, contains('SRMobileShapeWireframe'));
+    });
   });
 
   group('a union used by one of its variants', () {

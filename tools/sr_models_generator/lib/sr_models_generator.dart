@@ -5,12 +5,12 @@
 /// Generates the Dart Session Replay data models from rum-events-format.
 library;
 
-export 'src/cli.dart';
 export 'src/config.dart';
 export 'src/generator.dart';
 export 'src/model.dart';
 export 'src/printer.dart';
 export 'src/resolver.dart';
+export 'src/runner.dart';
 export 'src/schema_loader.dart';
 export 'src/schema_node.dart';
 export 'src/schema_source.dart';

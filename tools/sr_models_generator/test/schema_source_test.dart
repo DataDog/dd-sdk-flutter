@@ -205,9 +205,9 @@ void main() {
   });
 
   test('never runs git in a surrounding repository', () async {
-    // The real cache lives in .dart_tool/ inside the dd-sdk-flutter
-    // repository; a cache directory without its own .git must not make git
-    // act on that outer repository.
+    // The real cache lives in .tmp/ inside the dd-sdk-flutter repository;
+    // a cache directory without its own .git must not make git act on that
+    // outer repository.
     final outer = p.join(temp.path, 'outer');
     Directory(outer).createSync();
     git(outer, ['init', '--quiet']);
@@ -216,7 +216,7 @@ void main() {
     git(outer, ['commit', '--quiet', '-m', 'outer']);
     File(p.join(outer, 'schema.json')).writeAsStringSync('uncommitted work');
 
-    final nested = p.join(outer, '.dart_tool', 'rum-events-format');
+    final nested = p.join(outer, '.tmp', 'rum-events-format');
     Directory(nested).createSync(recursive: true);
     final result = await checkout(firstCommit, cacheDirectory: nested);
 

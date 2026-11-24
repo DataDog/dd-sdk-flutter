@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
+import 'package:yaml_edit/yaml_edit.dart';
 
 import 'resolver.dart';
 import 'schema_source.dart';
@@ -187,36 +188,17 @@ final class GeneratorConfig {
     File(file).writeAsStringSync(replaceCommit(source, sha, file: file));
   }
 
-  /// Returns [source] with the pinned commit replaced by [sha].
-  ///
-  /// Only the value of `rum_events_format.commit` changes, so comments,
-  /// formatting and quotes around the value are kept. The result is parsed
-  /// again to make sure the edit changed the right key.
+  /// Returns [source] with the pinned commit replaced by [sha], keeping
+  /// its comments and layout.
   static String replaceCommit(
     String source,
     String sha, {
     required String file,
   }) {
     sha.checkIsFullCommitSha(file: file);
-    final pattern = RegExp(
-      r'''^([ \t]+commit:[ \t]*['"]?)[0-9A-Za-z]+''',
-      multiLine: true,
-    );
-    final matches = pattern.allMatches(source).length;
-    if (matches != 1) {
-      throw ConfigException(
-        'Expected exactly one "commit:" entry, found $matches',
-        file,
-      );
-    }
-    final updated = source.replaceFirstMapped(pattern, (m) => '${m[1]}$sha');
-    if (GeneratorConfig.parse(updated, file: file).commit != sha) {
-      throw ConfigException(
-        'Could not update "rum_events_format.commit"',
-        file,
-      );
-    }
-    return updated;
+    return (YamlEditor(
+      source,
+    )..update(['rum_events_format', 'commit'], sha)).toString();
   }
 }
 

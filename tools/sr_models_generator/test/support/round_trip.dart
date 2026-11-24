@@ -146,9 +146,9 @@ Future<List<String>> _run(
 ) async {
   // Inside the package, so that `package:` imports of the generated code
   // (e.g. `package:meta`) resolve with the package's own configuration.
-  final scratch = Directory(
-    p.join(await packageRoot(), '.dart_tool'),
-  ).createTempSync('round_trip_');
+  final scratch = (Directory(
+    p.join(await packageRoot(), '.tmp'),
+  )..createSync()).createTempSync('round_trip_');
   try {
     File(p.join(scratch.path, 'models.dart')).writeAsStringSync(library);
     final inputFile = File(p.join(scratch.path, 'input.json'))

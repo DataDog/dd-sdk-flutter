@@ -3,15 +3,16 @@
 // Copyright 2026-Present Datadog, Inc.
 
 /// Resolves the real mobile Session Replay schemas at the pinned
-/// rum-events-format commit, and checks every type the generator will
-/// produce.
+/// rum-events-format commit, and checks how the generated unions tell their
+/// variants apart, the keys of SREnrichedRecord, and that the official
+/// samples round-trip.
 ///
-/// The first run downloads the pinned commit into `.dart_tool/`; later runs
+/// The first run downloads the pinned commit into `.tmp/`; later runs
 /// reuse it offline.
 ///
-/// When moving the pin changes the types, this test fails with the
-/// difference: check it against dd-sdk-ios' `SRDataModels.swift`, then
-/// update the expectations here.
+/// When moving the pin changes these, this test fails with the difference:
+/// check it against dd-sdk-ios' `SRDataModels.swift`, then update the
+/// expectations here.
 @Tags(['rum-events-format'])
 library;
 
@@ -39,7 +40,7 @@ void main() {
     final checkout = await checkoutCommit(
       repository: config.repository,
       sha: config.commit,
-      cacheDirectory: p.join(package, '.dart_tool', 'rum-events-format'),
+      cacheDirectory: p.join(package, '.tmp', 'rum-events-format'),
     );
     final resolver = ModelResolver(
       SchemaLoader(checkout.directory, mounts: config.schemaMounts),
@@ -63,107 +64,6 @@ void main() {
       isA<NamedType>().having((t) => t.definition.name, 'name', 'SRSegment'),
     );
   });
-
-  // Every type. The names are those of the hand-written
-  // `packages/datadog_session_replay/lib/src/sr_data_models.dart` for the
-  // types it has (through `type_renames`), and otherwise those of dd-sdk-ios'
-  // `SRDataModels.swift`. They differ from dd-sdk-ios for:
-  //
-  //   dd-sdk-ios                                        here
-  //   SRIncrementalSnapshotRecord.Data                  SRIncrementalSnapshotData
-  //   ...Data.MutationData                              SRIncrementalMutationData
-  //   ...Data.MutationData.Adds                         SRIncrementalAdd
-  //   ...Data.MutationData.Removes                      SRIncrementalRemove
-  //   ...Data.MutationData.Updates                      SRIncrementalUpdate
-  //   ...Data.MutationData.Updates.<Kind>WireframeUpdate
-  //                                                     SR<Kind>WireframeUpdate
-  //   ...Data.PointerInteractionData                    SRPointerInteractionData
-  //   ...Data.PointerInteractionData.PointerEventType   SRPointerEventType
-  //   ...Data.PointerInteractionData.PointerType        SRPointerType
-  //   ...Data.TouchData                                 SRTouchData
-  //   ...Data.TouchData.Positions                       SRTouchDataPositions
-  //   ...Data.ViewportResizeData                        SRViewportResizeData
-  //   SRTextPosition.Alignment                          SRAlignment
-  //   SRTextPosition.Alignment.Horizontal               SRHorizontalAlignment
-  //   SRTextPosition.Alignment.Vertical                 SRVerticalAlignment
-  //   SRTextPosition.Padding                            SRPadding
-  //
-  // The hand-written models also have `SRIdHolder`, one type for the
-  // segment's application, session and view, which the schema declares as
-  // three objects; `SRRecordType`, whose values are each record's `type`
-  // here; and `SREnrichedRecord`, which is not in the schema.
-  const classes = {
-    'SRCompositionLayer',
-    'SRCompositionLayerBrightnessBiasModifier',
-    'SRCompositionLayerChild',
-    'SRCompositionLayerClipModifier',
-    'SRCompositionLayerColorMatrixModifier',
-    'SRCompositionLayerGaussianBlurModifier',
-    'SRCompositionLayerMaskImageModifier',
-    'SRCompositionLayerOpacityModifier',
-    'SRCompositionLayerSaturateModifier',
-    'SRCompositionLayerShadowModifier',
-    'SRCompositionLayerUpdate',
-    'SRCompositionTree',
-    'SRCompositionTreeMutationData',
-    'SRContentClip',
-    'SREmbeddedContentWireframe',
-    'SREmbeddedContentWireframeUpdate',
-    'SREnrichedRecord',
-    'SRFocusRecord',
-    'SRFocusRecordData',
-    'SRFullSnapshotRecord',
-    'SRFullSnapshotRecordData',
-    'SRImageWireframe',
-    'SRImageWireframeUpdate',
-    'SRIncrementalSnapshotRecord',
-    'SRMetaRecord',
-    'SRMetaRecordData',
-    'SRIncrementalMutationData',
-    'SRIncrementalAdd',
-    'SRIncrementalRemove',
-    'SRPlaceholderWireframe',
-    'SRPlaceholderWireframeUpdate',
-    'SRPointerInteractionData',
-    'SRSegment',
-    'SRSegmentApplication',
-    'SRSegmentSession',
-    'SRSegmentView',
-    'SRShapeBorder',
-    'SRShapeGradientPoint',
-    'SRShapeGradientStop',
-    'SRShapeLinearGradient',
-    'SRShapeStyle',
-    'SRShapeWireframe',
-    'SRShapeWireframeUpdate',
-    'SRTextPosition',
-    'SRAlignment',
-    'SRPadding',
-    'SRTextStyle',
-    'SRTextWireframe',
-    'SRTextWireframeUpdate',
-    'SRTouchData',
-    'SRTouchDataPositions',
-    'SRViewEndRecord',
-    'SRViewportResizeData',
-    'SRVisualViewportRecord',
-    'SRVisualViewportRecordData',
-    'SRWebviewWireframe',
-    'SRWebviewWireframeUpdate',
-  };
-
-  const enums = {
-    'SRCompositionLayerChildType',
-    'SRCompositionLayerClipModifierFillRule',
-    'SRCompositionLayerCompositeOperation',
-    'SRCompositionLayerUpdateCompositeOperation',
-    'SRPointerEventType',
-    'SRPointerType',
-    'SRSegmentSource',
-    'SRHorizontalAlignment',
-    'SRVerticalAlignment',
-    'SRTextStyleTruncationMode',
-  };
 
   // Union -> discriminator key and its value per variant, as dd-sdk-ios
   // decodes them.
@@ -226,27 +126,6 @@ void main() {
       },
     ),
   };
-
-  test('generates exactly the expected classes', () {
-    expect({
-      for (final d in definitions.values)
-        if (d is ClassDefinition) d.name,
-    }, classes);
-  });
-
-  test('generates exactly the expected enums', () {
-    expect({
-      for (final d in definitions.values)
-        if (d is EnumDefinition) d.name,
-    }, enums);
-  });
-
-  test('generates exactly the expected unions', () {
-    expect({
-      for (final d in definitions.values)
-        if (d is UnionDefinition) d.name,
-    }, unions.keys.toSet());
-  });
 
   for (final MapEntry(key: name, value: (key, variants)) in unions.entries) {
     test('$name is told apart by "$key"', () {

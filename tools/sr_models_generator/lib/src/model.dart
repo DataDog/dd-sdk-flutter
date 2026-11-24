@@ -5,8 +5,10 @@
 /// The types to generate: produced by the resolver from the JSON schemas and
 /// turned into Dart code by the printer.
 ///
-/// Nothing here knows about JSON Schema keywords (`$ref`, `allOf`, ...) or
-/// about Dart syntax; it only describes types and their fields.
+/// Nothing here knows about JSON Schema keywords (`$ref`, `allOf`, ...). The
+/// names are already Dart identifiers: the resolver applies the type
+/// prefix, the renames and the camelCase of [Definition.name],
+/// [Field.dartName] and the [EnumDefinition.values] case names.
 library;
 
 import 'package:meta/meta.dart';
@@ -33,7 +35,6 @@ enum Primitive {
 }
 
 /// A built-in type, such as an integer or a string.
-/// Basic JSON value
 final class PrimitiveType extends TypeRef {
   const PrimitiveType(this.primitive);
 
@@ -84,6 +85,11 @@ final class NamedType extends TypeRef {
 }
 
 /// A generated top-level type.
+///
+/// Definitions are mutable, unlike the other data classes: a [NamedType]
+/// can refer to a definition before the resolver fills in its fields or
+/// variants, which recursive types such as the composition tree need. They
+/// are complete once the resolver returns.
 sealed class Definition {
   Definition({
     required this.name,
@@ -183,7 +189,9 @@ final class UnionDefinition extends Definition {
   /// The union exposes them directly (e.g. `wireframe.id`), so callers only
   /// need to check the kind for the fields that differ. The discriminator is
   /// always one of them.
-  List<Field> get sharedFields {
+  late final List<Field> sharedFields = _sharedFields();
+
+  List<Field> _sharedFields() {
     final classes = variants.values.toList();
     if (classes.isEmpty) return const [];
     return [

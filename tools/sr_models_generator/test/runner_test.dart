@@ -44,8 +44,12 @@ ${[for (final root in roots) '  - $root'].join('\n')}
 output: out/models.dart
 $extra''');
 
-  Future<int> run([List<String> arguments = const []]) =>
-      runGenerator(arguments, packageRoot: package, out: out, err: err);
+  Future<int> run({bool check = false, String? ref}) => runGenerator(
+    (check: check, ref: ref),
+    directory: package,
+    out: out,
+    err: err,
+  );
 
   String output() =>
       File(p.join(package, 'out', 'models.dart')).readAsStringSync();
@@ -70,7 +74,7 @@ $extra''');
   );
 
   setUp(() async {
-    temp = Directory.systemTemp.createTempSync('sr_cli_test');
+    temp = Directory.systemTemp.createTempSync('sr_runner_test');
     final fixtures = p.join(
       await packageRoot(),
       'test',
@@ -179,7 +183,7 @@ $extra''');
     });
   });
 
-  group('--check', () {
+  group('check', () {
     late String path;
     late String short;
 
@@ -193,7 +197,7 @@ $extra''');
       await run();
       out.clear();
 
-      expect(await run(['--check']), 0, reason: '$err');
+      expect(await run(check: true), 0, reason: '$err');
       expect(
         out.toString(),
         '$path is up to date with rum-events-format $short.\n',
@@ -207,7 +211,7 @@ $extra''');
         final edited = output().replaceFirst('DO NOT MODIFY', 'MODIFIED');
         File(p.join(package, 'out', 'models.dart')).writeAsStringSync(edited);
 
-        expect(await run(['--check']), 1);
+        expect(await run(check: true), 1);
         expect(
           err.toString(),
           '$path is not up to date with rum-events-format $short: it differs '
@@ -225,14 +229,14 @@ $extra''');
         final before = output();
         configure(pin: addZ());
 
-        expect(await run(['--check']), 1);
+        expect(await run(check: true), 1);
         expect(err.toString(), contains('is not up to date'));
         expect(output(), before);
       },
     );
 
     test('fails on missing models, without creating anything', () async {
-      expect(await run(['--check']), 1);
+      expect(await run(check: true), 1);
       expect(
         err.toString(),
         '$path does not exist. Run `dart run sr_models_generator` in '
@@ -242,7 +246,7 @@ $extra''');
     });
   });
 
-  group('--ref', () {
+  group('ref', () {
     late String config;
 
     String pinned() => GeneratorConfig.load(config).commit;
@@ -266,7 +270,7 @@ $extra''');
         final before = File(config).readAsStringSync();
         final sha = addZ();
 
-        expect(await run(['--ref', refOf(sha)]), 0, reason: '$err');
+        expect(await run(ref: refOf(sha)), 0, reason: '$err');
 
         expect(pinned(), sha);
         expect(
@@ -285,7 +289,7 @@ $extra''');
     }
 
     test('says when the pin stays the same', () async {
-      expect(await run(['--ref', commit]), 0);
+      expect(await run(ref: commit), 0);
       expect(pinned(), commit);
       expect(
         out.toString(),
@@ -298,7 +302,7 @@ $extra''');
     test('keeps the pin when the new schemas cannot be generated', () async {
       change('shapes-schema.json', '"type": "object",', '"anyOf": [],');
 
-      expect(await run(['--ref', 'master']), 1);
+      expect(await run(ref: 'master'), 1);
 
       expect(
         err.toString(),
@@ -309,23 +313,10 @@ $extra''');
     });
 
     test('keeps the pin when the ref does not exist', () async {
-      expect(await run(['--ref', 'no-such-branch']), 1);
+      expect(await run(ref: 'no-such-branch'), 1);
       expect(err.toString(), contains('Cannot get the schemas:'));
       expect(pinned(), commit);
     });
-
-    final misuses = {
-      ['--ref', 'master', '--check']:
-          '--ref and --check cannot be used together.',
-      ['--ref', '']: '--ref needs a branch, tag or SHA.',
-    };
-    for (final MapEntry(key: arguments, value: message) in misuses.entries) {
-      test('rejects ${arguments.join(' ')}', () async {
-        expect(await run(arguments), 64);
-        expect(err.toString(), startsWith('$message\n'));
-        expect(pinned(), commit);
-      });
-    }
   });
 
   // Problem -> (how to cause it, the error it gives).
@@ -353,17 +344,4 @@ $extra''');
       expect(File(p.join(package, 'out', 'models.dart')).existsSync(), isFalse);
     });
   }
-
-  test('prints the usage with --help', () async {
-    expect(await run(['--help']), 0);
-    expect(out.toString(), contains('Usage: dart run sr_models_generator'));
-    expect(out.toString(), contains('--check'));
-    expect(out.toString(), contains('--ref'));
-  });
-
-  test('fails with the usage on an unknown option', () async {
-    expect(await run(['--nope']), 64);
-    expect(err.toString(), contains('Could not find an option named "--nope"'));
-    expect(err.toString(), contains('Usage: dart run sr_models_generator'));
-  });
 }

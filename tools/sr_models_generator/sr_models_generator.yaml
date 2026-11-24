@@ -20,8 +20,8 @@ local_schemas: schemas
 # Generated file, relative to this directory.
 output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart
 
-# Generated type names: `type_prefix` + the schema title without the words in
-# `strip_from_titles` (`MobileSegment` -> `SRSegment`).
+# Generated type names: `type_prefix` + the schema title without the first
+# prefix of `strip_from_titles` it starts with (`MobileSegment` -> `SRSegment`).
 type_prefix: SR
 strip_from_titles:
   - Mobile

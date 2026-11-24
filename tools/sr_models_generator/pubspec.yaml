@@ -11,6 +11,7 @@ dependencies:
   meta: ^1.15.0
   path: ^1.9.0
   yaml: ^3.1.0
+  yaml_edit: ^2.2.4
 
 dev_dependencies:
   lints: ^6.1.0

@@ -1,21 +1,14 @@
 # Contributing to sr_models_generator
 
-## Why
-
-The Session Replay models are written by hand today
-(`packages/datadog_session_replay/lib/src/sr_data_models.dart`), while
-dd-sdk-ios and dd-sdk-android generate theirs from rum-events-format.
-Hand-written models drift from the schema: types the schema defines
-(embedded content wireframes, shape gradients, composition tree, view end
-and visual viewport records, ...) are missing in Flutter, and every schema
-change has to be ported manually.
+To regenerate the models or move the rum-events-format pin, see
+[the `datadog_session_replay` CONTRIBUTING](../../packages/datadog_session_replay/CONTRIBUTING.md#session-replay-data-models).
 
 ## Design
 
 * **Single reference to rum-events-format.** The repository keeps only the
   pinned rum-events-format commit, in `sr_models_generator.yaml`. The schemas
-  are fetched at that commit when generating, into `.dart_tool/`, and are
-  never committed.
+  are fetched at that commit when generating, into the git-ignored `.tmp/`,
+  and are never committed.
 * **Schemas owned by this repository.** `schemas/` holds the schemas of data
   that is not in rum-events-format: `enriched-record-schema.json` describes
   the records as the plugin hands them to its iOS and Android code
@@ -23,15 +16,13 @@ change has to be ported manually.
   appear to the rum-events-format schemas as the folder `flutter/`, so they
   refer to them with relative `$ref`s, e.g.
   `../schemas/session-replay/mobile/record-schema.json`.
-* **Dart-native.** The generator is a plain Dart package, so it runs with
-  `dart run` on any CI host, with no Swift or Kotlin toolchain.
 * **Fail loudly.** JSON Schema keywords outside the subset rum-events-format
   uses make the generator stop with an error, naming the schema file and
   position, so that no type is generated without part of its schema.
 
 ## Naming
 
-Types are named `type_prefix` + the schema title without the words in
+Types are named `type_prefix` + the schema title without the prefixes in
 `strip_from_titles` (`MobileSegment` -> `SRSegment`), and schemas without a
 title after their owner and property (`SRMetaRecord` + `data` ->
 `SRMetaRecordData`).
@@ -39,23 +30,7 @@ title after their owner and property (`SRMetaRecord` + `data` ->
 `type_renames` in `sr_models_generator.yaml` keeps the names of the
 hand-written Flutter models. A rename's key is a generated name, or a schema
 location (`file#pointer`, as error messages print it) to rename a single
-schema. A rename that matches nothing is an error.
-
-## Moving the pin
-
-1. `melos run generate:sr_models:update`, or `dart run sr_models_generator
-   --ref <branch, tag or SHA>` for another ref. It pins the commit only once
-   the models of its schemas are generated, and writes them.
-2. Review the diff of the generated models: new types and fields, and
-   changed names.
-3. Run `dart test`. The tests tagged `rum-events-format` check the types
-   generated from the pinned schemas; when the schemas change, update them:
-   * the expected classes, enums and unions, and how each union tells its
-     variants apart;
-   * the official samples, and the undeclared keys each may have;
-   * `type_renames`, as a rename that matches no type fails.
-4. Commit the configuration and the generated models together;
-   `melos run generate:sr_models:check` fails when they do not match.
+schema. A rename that matches no type is an error.
 
 ## Tests
 
@@ -64,7 +39,7 @@ dart test
 ```
 
 The tests tagged `rum-events-format` resolve the real schemas at the pinned
-commit; their first run downloads it into `.dart_tool/`. To skip them:
+commit; their first run downloads it into `.tmp/`. To skip them:
 
 ```sh
 dart test -x rum-events-format

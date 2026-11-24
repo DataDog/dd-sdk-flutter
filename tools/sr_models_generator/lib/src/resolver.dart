@@ -21,7 +21,7 @@ final class NamingOptions {
   /// Prefix of every generated type name.
   final String typePrefix;
 
-  /// Words removed from schema titles: `MobileSegment` -> `SRSegment`.
+  /// Prefixes removed from schema titles: `MobileSegment` -> `SRSegment`.
   final List<String> stripFromTitles;
 
   /// The name to use instead, e.g. `SRWireframeClip -> SRContentClip`.
@@ -490,13 +490,13 @@ final class ModelResolver {
     return name;
   }
 
-  /// [title] without the words of [NamingOptions.stripFromTitles].
+  /// [title] without the first of [NamingOptions.stripFromTitles] it
+  /// starts with.
   String _stripTitle(String title) {
-    var name = title;
-    for (final word in naming.stripFromTitles) {
-      name = name.replaceAll(word, '');
+    for (final prefix in naming.stripFromTitles) {
+      if (title.startsWith(prefix)) return title.substring(prefix.length);
     }
-    return name;
+    return title;
   }
 }
 
