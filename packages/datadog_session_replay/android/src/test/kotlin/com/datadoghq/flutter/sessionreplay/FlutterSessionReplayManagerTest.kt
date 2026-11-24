@@ -19,8 +19,10 @@ import assertk.assertions.isSameInstanceAs
 import assertk.assertions.isTrue
 import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureSdkCore
+import com.datadog.android.internal.rum.RumContext
 import com.datadoghq.flutter.sessionreplay.embedded.EmbeddedSessionReplay
 import com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature
+import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.flutter.plugin.common.BinaryMessenger
@@ -55,12 +57,12 @@ internal class FlutterSessionReplayManagerTest {
         return messenger
     }
 
-    private fun rumContext(viewId: String) = DefaultFlutterSessionReplayFeature.RumContext(
-        applicationId = "application-id",
-        sessionId = "session-id",
-        viewId = viewId,
-        viewServerTimeOffset = 0L
-    )
+    private fun rumContext(fakeViewId: String) = mockk<RumContext> {
+        every { applicationId } returns "application-id"
+        every { sessionId } returns "session-id"
+        every { viewId } returns fakeViewId
+        every { viewTimestampOffset } returns 0L
+    }
 
     /** An engine that has enabled against this manager, with its context callback recorded. */
     private fun enableEngine(
@@ -103,20 +105,52 @@ internal class FlutterSessionReplayManagerTest {
 
     @Test
     fun `M reach every registered engine W broadcastContext`(
-        @StringForgery viewId: String
+        @StringForgery viewId: String,
+        @LongForgery viewTimestampOffset: Long
     ) {
         // Given - two engines, both enabled against the same manager
         var contextA: FlutterSessionReplayBridge.RumContext? = null
         var contextB: FlutterSessionReplayBridge.RumContext? = null
         enableEngine { contextA = it }
         enableEngine { contextB = it }
+        val rumContext = rumContext(viewId)
+        every { rumContext.viewTimestampOffset } returns viewTimestampOffset
 
         // When
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext)
 
-        // Then - not just the engine that enabled last
-        assertThat(contextA?.viewId).isEqualTo(viewId)
-        assertThat(contextB?.viewId).isEqualTo(viewId)
+        // Then
+        val expectedContext = FlutterSessionReplayBridge.RumContext(
+            "application-id",
+            "session-id",
+            viewId,
+            viewTimestampOffset
+        )
+        assertThat(contextA).isEqualTo(expectedContext)
+        assertThat(contextB).isEqualTo(expectedContext)
+    }
+
+    @Test
+    fun `M clear the engine attribution W broadcastContext {RUM context absent}`(
+        @StringForgery viewId: String
+    ) {
+        // Given
+        every { mockFeature.readCurrentContext() } returns rumContext(viewId)
+        var receivedContext: FlutterSessionReplayBridge.RumContext? = null
+        enableEngine { receivedContext = it }
+
+        // When
+        manager.broadcastContext(null)
+
+        // Then
+        assertThat(receivedContext).isEqualTo(
+            FlutterSessionReplayBridge.RumContext(
+                applicationId = null,
+                sessionId = null,
+                viewId = null,
+                viewServerTimeOffset = null
+            )
+        )
     }
 
     @Test
@@ -168,7 +202,7 @@ internal class FlutterSessionReplayManagerTest {
 
         // When - the engine detaches while the bridge is still alive, as on force close
         manager.detach(messenger)
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then - the Dart callback is gone, so this cannot call into a destroyed isolate
         assertThat(callsToEngine).isEqualTo(callsBeforeDetach)
@@ -189,7 +223,7 @@ internal class FlutterSessionReplayManagerTest {
 
         // When - the restarted Dart isolate binds its new bridge to the same native engine
         manager.bind(replacement.engineToken, messenger)
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then - the destroyed isolate's callback is not invoked
         assertThat(callsToPrevious).isEqualTo(callsBeforeRebind)
@@ -213,7 +247,7 @@ internal class FlutterSessionReplayManagerTest {
 
         // When - only the secondary engine detaches
         manager.detach(messengerA)
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then - B keeps receiving; a closing engine cannot clear a live one's callback
         assertThat(callsToA).isEqualTo(callsToABeforeDetach)
@@ -259,7 +293,7 @@ internal class FlutterSessionReplayManagerTest {
 
         // When - an unrelated messenger detaches
         manager.detach(mockk())
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then
         assertThat(contextForEngine?.viewId).isEqualTo(viewId)
@@ -278,7 +312,7 @@ internal class FlutterSessionReplayManagerTest {
         // When - a token no bridge claims, then that messenger detaches
         manager.bind(unknownToken, messenger)
         manager.detach(messenger)
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then - no bridge was associated, so nothing was torn down
         assertThat(contextForEngine?.viewId).isEqualTo(viewId)
@@ -298,7 +332,7 @@ internal class FlutterSessionReplayManagerTest {
 
         // When - the late round trip finally arrives
         manager.bind(engine.engineToken, messenger)
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then - the bridge is torn down instead of bound to a messenger nothing renders into
         assertThat(callsToEngine).isEqualTo(callsBeforeBind)
@@ -321,7 +355,7 @@ internal class FlutterSessionReplayManagerTest {
         val secondEngine = enableEngine { callsToEngine++ }
         val callsFromPriming = callsToEngine
         manager.bind(secondEngine.engineToken, messenger)
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then - the earlier, normal detach() does not permanently block this messenger from
         // binding again, so this context update still reaches it

@@ -12,14 +12,16 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.isNotNull
+import assertk.assertions.isSameInstanceAs
 import com.datadog.android.api.InternalLogger
 import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureScope
 import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.api.feature.StorageBackedFeature
+import com.datadog.android.internal.FeatureContextKeys
+import com.datadog.android.internal.rum.RumContext
 import fr.xgouchet.elmyr.annotation.BoolForgery
 import fr.xgouchet.elmyr.annotation.IntForgery
-import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
 import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.mockk.every
@@ -48,41 +50,61 @@ internal class DefaultFlutterSessionReplayFeatureTest {
     }
 
     @Test
-    fun `M call context changed callback W onContextUpdate`(
-        @StringForgery customEndpoint: String,
-        @StringForgery applicationId: String,
-        @StringForgery sessionId: String,
-        @StringForgery viewId: String,
-        @LongForgery serverTimeOffset: Long
-    ) {
+    fun `M forward typed RUM context W onContextUpdate`() {
         // Given
-        val onContextChanged = mockk<(DefaultFlutterSessionReplayFeature.RumContext) -> Unit>(
-            relaxed = true
-        )
+        val onContextChanged = mockk<(RumContext?) -> Unit>(relaxed = true)
         val feature = DefaultFlutterSessionReplayFeature(
             mockCore,
             onContextChanged,
-            customEndpoint,
+            customEndpointUrl = null,
             mainThreadHandler = mockHandler
         )
-        val contextValue = mapOf(
-            "application_id" to applicationId,
-            "session_id" to sessionId,
-            "view_id" to viewId,
-            "view_timestamp_offset" to serverTimeOffset
+        val rumContext = mockk<RumContext>()
+        val featureContext = mapOf(FeatureContextKeys.RUM_CONTEXT to rumContext)
+
+        // When
+        feature.onContextUpdate(Feature.RUM_FEATURE_NAME, featureContext)
+
+        // Then
+        verify { onContextChanged(rumContext) }
+    }
+
+    @Test
+    fun `M read typed RUM context W readCurrentContext`() {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpointUrl = null,
+            mainThreadHandler = mockHandler
+        )
+        val rumContext = mockk<RumContext>()
+        every { mockCore.getFeatureContext(Feature.RUM_FEATURE_NAME, any()) } returns
+            mapOf(FeatureContextKeys.RUM_CONTEXT to rumContext)
+
+        // When
+        val context = feature.readCurrentContext()
+
+        // Then
+        assertThat(context).isSameInstanceAs(rumContext)
+    }
+
+    @Test
+    fun `M report no RUM context W onContextUpdate {RUM context cleared}`() {
+        // Given
+        val onContextChanged = mockk<(RumContext?) -> Unit>(relaxed = true)
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            onContextChanged,
+            customEndpointUrl = null,
+            mainThreadHandler = mockHandler
         )
 
         // When
-        feature.onContextUpdate(Feature.RUM_FEATURE_NAME, contextValue)
+        feature.onContextUpdate(Feature.RUM_FEATURE_NAME, emptyMap())
 
-        // Then - verify on the back of the Looper. Note the transform of property names
-        val expectedContextValue = DefaultFlutterSessionReplayFeature.RumContext(
-            applicationId,
-            sessionId,
-            viewId,
-            serverTimeOffset
-        )
-        verify { onContextChanged(expectedContextValue) }
+        // Then
+        verify { onContextChanged(null) }
     }
 
     @Test
@@ -92,7 +114,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         @BoolForgery hasReplay: Boolean
     ) {
         // Given
-        val onContextChanged = mockk<(DefaultFlutterSessionReplayFeature.RumContext) -> Unit>(
+        val onContextChanged = mockk<(RumContext?) -> Unit>(
             relaxed = true
         )
         val feature = DefaultFlutterSessionReplayFeature(
@@ -131,7 +153,7 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         @IntForgery recordCount: Int
     ) {
         // Given
-        val onContextChanged = mockk<(DefaultFlutterSessionReplayFeature.RumContext) -> Unit>(
+        val onContextChanged = mockk<(RumContext?) -> Unit>(
             relaxed = true
         )
         val feature = DefaultFlutterSessionReplayFeature(

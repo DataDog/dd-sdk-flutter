@@ -19,6 +19,8 @@ import com.datadog.android.api.net.RequestFactory
 import com.datadog.android.api.storage.EventType
 import com.datadog.android.api.storage.FeatureStorageConfiguration
 import com.datadog.android.api.storage.RawBatchEvent
+import com.datadog.android.internal.rum.RumContext
+import com.datadog.android.internal.rum.rumContext
 import com.datadoghq.flutter.sessionreplay.resource.DefaultResourceResolver
 import com.datadoghq.flutter.sessionreplay.resource.DefaultResourceWriter
 import com.datadoghq.flutter.sessionreplay.resource.EmbeddedResourceSink
@@ -33,14 +35,14 @@ internal interface FlutterSessionReplayFeature : StorageBackedFeature {
     fun setRecordCount(viewId: String, recordCount: Int)
     fun setSessionSampled(sessionId: String, sampled: Boolean)
     fun writeSegment(segment: String)
-    fun readCurrentContext(): DefaultFlutterSessionReplayFeature.RumContext?
+    fun readCurrentContext(): RumContext?
 
     val resourceResolver: ResourceResolver
 }
 
 internal class DefaultFlutterSessionReplayFeature(
     private val sdkCore: FeatureSdkCore,
-    private val onContextChanged: (RumContext) -> Unit,
+    private val onContextChanged: (RumContext?) -> Unit,
     private val customEndpointUrl: String?,
     private val privacyLevels: PrivacyLevels = PrivacyLevels.MOST_RESTRICTIVE,
     private val embeddedResourceSink: EmbeddedResourceSink = { _, _, _ -> false },
@@ -49,20 +51,6 @@ internal class DefaultFlutterSessionReplayFeature(
     StorageBackedFeature,
     FeatureEventReceiver,
     FeatureContextUpdateReceiver {
-    data class RumContext(
-        val applicationId: String?,
-        val sessionId: String?,
-        val viewId: String?,
-        val viewServerTimeOffset: Long?
-    ) {
-        constructor(event: Map<String, Any?>) : this(
-            applicationId = event[APPLICATION_ID_KEY] as? String,
-            sessionId = event[SESSION_ID_KEY] as? String,
-            viewId = event[VIEW_ID_KEY] as? String,
-            viewServerTimeOffset = event[VIEW_SERVER_TIME_OFFSET_KEY] as? Long
-        )
-    }
-
     override lateinit var resourceResolver: ResourceResolver
 
     @Volatile
@@ -112,11 +100,7 @@ internal class DefaultFlutterSessionReplayFeature(
      * yet, in which case [onContextUpdate] delivers the first one soon enough.
      */
     override fun readCurrentContext(): RumContext? {
-        val context = sdkCore.getFeatureContext(Feature.RUM_FEATURE_NAME)
-        if (context.isEmpty()) {
-            return null
-        }
-        return RumContext(context)
+        return sdkCore.getFeatureContext(Feature.RUM_FEATURE_NAME).rumContext()
     }
 
     override fun onStop() {
@@ -127,7 +111,7 @@ internal class DefaultFlutterSessionReplayFeature(
 
     override fun onContextUpdate(featureName: String, context: Map<String, Any?>) {
         if (featureName == Feature.RUM_FEATURE_NAME) {
-            val rumContext = RumContext(context)
+            val rumContext = context.rumContext()
             mainThreadHandler.post {
                 onContextChanged(rumContext)
             }
@@ -258,10 +242,5 @@ internal class DefaultFlutterSessionReplayFeature(
         const val IMAGE_PRIVACY_KEY = "session_replay_image_privacy"
         const val TOUCH_PRIVACY_KEY = "session_replay_touch_privacy"
         const val VIEW_RECORDS_COUNT_KEY = "records_count"
-
-        const val APPLICATION_ID_KEY = "application_id"
-        const val SESSION_ID_KEY = "session_id"
-        const val VIEW_ID_KEY = "view_id"
-        const val VIEW_SERVER_TIME_OFFSET_KEY = "view_timestamp_offset"
     }
 }

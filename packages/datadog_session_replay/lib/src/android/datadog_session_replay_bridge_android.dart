@@ -950,42 +950,6 @@ extension type FlutterSessionReplayBridge$RumContext._(jni$_.JObject _$this)
       _$long.pointer,
     ).object<FlutterSessionReplayBridge$RumContext>();
   }
-
-  static final _id_new$1 = _class.constructorId(
-    r'(Lcom/datadoghq/flutter/sessionreplay/feature/DefaultFlutterSessionReplayFeature$RumContext;)V',
-  );
-
-  static final _new$1 =
-      jni$_.ProtectedJniExtensions.lookup<
-            jni$_.NativeFunction<
-              jni$_.JniResult Function(
-                jni$_.Pointer<jni$_.Void>,
-                jni$_.JMethodIDPtr,
-                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
-              )
-            >
-          >('globalEnv_NewObject')
-          .asFunction<
-            jni$_.JniResult Function(
-              jni$_.Pointer<jni$_.Void>,
-              jni$_.JMethodIDPtr,
-              jni$_.Pointer<jni$_.Void>,
-            )
-          >();
-
-  /// from: `public void <init>(com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature$RumContext rumContext)`
-  /// The returned object must be released after use, by calling the [release] method.
-  factory FlutterSessionReplayBridge$RumContext.new$1(
-    DefaultFlutterSessionReplayFeature$$RumContext rumContext,
-  ) {
-    final _$$classRef = _class.reference;
-    final _$rumContext = rumContext.reference;
-    return _new$1(
-      _$$classRef.pointer,
-      _id_new$1.pointer,
-      _$rumContext.pointer,
-    ).object<FlutterSessionReplayBridge$RumContext>();
-  }
 }
 
 extension FlutterSessionReplayBridge$RumContext$$Methods
@@ -2138,28 +2102,4 @@ final class $DefaultConstructorMarker$Type$
   @jni$_.internal
   @core$_.override
   String get signature => r'Lkotlin/jvm/internal/DefaultConstructorMarker;';
-}
-
-/// from: `com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature$RumContext`
-///
-/// WARNING: DefaultFlutterSessionReplayFeature$$RumContext is a stub. To generate bindings for this class, include
-/// com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature$RumContext in your config's classes list.
-///
-extension type DefaultFlutterSessionReplayFeature$$RumContext._(
-  jni$_.JObject _$this
-)
-    implements jni$_.JObject {
-  static const jni$_.JType<DefaultFlutterSessionReplayFeature$$RumContext>
-  type = $DefaultFlutterSessionReplayFeature$$RumContext$Type$();
-}
-
-final class $DefaultFlutterSessionReplayFeature$$RumContext$Type$
-    extends jni$_.JType<DefaultFlutterSessionReplayFeature$$RumContext> {
-  @jni$_.internal
-  const $DefaultFlutterSessionReplayFeature$$RumContext$Type$();
-
-  @jni$_.internal
-  @core$_.override
-  String get signature =>
-      r'Lcom/datadoghq/flutter/sessionreplay/feature/DefaultFlutterSessionReplayFeature$RumContext;';
 }
