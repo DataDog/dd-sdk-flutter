@@ -60,6 +60,12 @@ void main() {
           reason: 'ERROR',
         ),
         'static' => ResolutionDetails(value: true, reason: 'STATIC'),
+        'untracked' => ResolutionDetails(
+          value: true,
+          variant: 'on',
+          reason: 'TARGETING_MATCH',
+          flagMetadata: {'__dd_track_evaluations': false},
+        ),
         _ => ResolutionDetails(
           value: invocation.positionalArguments[1] as bool,
           errorCode: ErrorCode.flagNotFound,
@@ -85,6 +91,7 @@ void main() {
     ('an error with a variant', 'error-with-variant', false),
     ('an ERROR reason with a variant', 'error-reason', false),
     ('a result without a variant', 'static', true),
+    ('an evaluation with tracking off', 'untracked', true),
   ]) {
     test('does not tag $name', () {
       final client = api.getClient()..addHooks([hook]);

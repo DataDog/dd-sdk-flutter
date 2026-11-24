@@ -32,16 +32,24 @@ class DefaultDatadogFlagsClient
   /// When false, the caller owns them and must shut them down.
   final bool _ownsTelemetry;
 
+  /// Whether this client records evaluations in [_evaluationAggregator].
+  ///
+  /// When false, the aggregator never sees this client's evaluations, even
+  /// when evaluation tracking is on for the SDK.
+  final bool _trackEvaluations;
+
   DefaultDatadogFlagsClient({
     required this.name,
     required FlagsRepository repository,
     required ExposureLogger exposureLogger,
     required EvaluationAggregator evaluationAggregator,
     bool ownsTelemetry = true,
+    bool trackEvaluations = true,
   }) : _repository = repository,
        _exposureLogger = exposureLogger,
        _evaluationAggregator = evaluationAggregator,
-       _ownsTelemetry = ownsTelemetry;
+       _ownsTelemetry = ownsTelemetry,
+       _trackEvaluations = trackEvaluations;
 
   void cancelPendingLoad() => _repository.cancelPendingLoad();
 
@@ -204,7 +212,7 @@ class DefaultDatadogFlagsClient
     }
     final context = _repository.context;
     if (context == null) {
-      _evaluationAggregator.recordEvaluation(
+      _recordEvaluation(
         flagKey: key,
         assignment: null,
         evaluationContext: null,
@@ -222,7 +230,7 @@ class DefaultDatadogFlagsClient
     // may synchronously clear the repository.
     final restoredFromStore = _repository.isRestoredFromStore;
     if (assignment == null) {
-      _evaluationAggregator.recordEvaluation(
+      _recordEvaluation(
         flagKey: key,
         assignment: null,
         evaluationContext: context,
@@ -262,7 +270,7 @@ class DefaultDatadogFlagsClient
 
     if (identical(resolvedValue, _typeMismatch) ||
         (valueGuard != null && !valueGuard(resolvedValue))) {
-      _evaluationAggregator.recordEvaluation(
+      _recordEvaluation(
         flagKey: key,
         assignment: assignment,
         evaluationContext: context,
@@ -276,7 +284,7 @@ class DefaultDatadogFlagsClient
     }
 
     onSuccess(assignment, context);
-    _evaluationAggregator.recordEvaluation(
+    _recordEvaluation(
       flagKey: key,
       assignment: assignment,
       evaluationContext: context,
@@ -297,6 +305,21 @@ class DefaultDatadogFlagsClient
         datadogSerialIdMetadata: ?assignment.serialId,
         ...assignment.features.toFlagMetadata(),
       },
+    );
+  }
+
+  void _recordEvaluation({
+    required String flagKey,
+    required FlagAssignment? assignment,
+    required FlagsEvaluationContext? evaluationContext,
+    required String? error,
+  }) {
+    if (!_trackEvaluations) return;
+    _evaluationAggregator.recordEvaluation(
+      flagKey: flagKey,
+      assignment: assignment,
+      evaluationContext: evaluationContext,
+      error: error,
     );
   }
 }

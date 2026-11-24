@@ -8,6 +8,9 @@ import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
 /// Adds successful OpenFeature evaluations to the active Datadog RUM view.
 ///
+/// Skips evaluations from a `DatadogProvider` created with
+/// `trackEvaluations: false`.
+///
 /// Register with [OpenFeatureAPI.addHooks] and register again after shutdown.
 /// Client hooks apply only to that client object; [OpenFeatureAPI.getClient]
 /// returns a new client on each call.
@@ -24,8 +27,13 @@ final class DatadogRumHook extends HookAdapter {
     HookHints hints,
   ) {
     if (details.errorCode != null || details.reason == 'ERROR') return;
+    // Set by a DatadogProvider created with trackEvaluations: false.
+    if (details.flagMetadata[_trackEvaluationsMetadata] == false) return;
     if (details.variant case final variant?) {
       _sdk.rum?.addFeatureFlagEvaluation(details.flagKey, variant);
     }
   }
 }
+
+// Mirrors datadogInternalTrackEvaluationsMetadata in datadog_flags.
+const _trackEvaluationsMetadata = '__dd_track_evaluations';

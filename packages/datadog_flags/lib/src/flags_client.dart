@@ -17,6 +17,11 @@ const datadogInternalAllocationKeyMetadata = '__dd_allocation_key';
 const datadogInternalDoLogMetadata = '__dd_do_log';
 const datadogSerialIdMetadata = '__dd_split_serial_id';
 
+/// Set to `false` on evaluations of a `DatadogProvider` created with
+/// `trackEvaluations: false`, so integrations such as `DatadogRumHook` skip
+/// them. The key is absent when evaluations are tracked.
+const datadogInternalTrackEvaluationsMetadata = '__dd_track_evaluations';
+
 /// Current assignment availability for a Datadog feature flags client.
 @internal
 enum DatadogFlagsClientStatus {
