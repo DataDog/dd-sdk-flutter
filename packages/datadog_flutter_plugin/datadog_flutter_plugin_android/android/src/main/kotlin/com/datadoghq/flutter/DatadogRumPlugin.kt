@@ -7,7 +7,9 @@ package com.datadoghq.flutter
 
 import android.content.Context
 import android.util.Log
+import com.datadog.android.Datadog
 import com.datadog.android.api.SdkCore
+import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.UploadFrequency
 import com.datadog.android.event.EventMapper
@@ -200,6 +202,14 @@ class DatadogRumPlugin : MethodChannel.MethodCallHandler {
                 Rum.enable(configBuilder.build())
                 rum = GlobalRumMonitor.get()
                 previousConfiguration = encodedConfig
+
+                // Flutter traces requests in Dart, so native RUM can't learn the trace sample rate
+                // from the native instrumentation; publish it so RUM reports it on its events.
+                val traceSampleRate = encodedConfig["traceSampleRate"] as? Number
+                val sdkCore = Datadog.getInstance() as? FeatureSdkCore
+                if (traceSampleRate != null && sdkCore != null) {
+                    TracingContextFeature.publishTraceSampleRate(sdkCore, traceSampleRate.toFloat())
+                }
             }
         } else if (previousConfiguration != encodedConfig) {
             // Maybe use DevLogger instead?

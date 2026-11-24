@@ -17,7 +17,9 @@ import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureScope
 import com.datadog.android.api.feature.FeatureSdkCore
 import com.datadog.android.api.feature.StorageBackedFeature
+import com.datadoghq.flutter.sessionreplay.FlutterSessionReplayBridge
 import fr.xgouchet.elmyr.annotation.BoolForgery
+import fr.xgouchet.elmyr.annotation.FloatForgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.LongForgery
 import fr.xgouchet.elmyr.annotation.StringForgery
@@ -86,6 +88,26 @@ internal class DefaultFlutterSessionReplayFeatureTest {
     }
 
     @Test
+    fun `M read the native session sample rate W RumContext(event)`(
+        @StringForgery sessionId: String,
+        @FloatForgery(min = 0f, max = 100f) sessionSampleRate: Float
+    ) {
+        // Given
+        val event = mapOf(
+            "session_id" to sessionId,
+            "session_sample_rate" to sessionSampleRate
+        )
+
+        // When
+        val rumContext = DefaultFlutterSessionReplayFeature.RumContext(event)
+
+        // Then
+        assertThat(rumContext.sessionSampleRate).isEqualTo(sessionSampleRate)
+        assertThat(FlutterSessionReplayBridge.RumContext(rumContext).sessionSampleRate)
+            .isEqualTo(sessionSampleRate.toDouble())
+    }
+
+    @Test
     fun `M set context W setHasReplay`(
         @StringForgery customEndpoint: String,
         @StringForgery viewId: String,
@@ -122,6 +144,42 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         val viewMap = context[viewId] as? MutableMap<*, *>
         assertThat(viewMap).isNotNull()
         assertThat(viewMap?.get("has_replay")).isEqualTo(hasReplay)
+    }
+
+    @Test
+    fun `M set the sample rate in context W setReplayConfiguration`(
+        @StringForgery customEndpoint: String
+    ) {
+        // Given
+        val onContextChanged = mockk<(DefaultFlutterSessionReplayFeature.RumContext) -> Unit>(
+            relaxed = true
+        )
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            onContextChanged,
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        val context = mutableMapOf<String, Any?>()
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
+            lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+        feature.registerSessionReplayContext()
+
+        // When
+        feature.setReplayConfiguration(42.5, false)
+
+        // Then - same keys and types as the native Session Replay, which RUM reads for views
+        verify {
+            mockCore.updateFeatureContext(
+                Feature.SESSION_REPLAY_FEATURE_NAME,
+                true,
+                any()
+            )
+        }
+        assertThat(context["session_replay_sample_rate"]).isEqualTo(42L)
+        assertThat(context["session_replay_start_immediate_recording"]).isEqualTo(false)
     }
 
     @Test

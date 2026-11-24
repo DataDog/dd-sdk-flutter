@@ -351,6 +351,47 @@ internal class FlutterSessionReplayBridgeTest {
     }
 
     @Test
+    fun `M publish to the feature W setReplayConfiguration when standalone`() {
+        // Given
+        enable()
+        bridge.setEmbedded(false)
+
+        // When
+        bridge.setReplayConfiguration(25.0, false)
+
+        // Then
+        verify { mockFeature.setReplayConfiguration(25.0, false) }
+    }
+
+    @Test
+    fun `M stay quiet W setReplayConfiguration when embedded`() {
+        // Given
+        enable()
+        bridge.setEmbedded(true)
+
+        // When
+        bridge.setReplayConfiguration(25.0, true)
+
+        // Then - the native Session Replay publishes the host's own configuration when embedded;
+        // publishing from here too would make the reported rate depend on which side wrote last
+        verify(exactly = 0) { mockFeature.setReplayConfiguration(any(), any()) }
+    }
+
+    @Test
+    fun `M publish the pending configuration W setEmbedded resolves to standalone`() {
+        // Given
+        enable()
+        bridge.setReplayConfiguration(25.0, true)
+        verify(exactly = 0) { mockFeature.setReplayConfiguration(any(), any()) }
+
+        // When
+        bridge.setEmbedded(false)
+
+        // Then
+        verify { mockFeature.setReplayConfiguration(25.0, true) }
+    }
+
+    @Test
     fun `M register the session replay context before publishing W setEmbedded false`(
         @StringForgery viewId: String
     ) {
@@ -378,6 +419,19 @@ internal class FlutterSessionReplayBridgeTest {
 
         // Then
         verify(exactly = 0) { mockFeature.registerSessionReplayContext() }
+    }
+
+    @Test
+    fun `M drop the pending configuration W setEmbedded resolves to embedded`() {
+        // Given
+        enable()
+        bridge.setReplayConfiguration(25.0, true)
+
+        // When
+        bridge.setEmbedded(true)
+
+        // Then
+        verify(exactly = 0) { mockFeature.setReplayConfiguration(any(), any()) }
     }
 
     @Test

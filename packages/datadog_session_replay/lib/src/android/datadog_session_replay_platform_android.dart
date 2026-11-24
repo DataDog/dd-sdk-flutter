@@ -49,6 +49,9 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
               viewServerTimeOffset: c.viewServerTimeOffset
                   ?.toDartInt(releaseOriginal: true)
                   .toDouble(),
+              sessionSampleRate: c.sessionSampleRate?.use(
+                (rate) => rate.doubleValue(),
+              ),
             ),
           );
           onContextChanged(context);
@@ -74,6 +77,16 @@ class DatadogSessionReplayPlatformAndroid extends DatadogSessionReplayPlatform {
     // part of this: the bridge resolves it natively per segment, from the view the host
     // registered, so Dart never has to observe its own view to keep up.
     _bridge.embedded = configuration.isEmbedded;
+
+    // Lets native RUM report `session_replay_sample_rate` on its view events. Skipped
+    // when embedded: the host's Session Replay reports its own configuration (the
+    // bridge also ignores it natively in that case).
+    if (!configuration.isEmbedded) {
+      _bridge.setReplayConfiguration(
+        configuration.replaySampleRate,
+        configuration.startRecordingImmediately,
+      );
+    }
 
     // Hand this bridge's token to the plugin instance for this engine. The bridge is
     // created over JNI and never sees a messenger, while the plugin has the messenger but
