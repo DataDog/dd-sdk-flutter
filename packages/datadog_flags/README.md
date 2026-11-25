@@ -240,8 +240,15 @@ await api.setProviderForDomainAndWait(
 final variant = api.getClient('preview').getStringValue('push.copy', 'a');
 ```
 
-Both options default to `true` and apply only to that provider. Flag values
-and assignments are the same as for any other provider.
+Both options default to `true` and apply only to that provider. The provider
+fetches and stores its own assignments, so each extra provider adds its own
+assignment requests. If the assignments change between the two fetches, the
+value that this provider returns can differ from the one that another provider
+returns later.
+
+Register the provider for its domain before you evaluate through it, and again
+after `shutdown()`. OpenFeature evaluates a domain without a provider through
+the default provider, which records exposures and evaluations.
 
 - With `trackExposures: false`, evaluations send no exposure to Datadog and do
   not enter the exposure deduplication cache. `ExposureHook` receives them

@@ -28,12 +28,17 @@ final class DatadogRumHook extends HookAdapter {
   ) {
     if (details.errorCode != null || details.reason == 'ERROR') return;
     // Set by a DatadogProvider created with trackEvaluations: false.
-    if (details.flagMetadata[_trackEvaluationsMetadata] == false) return;
+    if (context.providerMetadata.name == _datadogProviderName &&
+        details.flagMetadata[_trackEvaluationsMetadata] == false) {
+      return;
+    }
     if (details.variant case final variant?) {
       _sdk.rum?.addFeatureFlagEvaluation(details.flagKey, variant);
     }
   }
 }
 
-// Mirrors datadogInternalTrackEvaluationsMetadata in datadog_flags.
+// Mirror datadogProviderName and datadogInternalTrackEvaluationsMetadata in
+// datadog_flags.
+const _datadogProviderName = 'datadog';
 const _trackEvaluationsMetadata = '__dd_track_evaluations';

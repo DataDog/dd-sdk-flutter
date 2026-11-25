@@ -104,8 +104,10 @@ final class ExposureEvaluation {
 ///
 /// Use it to record exposures in your own data store. The callback receives
 /// the same deduplication verdict that the SDK uses for Datadog, also when
-/// `trackExposures` is off. It runs synchronously on the evaluating isolate
-/// for every evaluation, so it must be fast and must not do I/O. Exceptions
+/// `DatadogFlagsConfiguration.trackExposures` is off. Evaluations from a
+/// provider created with `trackExposures: false` are never exposures. The
+/// callback runs synchronously on the evaluating isolate for every
+/// evaluation, so it must be fast and must not do I/O. Exceptions
 /// from the callback are caught and logged; they never change the evaluation.
 ///
 /// The provider decides the exposure in its own `finallyAfter` hook, which

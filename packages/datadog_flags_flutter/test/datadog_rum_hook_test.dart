@@ -32,15 +32,16 @@ void main() {
   late _Rum rum;
   late OpenFeatureAPI api;
   late DatadogRumHook hook;
+  late _Provider provider;
 
   setUp(() async {
     final sdk = _Sdk();
     rum = _Rum();
     when(() => sdk.rum).thenReturn(rum);
-    final provider = _Provider();
+    provider = _Provider();
     when(
       () => provider.metadata,
-    ).thenReturn(const ProviderMetadata(name: 'test'));
+    ).thenReturn(const ProviderMetadata(name: 'datadog'));
     when(() => provider.resolveBooleanValue(any(), any(), any())).thenAnswer(
       (invocation) => switch (invocation.positionalArguments[0]) {
         'enabled' => ResolutionDetails(
@@ -100,6 +101,16 @@ void main() {
       verifyZeroInteractions(rum);
     });
   }
+
+  test('tags a tracking-off marker from another provider', () async {
+    when(
+      () => provider.metadata,
+    ).thenReturn(const ProviderMetadata(name: 'other'));
+    final client = api.getClient()..addHooks([hook]);
+
+    expect(client.getBooleanValue('untracked', false), isTrue);
+    verify(() => rum.addFeatureFlagEvaluation('untracked', 'on')).called(1);
+  });
 
   test('does not tag an evaluation that a later after hook fails', () {
     api.addHooks([_ThrowingAfterHook()]);

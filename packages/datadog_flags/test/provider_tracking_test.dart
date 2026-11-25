@@ -44,6 +44,14 @@ void main() {
                   'doLog': true,
                   'serialId': 1,
                 },
+                'config': {
+                  'allocationKey': 'allocation-b',
+                  'variationKey': 'compact',
+                  'variationType': 'object',
+                  'variationValue': {'layout': 'compact'},
+                  'reason': 'TARGETING_MATCH',
+                  'doLog': true,
+                },
               },
             },
           },
@@ -209,6 +217,30 @@ void main() {
     expect((exposure['subject']! as Map)['id'], 'user-1');
     expect(evaluationEvents(), hasLength(1));
   });
+
+  for (final (name, evaluate)
+      in <(String, Object? Function(OpenFeatureClient))>[
+        ('a missing flag', (c) => c.getBooleanValue('missing', false)),
+        ('a type mismatch', (c) => c.getStringValue('flag', 'default')),
+        ('a structure', (c) => c.getStructureValue('config', const {})),
+      ]) {
+    for (final trackEvaluations in [true, false]) {
+      test('${trackEvaluations ? 'sends' : 'trackEvaluations: false sends no'} '
+          'evaluation telemetry for $name', () async {
+        final client = await startPeek(
+          DatadogProvider.fromConfiguration(
+            configuration(),
+            trackEvaluations: trackEvaluations,
+          ),
+        );
+
+        evaluate(client);
+        await api.shutdown();
+
+        expect(evaluationEvents(), hasLength(trackEvaluations ? 1 : 0));
+      });
+    }
+  }
 
   test('cannot widen exposure or evaluation tracking', () async {
     final client = await startPeek(
