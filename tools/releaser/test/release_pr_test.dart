@@ -105,6 +105,27 @@ void main() {
       expect(body, contains('- #1150'));
     });
 
+    test('tells the Docs team only the CHANGELOG.md files are new', () {
+      final body = prBody(
+        [_plan('datadog_dio')],
+        const [],
+        publishValidationSkipped: false,
+        repoSlug: 'DataDog/dd-sdk-flutter',
+        changelogRef: 'abc',
+        groupsByPackage: const {},
+      );
+
+      expect(
+        body,
+        contains(
+          '> [!NOTE]\n'
+          '> **Docs review:** The only documentation changes in this PR are '
+          'the `CHANGELOG.md` files. Everything else was already reviewed in '
+          '`develop`.',
+        ),
+      );
+    });
+
     test('includes a labeled content-commit line, parseable by '
         "manifest.dart's parseContentCommit", () {
       const sha = 'af43de240829820cc4e9562e4e33914956550dd0';

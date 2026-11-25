@@ -50,6 +50,12 @@ String prBody(
 }) {
   final buffer = StringBuffer();
 
+  buffer.writeln('> [!NOTE]');
+  buffer.writeln(
+    '> **Docs review:** The only documentation changes in this PR are the '
+    '`CHANGELOG.md` files. Everything else was already reviewed in `develop`.',
+  );
+  buffer.writeln();
   buffer.writeln(
     contentCommit == null
         ? '> If you need to modify this changelog, edit CHANGELOG.md on this '
