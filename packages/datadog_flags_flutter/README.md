@@ -57,7 +57,8 @@ final enabled = api.getClient().getBooleanValue('checkout.enabled', false);
 
 The hook adds the variant from a successful evaluation to the active RUM view.
 It runs in the OpenFeature `finally` stage and tags only the final result.
-It skips errors and results without a variant.
+It skips errors, results without a variant, and evaluations from a
+`DatadogProvider` created with `trackEvaluations: false`.
 Register it with `OpenFeatureAPI.addHooks`, and register it again after shutdown.
 A hook registered on a client applies only to that client object.
 Each `getClient()` call returns a new client.
@@ -73,8 +74,11 @@ separate pure-Dart OpenFeature provider in that isolate.
 ## Exposures in your own data store
 
 This package exports `ExposureHook` from `datadog_flags`. Use it to record
-exposures in your own data store, even when `trackExposures` is `false`. See
+exposures in your own data store, even when `trackExposures` is `false` in
+`DatadogFlagsConfiguration`. See
 [Exposures in your own data store](https://pub.dev/packages/datadog_flags#exposures-in-your-own-data-store).
+To evaluate a flag without recording an exposure or a RUM evaluation, see
+[Evaluate without recording](https://pub.dev/packages/datadog_flags#evaluate-without-recording).
 
 ## Legacy API migration
 

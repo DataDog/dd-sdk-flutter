@@ -32,15 +32,16 @@ void main() {
   late _Rum rum;
   late OpenFeatureAPI api;
   late DatadogRumHook hook;
+  late _Provider provider;
 
   setUp(() async {
     final sdk = _Sdk();
     rum = _Rum();
     when(() => sdk.rum).thenReturn(rum);
-    final provider = _Provider();
+    provider = _Provider();
     when(
       () => provider.metadata,
-    ).thenReturn(const ProviderMetadata(name: 'test'));
+    ).thenReturn(const ProviderMetadata(name: 'datadog'));
     when(() => provider.resolveBooleanValue(any(), any(), any())).thenAnswer(
       (invocation) => switch (invocation.positionalArguments[0]) {
         'enabled' => ResolutionDetails(
@@ -60,6 +61,12 @@ void main() {
           reason: 'ERROR',
         ),
         'static' => ResolutionDetails(value: true, reason: 'STATIC'),
+        'untracked' => ResolutionDetails(
+          value: true,
+          variant: 'on',
+          reason: 'TARGETING_MATCH',
+          flagMetadata: {'__dd_track_evaluations': false},
+        ),
         _ => ResolutionDetails(
           value: invocation.positionalArguments[1] as bool,
           errorCode: ErrorCode.flagNotFound,
@@ -85,6 +92,7 @@ void main() {
     ('an error with a variant', 'error-with-variant', false),
     ('an ERROR reason with a variant', 'error-reason', false),
     ('a result without a variant', 'static', true),
+    ('an evaluation with tracking off', 'untracked', true),
   ]) {
     test('does not tag $name', () {
       final client = api.getClient()..addHooks([hook]);
@@ -93,6 +101,16 @@ void main() {
       verifyZeroInteractions(rum);
     });
   }
+
+  test('tags a tracking-off marker from another provider', () async {
+    when(
+      () => provider.metadata,
+    ).thenReturn(const ProviderMetadata(name: 'other'));
+    final client = api.getClient()..addHooks([hook]);
+
+    expect(client.getBooleanValue('untracked', false), isTrue);
+    verify(() => rum.addFeatureFlagEvaluation('untracked', 'on')).called(1);
+  });
 
   test('does not tag an evaluation that a later after hook fails', () {
     api.addHooks([_ThrowingAfterHook()]);

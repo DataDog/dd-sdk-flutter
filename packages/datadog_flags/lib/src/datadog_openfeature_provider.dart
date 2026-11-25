@@ -92,12 +92,45 @@ final class DatadogProvider
   Future<void>? _contextOperation;
   String? _resolvedClientName;
 
+  /// Whether evaluations through this provider are exposures.
+  ///
+  /// When false, evaluations through this provider send no exposure to
+  /// Datadog, do not enter the exposure deduplication cache, and reach
+  /// [ExposureHook] with [ExposureEvaluation.isExposure] false. A later
+  /// evaluation of the same flag and subject through a provider that tracks
+  /// exposures still records its exposure. Flag values are unchanged.
+  ///
+  /// This option can only narrow [DatadogFlagsConfiguration.trackExposures]:
+  /// when that is false, exposures are not sent to Datadog either way.
+  final bool trackExposures;
+
+  /// Whether evaluations through this provider are reported as evaluation
+  /// telemetry.
+  ///
+  /// When false, evaluations through this provider are not aggregated or sent
+  /// to the flag evaluation intake, and `DatadogRumHook` from
+  /// `datadog_flags_flutter` does not add them to the active RUM view. Flag
+  /// values are unchanged.
+  ///
+  /// This option can only narrow
+  /// [DatadogFlagsConfiguration.trackEvaluations]: when that is false,
+  /// evaluations are not sent to the intake either way.
+  final bool trackEvaluations;
+
   /// Creates a provider from a Datadog runtime configuration.
   ///
   /// The domain name identifies stored snapshots. The default domain uses
   /// [DatadogFlags.defaultClientName].
-  DatadogProvider.fromConfiguration(DatadogFlagsConfiguration configuration)
-    : _configuration = configuration;
+  ///
+  /// Set [trackExposures] and [trackEvaluations] to `false` to evaluate flags
+  /// in this provider's domain without recording them, for example to choose
+  /// content before it is shown, and record the exposure later through a
+  /// provider in another domain that keeps both on.
+  DatadogProvider.fromConfiguration(
+    DatadogFlagsConfiguration configuration, {
+    this.trackExposures = true,
+    this.trackEvaluations = true,
+  }) : _configuration = configuration;
 
   @override
   Stream<openfeature.ProviderEvent> get events => _events.stream;
@@ -471,6 +504,7 @@ final class DatadogProvider
       );
       final client = resources.createClient(
         _resolvedClientName ?? DatadogFlags.defaultClientName,
+        trackEvaluations: trackEvaluations,
       );
       final lifecycle = client as DatadogFlagsClientLifecycle;
       final candidate = _ProviderRuntime(client);
@@ -809,8 +843,12 @@ final class DatadogProvider
     String flagKey,
     ({FlagDetails<T> details, PendingExposure? exposure}) resolution,
   ) {
-    final exposure = resolution.exposure;
-    final details = resolution.details;
+    // Without an exposure, the provider hook records nothing: no intake
+    // event, no cache entry, and no exposure verdict for ExposureHook.
+    final exposure = trackExposures ? resolution.exposure : null;
+    final details = trackEvaluations
+        ? resolution.details
+        : _untrackedEvaluation(resolution.details);
     if (exposure == null) return details;
     // Without a frame from the provider hook, nothing records the exposure.
     if (_exposureFrames.lastOrNull case final frame?
@@ -827,6 +865,21 @@ final class DatadogProvider
         ...details.flagMetadata,
         datadogInternalDoLogMetadata: true,
         splitSerialIdMetadata: ?exposure.assignment.serialId,
+      },
+    );
+  }
+
+  static FlagDetails<T> _untrackedEvaluation<T>(FlagDetails<T> details) {
+    if (details.error != null) return details;
+    return FlagDetails(
+      key: details.key,
+      value: details.value,
+      variant: details.variant,
+      reason: details.reason,
+      error: details.error,
+      flagMetadata: {
+        ...details.flagMetadata,
+        datadogInternalTrackEvaluationsMetadata: false,
       },
     );
   }
@@ -883,13 +936,17 @@ final class _ProviderResources {
     : exposureLogger = ExposureLogger(flagsRuntime),
       evaluationAggregator = EvaluationAggregator(flagsRuntime);
 
-  DefaultDatadogFlagsClient createClient(String name) {
+  DefaultDatadogFlagsClient createClient(
+    String name, {
+    required bool trackEvaluations,
+  }) {
     return DefaultDatadogFlagsClient(
       name: name,
       repository: FlagsRepository.forRuntime(flagsRuntime, clientName: name),
       exposureLogger: exposureLogger,
       evaluationAggregator: evaluationAggregator,
       ownsTelemetry: false,
+      trackEvaluations: trackEvaluations,
     );
   }
 

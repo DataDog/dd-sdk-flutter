@@ -181,7 +181,9 @@ application ID, service, and version. The environment is sent as `dd_env`.
 - `initializationTimeout` for the lifecycle budget described above.
 - `trackExposures` and `customExposureEndpoint` for exposure telemetry. With
   `trackExposures: false`, the SDK sends no exposures to Datadog, but it still
-  deduplicates exposures for `ExposureHook`.
+  deduplicates exposures for `ExposureHook`. To evaluate without any exposure
+  for one provider, see
+  [Evaluate without recording](#evaluate-without-recording).
 - `trackEvaluations`, `customEvaluationEndpoint`, and `evaluationFlushInterval`
   for evaluation telemetry. The interval must be between 1 and 60 seconds.
   The default is 10 seconds.
@@ -218,6 +220,48 @@ records successes, defaults, and errors when assignments are active. Evaluations
 without active assignments return `ErrorCode.providerNotReady` and are not recorded.
 The provider does not implement
 OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
+
+## Evaluate without recording
+
+Sometimes you need a flag value before the subject sees the result, for
+example to choose the content of a notification when you send it. Evaluate
+these flags through a provider created with `trackExposures: false` and
+`trackEvaluations: false`, in its own OpenFeature domain:
+
+```dart
+await api.setProviderForDomainAndWait(
+  'preview',
+  DatadogProvider.fromConfiguration(
+    configuration,
+    trackExposures: false,
+    trackEvaluations: false,
+  ),
+);
+final variant = api.getClient('preview').getStringValue('push.copy', 'a');
+```
+
+Both options default to `true` and apply only to that provider. The provider
+fetches and stores its own assignments, so each extra provider adds its own
+assignment requests. If the assignments change between the two fetches, the
+value that this provider returns can differ from the one that another provider
+returns later.
+
+Register the provider for its domain before you evaluate through it, and again
+after `shutdown()`. OpenFeature evaluates a domain without a provider through
+the default provider, which records exposures and evaluations.
+
+- With `trackExposures: false`, evaluations send no exposure to Datadog and do
+  not enter the exposure deduplication cache. `ExposureHook` receives them
+  with `isExposure` false. When the subject later sees the result, evaluate the
+  flag through a provider that keeps `trackExposures` on, such as the default
+  provider. That evaluation records the exposure as usual.
+- With `trackEvaluations: false`, evaluations are not sent as evaluation
+  telemetry, and `DatadogRumHook` from `datadog_flags_flutter` does not add
+  them to the RUM view.
+
+These options can only turn tracking off. When `trackExposures` or
+`trackEvaluations` is `false` in `DatadogFlagsConfiguration`, a provider option
+of `true` does not send that telemetry.
 
 ## Diagnostics
 
