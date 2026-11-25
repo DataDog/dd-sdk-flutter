@@ -29,8 +29,10 @@ const double _strokeWidth = 2.0;
 const double _opacityDisabled = 0.38;
 
 // Transparent border
-const _transparentBorder =
-    BorderSide(width: _strokeWidth, color: Colors.transparent);
+const _transparentBorder = BorderSide(
+  width: _strokeWidth,
+  color: Colors.transparent,
+);
 
 /// Detects 'Checkbox' widgets and places a check box
 /// in SessionReplay.
@@ -74,12 +76,21 @@ class CheckboxRecorder implements ElementRecorder {
       if (widget.isError) WidgetState.error,
     };
 
-    final Color backgroundColor =
-        _getBackgroundColor(widget: widget, states: states, theme: theme);
-    final Color symbolColor =
-        _getSymbolColor(widget: widget, states: states, theme: theme);
-    final BorderSide borderSide =
-        _getBorderSide(widget: widget, states: states, theme: theme);
+    final Color backgroundColor = _getBackgroundColor(
+      widget: widget,
+      states: states,
+      theme: theme,
+    );
+    final Color symbolColor = _getSymbolColor(
+      widget: widget,
+      states: states,
+      theme: theme,
+    );
+    final BorderSide borderSide = _getBorderSide(
+      widget: widget,
+      states: states,
+      theme: theme,
+    );
     final double cornerRadius =
         _getCornerRadius(widget: widget, theme: theme) * attributes.scaleX;
 
@@ -127,8 +138,8 @@ class CheckboxRecorder implements ElementRecorder {
         (states.contains(WidgetState.disabled)
             ? null
             : (states.contains(WidgetState.selected)
-                ? widget.activeColor
-                : null)) ??
+                  ? widget.activeColor
+                  : null)) ??
         theme.checkboxTheme.fillColor?.resolve(states) ??
         _defaultFillColor(states: states, theme: theme);
   }
@@ -140,8 +151,10 @@ class CheckboxRecorder implements ElementRecorder {
     if (states.contains(WidgetState.disabled)) {
       return states.contains(WidgetState.selected)
           ? (theme.useMaterial3
-              ? theme.colorScheme.onSurface.withValues(alpha: _opacityDisabled)
-              : theme.disabledColor)
+                ? theme.colorScheme.onSurface.withValues(
+                    alpha: _opacityDisabled,
+                  )
+                : theme.disabledColor)
           : Colors.transparent;
     }
     if (states.contains(WidgetState.selected)) {
@@ -210,10 +223,11 @@ class CheckboxRecorder implements ElementRecorder {
         return _transparentBorder;
       }
       return BorderSide(
-          width: _strokeWidth,
-          color: (theme.useMaterial3
-              ? theme.colorScheme.onSurface.withValues(alpha: _opacityDisabled)
-              : theme.disabledColor));
+        width: _strokeWidth,
+        color: (theme.useMaterial3
+            ? theme.colorScheme.onSurface.withValues(alpha: _opacityDisabled)
+            : theme.disabledColor),
+      );
     }
     if (states.contains(WidgetState.selected)) {
       return _transparentBorder;
@@ -228,21 +242,20 @@ class CheckboxRecorder implements ElementRecorder {
       );
     }
 
-    return BorderSide(
-      width: _strokeWidth,
-      color: theme.unselectedWidgetColor,
-    );
+    return BorderSide(width: _strokeWidth, color: theme.unselectedWidgetColor);
   }
 
   double _getCornerRadius({
     required Checkbox widget,
     required ThemeData theme,
   }) {
-    final OutlinedBorder shape = widget.shape ??
+    final OutlinedBorder shape =
+        widget.shape ??
         theme.checkboxTheme.shape ??
         RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.all(Radius.circular(theme.useMaterial3 ? 2.0 : 1.0)),
+          borderRadius: BorderRadius.all(
+            Radius.circular(theme.useMaterial3 ? 2.0 : 1.0),
+          ),
         );
 
     return shape is RoundedRectangleBorder
@@ -286,8 +299,9 @@ class CheckboxNode extends CaptureNode {
       (_, false) => null,
       (_, null) => _dashIcon,
     };
-    final String symbol =
-        symbolIcon != null ? String.fromCharCode(symbolIcon.codePoint) : '';
+    final String symbol = symbolIcon != null
+        ? String.fromCharCode(symbolIcon.codePoint)
+        : '';
 
     return [
       SRTextWireframe(
@@ -309,12 +323,14 @@ class CheckboxNode extends CaptureNode {
           ),
         ),
         border: SRShapeBorder(
-            color: side.color.toHexString(), width: side.width.safeRound()),
+          color: side.color.toHexString(),
+          width: side.width.safeRound(),
+        ),
         shapeStyle: SRShapeStyle(
           backgroundColor: backgroundColor.toHexString(),
           cornerRadius: cornerRadius,
         ),
-      )
+      ),
     ];
   }
 }

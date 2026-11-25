@@ -1,0 +1,16 @@
+.DS_Store
+.dart_tool/
+
+.packages
+.pub/
+
+build/
+**/.env
+**/dd.env
+
+*flutter_junit_test_results.xml
+android/ndk_crash_reports/network_information
+**/.cxx/
+
+# FVM Version Cache
+.fvm/

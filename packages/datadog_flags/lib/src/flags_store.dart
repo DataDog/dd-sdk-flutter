@@ -3,10 +3,16 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 
 import 'assignment.dart';
+import 'datadog_flags_config.dart';
 import 'evaluation_context.dart';
+import 'flag_key_obfuscation.dart';
+import 'flag_selection.dart';
 
 /// Storage contract for last-known feature flag assignments.
 abstract class DatadogFlagsStore {
@@ -26,7 +32,7 @@ abstract class DatadogFlagsStore {
 /// Snapshot of flag assignments for a specific evaluation context.
 @immutable
 class FlagsData {
-  /// Assignments keyed by feature flag key.
+  /// Assignments keyed by the wire key for this snapshot's encoding.
   final Map<String, FlagAssignment> flags;
 
   /// Evaluation context that produced [flags].
@@ -35,16 +41,39 @@ class FlagsData {
   /// Timestamp when this data was created or stored.
   final DateTime date;
 
+  /// Encoding metadata stored with these assignments. Null means legacy keys.
+  @internal
+  final FlagKeyObfuscation? obfuscation;
+
+  /// Digest identifying the site, environment, and client token.
+  /// Snapshots without a scope are not eligible for restoration.
+  final String? scope;
+
+  /// Canonical selection [flags] were fetched with. Null means every flag.
+  final FlagSelection? flagSelection;
+
   /// Creates a flag assignment snapshot.
   const FlagsData({
     required this.flags,
     required this.context,
     required this.date,
+    this.obfuscation,
+    this.scope,
+    this.flagSelection,
   });
 
   /// Creates a flag assignment snapshot from persisted JSON.
   factory FlagsData.fromJson(Map<String, Object?> json) {
-    final flags = json['flags'] as Map<String, Object?>? ?? const {};
+    final obfuscation = FlagKeyObfuscation.fromSnapshot(json);
+    final flagSelection = json.containsKey('flagSelection')
+        ? flagSelectionFromJson(json['flagSelection'])
+        : null;
+    final flags = flagSelection != null
+        ? json['selectedFlags'] as Map<String, Object?>
+        : obfuscation == null
+        ? json['flags'] as Map<String, Object?>? ?? const {}
+        : json['encodedFlags'] as Map<String, Object?>;
+    obfuscation?.validateKeys(flags.keys);
     return FlagsData(
       flags: flags.map((key, value) {
         return MapEntry(
@@ -56,15 +85,38 @@ class FlagsData {
         Map<String, Object?>.from(json['context'] as Map),
       ),
       date: DateTime.parse(json['date'] as String),
+      obfuscation: obfuscation,
+      scope: json['scope'] as String?,
+      flagSelection: flagSelection,
     );
   }
 
   /// Converts this snapshot to persisted JSON.
   Map<String, Object?> toJson() {
     return {
-      'flags': flags.map((key, value) => MapEntry(key, value.toJson())),
+      // Older SDKs read only `flags`. Keep encoded assignments separate so a
+      // downgraded SDK cannot interpret their digests as plaintext flag keys.
+      // A selected snapshot writes `flags` as a list, which older SDKs reject
+      // instead of reading it as every flag or as no flags.
+      if (flagSelection != null) ...{
+        'flags': const <Object?>[],
+        'selectedFlags': flags.map(
+          (key, value) => MapEntry(key, value.toJson()),
+        ),
+        'flagSelection': flagSelectionToJson(flagSelection!),
+      } else if (obfuscation == null)
+        'flags': flags.map((key, value) => MapEntry(key, value.toJson()))
+      else
+        'encodedFlags': flags.map(
+          (key, value) => MapEntry(key, value.toJson()),
+        ),
       'context': context.toJson(),
       'date': date.toIso8601String(),
+      if (scope != null) 'scope': scope,
+      if (obfuscation != null) ...{
+        'obfuscated': true,
+        'obfuscation': obfuscation!.toJson(),
+      },
     };
   }
 }
@@ -92,3 +144,17 @@ class InMemoryDatadogFlagsStore implements DatadogFlagsStore {
 FlagsData _cloneFlagsData(FlagsData value) {
   return FlagsData.fromJson(value.toJson());
 }
+
+/// Identifies the assignment configuration without storing the client token.
+@internal
+String flagsDataScope(DatadogFlagsConfig configuration) => sha256
+    .convert(
+      utf8.encode(
+        jsonEncode([
+          configuration.site.name,
+          configuration.env,
+          configuration.clientToken,
+        ]),
+      ),
+    )
+    .toString();

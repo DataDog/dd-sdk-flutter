@@ -83,16 +83,13 @@ class _InstrumentationSecondScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Secondary Screen'),
-      ),
+      appBar: AppBar(title: const Text('Secondary Screen')),
       body: Column(
         children: [
           ElevatedButton(
-              onPressed: _performingOperations ? null : () => _fetchResources(),
-              child: Text(
-                _buttonText,
-              )),
+            onPressed: _performingOperations ? null : () => _fetchResources(),
+            child: Text(_buttonText),
+          ),
           if (_done) _buildLoaded(),
         ],
       ),
@@ -104,10 +101,7 @@ class _InstrumentationSecondScreenState
       child: Column(
         children: [
           const Text('All Done'),
-          ElevatedButton(
-            onPressed: _onNext,
-            child: const Text('Next Page'),
-          ),
+          ElevatedButton(onPressed: _onNext, child: const Text('Next Page')),
         ],
       ),
     );

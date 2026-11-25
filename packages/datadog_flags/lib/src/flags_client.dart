@@ -3,14 +3,44 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+import 'dart:async';
+
+import 'package:meta/meta.dart';
+
 import 'evaluation_context.dart';
 import 'flags_error.dart';
+
+const datadogAllocationKeyMetadata = 'allocationKey';
+const datadogDoLogMetadata = 'doLog';
+const datadogVariationTypeMetadata = 'variationType';
+const datadogInternalAllocationKeyMetadata = '__dd_allocation_key';
+const datadogInternalDoLogMetadata = '__dd_do_log';
+const datadogSerialIdMetadata = '__dd_split_serial_id';
+
+/// Current assignment availability for a Datadog feature flags client.
+@internal
+enum DatadogFlagsClientStatus {
+  /// No assignments are available for evaluation.
+  notReady,
+
+  /// Fresh assignments are available for evaluation.
+  ready,
+
+  /// Assignments are available, but fresh assignments are not.
+  stale,
+
+  /// No assignments are available because initialization failed.
+  error,
+}
 
 /// Evaluates feature flags for one current evaluation context.
 ///
 /// Create separate clients for separate mobile subjects, such as logged-out and
 /// logged-in users. Clients are local to the Dart isolate where they are
 /// created and must be recreated in background isolates.
+@Deprecated(
+  'Use OpenFeatureClient. Removal is planned for the next major version.',
+)
 abstract interface class DatadogFlagsClient {
   /// Stable name assigned by [DatadogFlags.sharedClient].
   String get name;
@@ -26,11 +56,16 @@ abstract interface class DatadogFlagsClient {
   /// If a later call supersedes the first call, the first call remains bounded
   /// by its original deadline. The later call does not use this timeout.
   ///
-  /// Evaluations made before initialization completes return their provided
-  /// default value with a `providerNotReady` error.
-  Future<void> initialize(
-    FlagsEvaluationContext context,
-  );
+  /// Evaluations return their provided default value with a `providerNotReady`
+  /// error until assignments are available and while assignments are withheld.
+  /// A targeting-key change immediately withholds the installed assignments.
+  /// By default, same-key attribute changes retain assignments while pending or failed.
+  /// Setting [strictContextSwitchingAttribute] to `true` in context attributes
+  /// also requires matching targeting attributes and withholds assignments
+  /// after failure.
+  /// Strict retries require a successful fetch before evaluations recover.
+  /// Throws [StateError] if this client has been shut down.
+  Future<void> initialize(FlagsEvaluationContext context);
 
   /// Evaluates a boolean flag and returns details about the result.
   FlagDetails<bool> getBooleanDetails({
@@ -69,7 +104,31 @@ abstract interface class DatadogFlagsClient {
   Future<void> shutdown();
 }
 
+/// Optional assignment lifecycle state exposed by Datadog SDK clients.
+///
+/// This is separate from [DatadogFlagsClient] so existing custom clients and
+/// test doubles are not required to implement lifecycle reporting.
+@internal
+abstract interface class DatadogFlagsClientLifecycle {
+  /// Current assignment availability for this client.
+  DatadogFlagsClientStatus get status;
+
+  /// Emits changes to assignment availability for this client.
+  ///
+  /// Read [status] before subscribing when the current value is required.
+  Stream<DatadogFlagsClientStatus> get statusChanges;
+
+  /// Context associated with the assignments currently used for evaluation.
+  ///
+  /// Returns null before assignments load and while they are withheld.
+  /// The strict context-switching attribute is not included.
+  FlagsEvaluationContext? get evaluationContext;
+}
+
 /// Result of a typed flag evaluation.
+@Deprecated(
+  'Use FlagEvaluationDetails. Removal is planned for the next major version.',
+)
 class FlagDetails<T> {
   /// Flag key that was evaluated.
   final String key;
@@ -89,6 +148,9 @@ class FlagDetails<T> {
   /// Programmatic error describing why the default value was returned.
   final FlagEvaluationError? error;
 
+  /// Provider-specific metadata associated with a successful evaluation.
+  final Map<String, Object> flagMetadata;
+
   /// Creates immutable details for a flag evaluation result.
   const FlagDetails({
     required this.key,
@@ -96,5 +158,6 @@ class FlagDetails<T> {
     this.variant,
     this.reason,
     this.error,
+    this.flagMetadata = const {},
   });
 }

@@ -35,6 +35,7 @@ final configuration = DatadogConfiguration(
     clientToken: '<client-token>',
     env: '<env-name>',
     site: DatadogSite.us1,
+    service: '<SERVICE_NAME>',
     // RUM is required to use Datadog Session Replay
     rumConfiguration: DatadogRumConfiguration(
         applicationId: '<application-id>',
@@ -65,7 +66,7 @@ When Flutter is embedded in a native host app (`isEmbedded: true`), `replaySampl
 
 By default, Session Replay starts recording when it initializes. To start recording manually, set `startRecordingImmediately: false` on `DatadogSessionReplayConfiguration`. Then, call `DatadogSessionReplay.instance!.startRecording()` to begin recording and `DatadogSessionReplay.instance!.stopRecording()` to pause it. The background processor isolate stays running while recording is stopped, so resuming is fast.
 
-Recording only happens while the current RUM session is selected by `replaySampleRate`. If you call `startRecording()` during a session that was not selected, nothing is captured until a selected session starts, and recording then begins on its own. `stopRecording()` stays in effect across session changes. `DatadogSessionReplay.instance!.isCapturing` tells you whether capture is running right now.
+Recording happens only while the current RUM session is selected by `replaySampleRate`. If you call `startRecording()` during a session that was not selected, nothing is captured until a selected session starts, and recording then begins on its own. `stopRecording()` stays in effect across session changes. `DatadogSessionReplay.instance!.isCapturing` tells you whether capture is running right now.
 
 Calling `stopRecording()` also stops pointer capture (touch and gesture events). Both resume on the next `startRecording()` call.
 

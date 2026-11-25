@@ -13,6 +13,7 @@ import 'evaluation_context.dart';
 import 'flags_runtime.dart';
 import 'intake_request.dart';
 import 'json_value.dart';
+import 'split_features.dart';
 
 class ExposureLogger {
   static const Duration defaultUploadTimeout = Duration(seconds: 15);
@@ -27,33 +28,37 @@ class ExposureLogger {
   Future<void>? _shutdownInFlight;
   Timer? _flushTimer;
   bool _shutdownDrainActive = false;
+  final UploadBackoff _backoff = UploadBackoff();
 
   ExposureLogger(this.runtime);
 
-  void logExposure({
+  /// Records an exposure of [assignment] in the exposure cache and, when
+  /// exposure tracking is on, queues it for Datadog.
+  ///
+  /// Returns whether the subject was already exposed. The cache records even
+  /// when exposure tracking is off, so exposure hooks keep correct verdicts.
+  bool logExposure({
     required String flagKey,
     required FlagAssignment assignment,
     required FlagsEvaluationContext evaluationContext,
   }) {
-    final configuration = runtime.configuration;
-    if (!configuration.trackExposures || !assignment.doLog) {
-      return;
+    if (!assignment.doLog) {
+      return false;
     }
 
     final cacheKey = _ExposureCacheKey(
       targetingKey: evaluationContext.targetingKey,
       flagKey: flagKey,
     );
-    final cacheValue = _ExposureCacheValue(
-      allocationKey: assignment.allocationKey,
-      variationKey: assignment.variationKey,
-      serialId: assignment.serialId,
-    );
+    final cacheValue = _ExposureCacheValue.of(assignment);
     if (_loggedAssignments[cacheKey] == cacheValue) {
-      return;
+      return true;
     }
     _loggedAssignments[cacheKey] = cacheValue;
 
+    if (!runtime.configuration.trackExposures) {
+      return false;
+    }
     _pendingExposures.add(
       _buildExposureEvent(
         flagKey: flagKey,
@@ -62,6 +67,7 @@ class ExposureLogger {
       ),
     );
     _scheduleFlush();
+    return false;
   }
 
   Future<void> shutdown() {
@@ -87,13 +93,8 @@ class ExposureLogger {
     _shutdownDrainActive = true;
     try {
       final activeUpload = _uploadInFlight;
-      if (activeUpload != null) {
-        final succeeded = await activeUpload;
-        if (!succeeded) {
-          return;
-        }
-      }
-
+      final activeSucceeded = await activeUpload ?? true;
+      if (!activeSucceeded) return;
       await _uploadPendingExposures(rescheduleOnFailure: false);
     } finally {
       _shutdownDrainActive = false;
@@ -103,19 +104,19 @@ class ExposureLogger {
   Future<void> _flushPendingExposures({
     required bool rescheduleOnFailure,
   }) async {
+    if (_backoff.remaining > Duration.zero) {
+      _scheduleFlushAfter(_backoff.remaining);
+      return;
+    }
     if (_uploadInFlight != null) {
       _scheduleRetryFlush();
       return;
     }
 
-    await _uploadPendingExposures(
-      rescheduleOnFailure: rescheduleOnFailure,
-    );
+    await _uploadPendingExposures(rescheduleOnFailure: rescheduleOnFailure);
   }
 
-  Future<bool> _uploadPendingExposures({
-    required bool rescheduleOnFailure,
-  }) {
+  Future<bool> _uploadPendingExposures({required bool rescheduleOnFailure}) {
     final activeUpload = _uploadInFlight;
     if (activeUpload != null) {
       return activeUpload;
@@ -129,14 +130,15 @@ class ExposureLogger {
     _pendingExposures.clear();
 
     late final Future<bool> uploadOperation;
-    uploadOperation = _sendExposures(
-      exposures,
-      rescheduleOnFailure: rescheduleOnFailure,
-    ).whenComplete(() {
-      if (identical(_uploadInFlight, uploadOperation)) {
-        _uploadInFlight = null;
-      }
-    });
+    uploadOperation =
+        _sendExposures(
+          exposures,
+          rescheduleOnFailure: rescheduleOnFailure,
+        ).whenComplete(() {
+          if (identical(_uploadInFlight, uploadOperation)) {
+            _uploadInFlight = null;
+          }
+        });
     _uploadInFlight = uploadOperation;
     return uploadOperation;
   }
@@ -155,21 +157,21 @@ class ExposureLogger {
     );
     try {
       final response = await runtime.httpClient
-          .post(
-            request.endpoint,
-            headers: request.headers,
-            body: request.body,
-          )
+          .post(request.endpoint, headers: request.headers, body: request.body)
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
+          _backoff.failed();
           _restore(exposures, reschedule: rescheduleOnFailure);
           return false;
         }
+        _backoff.reset();
         return true;
       }
+      _backoff.reset();
       return true;
     } catch (_) {
+      _backoff.failed();
       _restore(exposures, reschedule: rescheduleOnFailure);
       return false;
     }
@@ -180,18 +182,22 @@ class ExposureLogger {
     required FlagAssignment assignment,
     required FlagsEvaluationContext evaluationContext,
   }) {
-    final subject = _removeNullValues({
+    final subject = {
       'id': evaluationContext.targetingKey,
       'attributes': sanitizeJsonValue(evaluationContext.attributes),
-    });
+    };
     final serialId = assignment.serialId;
+    final features = assignment.features.forDestination(
+      SplitFeatureDestination.exposure,
+    );
     return {
       'timestamp': runtime.configuration.dateProvider().millisecondsSinceEpoch,
       'allocation': {'key': assignment.allocationKey},
       'flag': {'key': flagKey},
       'variant': {'key': assignment.variationKey},
-      if (serialId != null) 'serial_id': serialId,
+      'serial_id': ?serialId,
       'subject': subject,
+      if (features.isNotEmpty) 'features': features,
     };
   }
 
@@ -212,7 +218,11 @@ class ExposureLogger {
   }
 
   void _scheduleRetryFlush() {
-    _scheduleFlushAfter(_exposureFlushRetryDelay);
+    _scheduleFlushAfter(
+      _backoff.remaining > Duration.zero
+          ? _backoff.remaining
+          : _exposureFlushRetryDelay,
+    );
   }
 
   void _scheduleFlushAfter(Duration delay) {
@@ -235,13 +245,10 @@ class ExposureLogger {
 
 @immutable
 final class _ExposureCacheKey {
-  final String? targetingKey;
+  final String targetingKey;
   final String flagKey;
 
-  const _ExposureCacheKey({
-    required this.targetingKey,
-    required this.flagKey,
-  });
+  const _ExposureCacheKey({required this.targetingKey, required this.flagKey});
 
   @override
   bool operator ==(Object other) {
@@ -268,6 +275,13 @@ final class _ExposureCacheValue {
     required this.serialId,
   });
 
+  _ExposureCacheValue.of(FlagAssignment assignment)
+    : this(
+        allocationKey: assignment.allocationKey,
+        variationKey: assignment.variationKey,
+        serialId: assignment.serialId,
+      );
+
   @override
   bool operator ==(Object other) {
     return other is _ExposureCacheValue &&
@@ -284,7 +298,3 @@ final class _ExposureCacheValue {
 
 const _exposureFlushDelay = Duration(seconds: 10);
 const _exposureFlushRetryDelay = Duration(milliseconds: 500);
-
-Map<String, Object?> _removeNullValues(Map<String, Object?> input) {
-  return Map.fromEntries(input.entries.where((entry) => entry.value != null));
-}

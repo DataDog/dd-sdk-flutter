@@ -6,38 +6,27 @@
 #
 
 ########
-# This script is being moved to `melos.yaml`. Use `melos generate_env` instead.
+# dd.env generation for package examples has moved to `melos.yaml` (`melos generate_env`).
+# This script now only generates config for examples/native-hybrid-app and examples/simple_example
 ########
 
-set echo off
+set -e
+cd "$(dirname "$0")"
 
-dotEnvFiles=(
-  "packages/datadog_flutter_plugin/example/.env"
-  "packages/datadog_flutter_plugin/integration_test_app/.env"
-  "packages/datadog_tracking_http_client/example/.env"
-  "packages/datadog_webview_tracking/example/.env"
-  "examples/simple_example/.env"
-  "examples/session_replay_example/.env"
-  "test_apps/stress_test/.env"
-)
-
-for f in ${dotEnvFiles[@]}; do
-  echo "Generating $f"
-  tee $f > /dev/null << END
+tee examples/simple_example/dd.env > /dev/null << END
 # Edit this file with your Datadog client token, environment and application id
 DD_CLIENT_TOKEN=$DD_CLIENT_TOKEN
 DD_APPLICATION_ID=$DD_APPLICATION_ID
 DD_ENV=prod
 END
-done
 
 flagsTargetingAttributesJson=${FLAGS_TARGETING_ATTRIBUTES_JSON:-'{"attr1":"value1","companyId":"1"}'}
 flagDotEnvFiles=(
-  "examples/simple_example/.env"
+  "examples/simple_example/dd.env"
 )
 
-for f in ${flagDotEnvFiles[@]}; do
-  tee -a $f > /dev/null << END
+for f in "${flagDotEnvFiles[@]}"; do
+  tee -a "$f" > /dev/null << END
 
 # Optional Datadog Flags example settings.
 DD_SITE=${DD_SITE:-us1}
@@ -51,20 +40,8 @@ FLAGS_OBJECT_KEYS=${FLAGS_OBJECT_KEYS:-checkout.config}
 END
 done
 
-e2eDotEnvFiles=(
-  "packages/datadog_flutter_plugin/e2e_test_app/.env"
-)
-
-for f in ${e2eDotEnvFiles[@]}; do
-  tee $f > /dev/null << END
-DD_CLIENT_TOKEN=$DD_E2E_CLIENT_TOKEN
-DD_APPLICATION_ID=$DD_E2E_APPLICATION_ID
-DD_E2E_IS_ON_CI=${IS_ON_CI:-false}
-END
-done 
-
 pushd examples/native-hybrid-app/android/app/src/main/res/
-mkdir raw
+mkdir -p raw
 tee ./raw/dd_config.json > /dev/null << END
 {
   "client_token": "$DD_CLIENT_TOKEN",
@@ -73,7 +50,7 @@ tee ./raw/dd_config.json > /dev/null << END
 END
 popd
 
-pushd examples/native-hybrid-app/ios/iOS\ Flutter\ Hybrid\ Example
+pushd examples/native-hybrid-app/ios/HybridSessionReplayExample
 tee ./ddog_config.plist > /dev/null << END
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

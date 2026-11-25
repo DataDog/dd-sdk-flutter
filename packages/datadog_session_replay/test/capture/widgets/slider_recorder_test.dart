@@ -28,9 +28,7 @@ SimpleTestCapture captureSlider(
     recorder: recorder,
     child: MaterialApp(
       theme: theme,
-      home: Scaffold(
-        body: Center(child: slider),
-      ),
+      home: Scaffold(body: Center(child: slider)),
     ),
   );
 }
@@ -41,10 +39,7 @@ void main() {
 
   setUp(() {
     recorder = SessionReplayRecorder.withCustomRecorders(
-      [
-        SliderRecorder(KeyGenerator()),
-        CupertinoSliderRecorder(KeyGenerator()),
-      ],
+      [SliderRecorder(KeyGenerator()), CupertinoSliderRecorder(KeyGenerator())],
       defaultCapturePrivacy: TreeCapturePrivacy(
         textAndInputPrivacyLevel: TextAndInputPrivacyLevel.maskSensitiveInputs,
         imagePrivacyLevel: ImagePrivacyLevel.maskNonAssetsOnly,
@@ -105,7 +100,9 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 0.5, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 0.5, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 0.5, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -118,7 +115,9 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 0.5, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 0.5, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 0.5, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -131,7 +130,9 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 0.5, onChanged: null)),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 0.5, onChanged: null)),
+          recorder,
+          CupertinoSlider(value: 0.5, onChanged: null),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -140,34 +141,37 @@ void main() {
     );
 
     testWidgets(
-        'material slider with secondaryTrackValue adds a secondary track wireframe',
-        (tester) async {
-      final tree = captureSlider(
-        recorder,
-        Slider(value: 0.3, secondaryTrackValue: 0.7, onChanged: (_) {}),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      expect(wireframesOf(capture).length, 4);
-    });
+      'material slider with secondaryTrackValue adds a secondary track wireframe',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          Slider(value: 0.3, secondaryTrackValue: 0.7, onChanged: (_) {}),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        expect(wireframesOf(capture).length, 4);
+      },
+    );
 
     testWidgets(
-        'material slider with divisions=N adds N+1 tick mark wireframes',
-        (tester) async {
-      final tree = captureSlider(
-        recorder,
-        Slider(value: 0.5, divisions: 4, onChanged: (_) {}),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      // 3 (inactive + active + thumb) + 5 ticks = 8
-      expect(wireframesOf(capture).length, 8);
-    });
+      'material slider with divisions=N adds N+1 tick mark wireframes',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          Slider(value: 0.5, divisions: 4, onChanged: (_) {}),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        // 3 (inactive + active + thumb) + 5 ticks = 8
+        expect(wireframesOf(capture).length, 8);
+      },
+    );
 
-    testWidgets('CupertinoSlider with divisions still produces 3 wireframes',
-        (tester) async {
+    testWidgets('CupertinoSlider with divisions still produces 3 wireframes', (
+      tester,
+    ) async {
       // CupertinoSlider snaps the value to divisions but doesn't render
       // visual tick marks (unlike Material).
       final tree = captureSlider(
@@ -181,52 +185,67 @@ void main() {
     });
 
     testWidgets(
-        'M3-2024 material slider (year2023: false) adds gap + stop indicator wireframes',
-        (tester) async {
-      final tree = captureSlider(
-        recorder,
-        Slider(
-          // ignore: deprecated_member_use
-          year2023: false,
-          value: 0.5,
-          onChanged: (_) {},
-        ),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      // 3 (inactive + active + thumb) + 2 (gap + stop indicator) = 5
-      expect(wireframesOf(capture).length, 5);
-    });
+      'M3-2024 material slider (year2023: false) adds gap + stop indicator wireframes',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          Slider(
+            // ignore: deprecated_member_use
+            year2023: false,
+            value: 0.5,
+            onChanged: (_) {},
+          ),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        // 3 (inactive + active + thumb) + 2 (gap + stop indicator) = 5
+        expect(wireframesOf(capture).length, 5);
+      },
+    );
   });
 
   group('colors', () {
     metaTestWidgets(
       'thumb uses widget.thumbColor when set',
       [
-        () => captureSlider(recorder,
-            Slider(value: 0.5, onChanged: (_) {}, thumbColor: Colors.red)),
         () => captureSlider(
-            recorder,
-            CupertinoSlider(
-                value: 0.5, onChanged: (_) {}, thumbColor: Colors.red)),
+          recorder,
+          Slider(value: 0.5, onChanged: (_) {}, thumbColor: Colors.red),
+        ),
+        () => captureSlider(
+          recorder,
+          CupertinoSlider(
+            value: 0.5,
+            onChanged: (_) {},
+            thumbColor: Colors.red,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
-        expect(thumbOf(capture).shapeStyle!.backgroundColor,
-            Colors.red.toHexString());
+        expect(
+          thumbOf(capture).shapeStyle!.backgroundColor,
+          Colors.red.toHexString(),
+        );
       },
     );
 
     metaTestWidgets(
       'active track uses widget.activeColor when set',
       [
-        () => captureSlider(recorder,
-            Slider(value: 0.5, onChanged: (_) {}, activeColor: Colors.green)),
         () => captureSlider(
-            recorder,
-            CupertinoSlider(
-                value: 0.5, onChanged: (_) {}, activeColor: Colors.green)),
+          recorder,
+          Slider(value: 0.5, onChanged: (_) {}, activeColor: Colors.green),
+        ),
+        () => captureSlider(
+          recorder,
+          CupertinoSlider(
+            value: 0.5,
+            onChanged: (_) {},
+            activeColor: Colors.green,
+          ),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -237,8 +256,9 @@ void main() {
       },
     );
 
-    testWidgets('material inactive track uses widget.inactiveColor when set',
-        (tester) async {
+    testWidgets('material inactive track uses widget.inactiveColor when set', (
+      tester,
+    ) async {
       final tree = captureSlider(
         recorder,
         Slider(value: 0.5, onChanged: (_) {}, inactiveColor: Colors.yellow),
@@ -246,30 +266,35 @@ void main() {
       await tester.pumpWidget(tree);
       final capture = await recorder.performCapture();
       expect(capture, isNotNull);
-      expect(inactiveTrackOf(capture).shapeStyle!.backgroundColor,
-          Colors.yellow.toHexString());
+      expect(
+        inactiveTrackOf(capture).shapeStyle!.backgroundColor,
+        Colors.yellow.toHexString(),
+      );
     });
 
     testWidgets(
-        'material secondary track uses widget.secondaryActiveColor when set',
-        (tester) async {
-      final tree = captureSlider(
-        recorder,
-        Slider(
-          value: 0.3,
-          secondaryTrackValue: 0.7,
-          onChanged: (_) {},
-          secondaryActiveColor: Colors.purple,
-        ),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      // Order: [0] inactive, [1] secondary, [2] active, [3] thumb.
-      final secondary = wireframesOf(capture)[1] as SRShapeWireframe;
-      expect(
-          secondary.shapeStyle!.backgroundColor, Colors.purple.toHexString());
-    });
+      'material secondary track uses widget.secondaryActiveColor when set',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          Slider(
+            value: 0.3,
+            secondaryTrackValue: 0.7,
+            onChanged: (_) {},
+            secondaryActiveColor: Colors.purple,
+          ),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        // Order: [0] inactive, [1] secondary, [2] active, [3] thumb.
+        final secondary = wireframesOf(capture)[1] as SRShapeWireframe;
+        expect(
+          secondary.shapeStyle!.backgroundColor,
+          Colors.purple.toHexString(),
+        );
+      },
+    );
   });
 
   group('thumb position', () {
@@ -278,7 +303,9 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 0.0, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 0.0, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 0.0, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -293,14 +320,18 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 1.0, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 1.0, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 1.0, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
         final track = inactiveTrackOf(capture);
         final thumb = thumbOf(capture);
         expect(
-            thumb.x + thumb.width / 2, greaterThan(track.x + track.width / 2));
+          thumb.x + thumb.width / 2,
+          greaterThan(track.x + track.width / 2),
+        );
       },
     );
 
@@ -309,7 +340,9 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 0.5, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 0.5, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 0.5, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -322,49 +355,54 @@ void main() {
     );
 
     testWidgets(
-        'material thumb position scales linearly with custom min/max range',
-        (tester) async {
-      final tree = captureSlider(
-        recorder,
-        Slider(value: 50.0, min: 0.0, max: 100.0, onChanged: (_) {}),
-      );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      final track = inactiveTrackOf(capture);
-      final thumb = thumbOf(capture);
-      final trackMid = track.x + track.width / 2;
-      final thumbMid = thumb.x + thumb.width / 2;
-      expect((thumbMid - trackMid).abs(), lessThan(2));
-    });
+      'material thumb position scales linearly with custom min/max range',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          Slider(value: 50.0, min: 0.0, max: 100.0, onChanged: (_) {}),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        final track = inactiveTrackOf(capture);
+        final thumb = thumbOf(capture);
+        final trackMid = track.x + track.width / 2;
+        final thumbMid = thumb.x + thumb.width / 2;
+        expect((thumbMid - trackMid).abs(), lessThan(2));
+      },
+    );
   });
 
   group('material year2023', () {
     testWidgets(
-        'year2023: false produces a handle-style thumb (taller than wide)',
-        (tester) async {
+      'year2023: false produces a handle-style thumb (taller than wide)',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          Slider(
+            // ignore: deprecated_member_use
+            year2023: false,
+            value: 0.5,
+            onChanged: (_) {},
+          ),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        final thumb = thumbOf(capture);
+        expect(thumb.height, 44);
+        expect(thumb.width, greaterThanOrEqualTo(2.0));
+        expect(thumb.width, lessThanOrEqualTo(4.0));
+      },
+    );
+
+    testWidgets('year2023: true produces a round thumb (square)', (
+      tester,
+    ) async {
       final tree = captureSlider(
         recorder,
-        Slider(
-          // ignore: deprecated_member_use
-          year2023: false,
-          value: 0.5,
-          onChanged: (_) {},
-        ),
+        Slider(value: 0.5, onChanged: (_) {}),
       );
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      final thumb = thumbOf(capture);
-      expect(thumb.height, 44);
-      expect(thumb.width, greaterThanOrEqualTo(2.0));
-      expect(thumb.width, lessThanOrEqualTo(4.0));
-    });
-
-    testWidgets('year2023: true produces a round thumb (square)',
-        (tester) async {
-      final tree =
-          captureSlider(recorder, Slider(value: 0.5, onChanged: (_) {}));
       await tester.pumpWidget(tree);
       final capture = await recorder.performCapture();
       expect(capture, isNotNull);
@@ -374,10 +412,13 @@ void main() {
   });
 
   group('cupertino specifics', () {
-    testWidgets('CupertinoSlider thumb is a circle (square wireframe)',
-        (tester) async {
+    testWidgets('CupertinoSlider thumb is a circle (square wireframe)', (
+      tester,
+    ) async {
       final tree = captureSlider(
-          recorder, CupertinoSlider(value: 0.5, onChanged: (_) {}));
+        recorder,
+        CupertinoSlider(value: 0.5, onChanged: (_) {}),
+      );
       await tester.pumpWidget(tree);
       final capture = await recorder.performCapture();
       expect(capture, isNotNull);
@@ -386,16 +427,21 @@ void main() {
     });
 
     testWidgets(
-        'CupertinoSlider default thumb color is white when no thumbColor is set',
-        (tester) async {
-      final tree = captureSlider(
-          recorder, CupertinoSlider(value: 0.5, onChanged: (_) {}));
-      await tester.pumpWidget(tree);
-      final capture = await recorder.performCapture();
-      expect(capture, isNotNull);
-      expect(thumbOf(capture).shapeStyle!.backgroundColor,
-          CupertinoColors.white.toHexString());
-    });
+      'CupertinoSlider default thumb color is white when no thumbColor is set',
+      (tester) async {
+        final tree = captureSlider(
+          recorder,
+          CupertinoSlider(value: 0.5, onChanged: (_) {}),
+        );
+        await tester.pumpWidget(tree);
+        final capture = await recorder.performCapture();
+        expect(capture, isNotNull);
+        expect(
+          thumbOf(capture).shapeStyle!.backgroundColor,
+          CupertinoColors.white.toHexString(),
+        );
+      },
+    );
   });
 
   group('privacy', () {
@@ -404,7 +450,9 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 0.95, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 0.95, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 0.95, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
@@ -427,14 +475,18 @@ void main() {
       [
         () => captureSlider(recorder, Slider(value: 1.0, onChanged: (_) {})),
         () => captureSlider(
-            recorder, CupertinoSlider(value: 1.0, onChanged: (_) {})),
+          recorder,
+          CupertinoSlider(value: 1.0, onChanged: (_) {}),
+        ),
       ],
       (capture) {
         expect(capture, isNotNull);
         final track = inactiveTrackOf(capture);
         final thumb = thumbOf(capture);
         expect(
-            thumb.x + thumb.width / 2, greaterThan(track.x + track.width / 2));
+          thumb.x + thumb.width / 2,
+          greaterThan(track.x + track.width / 2),
+        );
       },
     );
   });

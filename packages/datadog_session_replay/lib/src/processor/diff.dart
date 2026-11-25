@@ -168,8 +168,8 @@ Diff computeDiff(List<SRWireframe> oldArray, List<SRWireframe> newArray) {
       final newElement = newArray[i];
       final oldElement = oldArray[indexInOld];
 
-      if ((indexInOld - removalOffset + runningOffset) != i) {
-        // Old element was moved to another position
+      if ((indexInOld - removalOffset + runningOffset) != i ||
+          newElement.runtimeType != oldElement.runtimeType) {
         final previousId = i > 0 ? newArray[i - 1].id : null;
         removes.add(SRIncrementalRemove(id: newArray[i].id));
         adds.add(

@@ -8,33 +8,43 @@ import 'dart:async';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
-const _clientToken = String.fromEnvironment('DD_CLIENT_TOKEN');
-const _applicationId = String.fromEnvironment('DD_APPLICATION_ID');
-const _env = String.fromEnvironment('DD_ENV', defaultValue: 'dev');
-const _site = String.fromEnvironment('DD_SITE', defaultValue: 'us1');
-const _targetingKey = String.fromEnvironment(
-  'DD_TARGETING_KEY',
-  defaultValue: 'example-user',
-);
-const _flagKey = String.fromEnvironment(
-  'DD_FLAG_KEY',
-  defaultValue: 'checkout.enabled',
-);
+import 'flags_example_configuration.dart';
+
+String get _clientToken => dotenv.env['DD_CLIENT_TOKEN'] ?? '';
+String get _applicationId => dotenv.env['DD_APPLICATION_ID'] ?? '';
+String get _env => dotenv.env['DD_ENV'] ?? 'dev';
+String get _site => dotenv.env['DD_SITE'] ?? 'us1';
+String get _targetingKey => dotenv.env['FLAGS_TARGETING_KEY'] ?? 'example-user';
+String get _flagKey =>
+    (dotenv.env['FLAGS_BOOLEAN_KEYS'] ?? 'checkout.enabled').split(',').first;
+
+const _service = 'com.datadoghq.flags.example';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: 'dd.env');
 
   final isConfigured = _clientToken.isNotEmpty;
+  final flagsConfiguration = flagsExampleConfiguration(
+    service: _service,
+    site: _datadogSiteFor(_site),
+    clientToken: _clientToken,
+    env: _env,
+    applicationId: _applicationId.isEmpty ? null : _applicationId,
+  );
   if (isConfigured) {
     final configuration = DatadogConfiguration(
+      service: _service,
       clientToken: _clientToken,
       env: _env,
       site: _datadogSiteFor(_site),
       rumConfiguration: _applicationId.isEmpty
           ? null
           : DatadogRumConfiguration(applicationId: _applicationId),
-    )..addPlugin(const DatadogFlagsPluginConfiguration());
+    );
 
     await DatadogSdk.instance.initialize(
       configuration,
@@ -42,7 +52,30 @@ Future<void> main() async {
     );
   }
 
-  runApp(FlagsExampleApp(isConfigured: isConfigured));
+  final api = OpenFeatureAPI.instance;
+  api.addHooks([DatadogRumHook()]);
+  await api.setEvaluationContextAndWait(
+    EvaluationContext(targetingKey: _targetingKey),
+  );
+  if (flagsConfiguration != null) {
+    try {
+      await api.setProviderAndWait(
+        DatadogProvider.fromConfiguration(
+          DatadogFlagsConfiguration(datadogConfig: flagsConfiguration),
+        ),
+      );
+    } on OpenFeatureException {
+      // The app can use defaults and recover when initial assignments arrive.
+    }
+  }
+  runApp(
+    FlagsExampleApp(
+      isConfigured: flagsConfiguration != null,
+      configurationError: isConfigured && flagsConfiguration == null
+          ? 'Feature Flags is not supported for site $_site.'
+          : null,
+    ),
+  );
 }
 
 DatadogSite _datadogSiteFor(String site) {
@@ -59,10 +92,12 @@ DatadogSite _datadogSiteFor(String site) {
 
 class FlagsExampleApp extends StatefulWidget {
   final bool isConfigured;
+  final String? configurationError;
 
   const FlagsExampleApp({
     super.key,
     required this.isConfigured,
+    this.configurationError,
   });
 
   @override
@@ -71,7 +106,7 @@ class FlagsExampleApp extends StatefulWidget {
 
 class _FlagsExampleAppState extends State<FlagsExampleApp> {
   String _status = 'idle';
-  FlagDetails<bool>? _details;
+  FlagEvaluationDetails<bool>? _details;
 
   @override
   void initState() {
@@ -82,42 +117,16 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
   Future<void> _evaluate() async {
     if (!widget.isConfigured) {
       setState(() {
-        _status = 'Set DD_CLIENT_TOKEN with --dart-define to evaluate flags.';
+        _status =
+            widget.configurationError ??
+            'Set DD_CLIENT_TOKEN in dd.env to evaluate flags.';
       });
       return;
     }
 
-    final client = DatadogSdk.instance.flags?.sharedClient();
-    if (client == null) {
-      setState(() {
-        _status = 'Flags plugin is not configured.';
-      });
-      return;
-    }
-
-    setState(() {
-      _status = 'loading';
-    });
-
-    var status = 'ready';
-    try {
-      await client.initialize(
-        const FlagsEvaluationContext(targetingKey: _targetingKey),
-      );
-    } on FlagsInitializationTimeoutException catch (error) {
-      status = 'using stored assignments or defaults: ${error.message}';
-    } catch (error) {
-      setState(() {
-        _details = null;
-        _status = 'using defaults: $error';
-      });
-      return;
-    }
-
-    final details = client.getBooleanDetails(
-      key: _flagKey,
-      defaultValue: false,
-    );
+    final client = OpenFeatureAPI.instance.getClient();
+    final status = client.providerStatus.name;
+    final details = client.getBooleanDetails(_flagKey, false);
     setState(() {
       _details = details;
       _status = status;
@@ -143,13 +152,10 @@ class _FlagsExampleAppState extends State<FlagsExampleApp> {
               label: 'Value',
               value: details == null ? '(none)' : details.value.toString(),
             ),
-            _InfoRow(
-              label: 'Variant',
-              value: details?.variant ?? '(none)',
-            ),
+            _InfoRow(label: 'Variant', value: details?.variant ?? '(none)'),
             _InfoRow(
               label: 'Error',
-              value: details?.error?.name ?? '(none)',
+              value: details?.errorCode?.name ?? '(none)',
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -167,10 +173,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

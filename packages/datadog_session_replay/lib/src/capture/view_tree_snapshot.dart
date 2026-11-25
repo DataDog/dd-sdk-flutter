@@ -41,16 +41,16 @@ abstract class CaptureNodeSemantics {
 @immutable
 class UnknownElement extends CaptureNodeSemantics {
   const UnknownElement({super.subtreePrivacy})
-      : super(
-          subtreeStrategy: CaptureNodeSubtreeStrategy.record,
-          nodes: const [],
-        );
+    : super(
+        subtreeStrategy: CaptureNodeSubtreeStrategy.record,
+        nodes: const [],
+      );
 }
 
 @immutable
 class InvisibleElement extends CaptureNodeSemantics {
   const InvisibleElement({required super.subtreeStrategy, super.subtreePrivacy})
-      : super(nodes: const []);
+    : super(nodes: const []);
 }
 
 @immutable
@@ -86,9 +86,14 @@ class SpecificElement extends CaptureNodeSemantics {
 class AdditionalProcessingElement extends CaptureNodeSemantics {
   final Future<CaptureNodeSemantics> Function() process;
 
+  /// Releases any resources held for [process] when the capture is abandoned
+  /// before [process] runs.
+  final void Function()? discard;
+
   const AdditionalProcessingElement({
     required super.subtreeStrategy,
     super.subtreePrivacy,
     required this.process,
+    this.discard,
   }) : super(nodes: const []);
 }

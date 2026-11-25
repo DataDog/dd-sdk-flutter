@@ -12,7 +12,7 @@ import 'screens/test_select_screen.dart';
 void main() async {
   DatadogSdk.instance.sdkVerbosity = CoreLoggerLevel.debug;
 
-  await dotenv.load();
+  await dotenv.load(fileName: 'dd.env');
 
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
 
@@ -20,6 +20,7 @@ void main() async {
     clientToken: dotenv.get('DD_CLIENT_TOKEN', fallback: ''),
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
+    service: 'com.datadoghq.flutter.stress_test',
     nativeCrashReportEnabled: true,
     loggingConfiguration: DatadogLoggingConfiguration(
       eventMapper: (event) => event,
@@ -38,13 +39,9 @@ void main() async {
         : null,
   )..additionalConfig[DatadogConfigKey.trackMapperPerformance] = true;
 
-  await DatadogSdk.runApp(
-    ddconfig,
-    TrackingConsent.granted,
-    () {
-      return runApp(const MyApp());
-    },
-  );
+  await DatadogSdk.runApp(ddconfig, TrackingConsent.granted, () {
+    return runApp(const MyApp());
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -53,16 +50,15 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    final navigationObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    final navigationObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
     return DatadogNavigationObserverProvider(
       navObserver: navigationObserver,
       child: MaterialApp(
         title: 'Datadog Stress Test',
         navigatorObservers: [navigationObserver],
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
+        theme: ThemeData(primarySwatch: Colors.blue),
         home: const TestSelectScreen(),
       ),
     );

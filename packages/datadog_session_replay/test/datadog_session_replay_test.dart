@@ -4,6 +4,7 @@
 
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:datadog_session_replay/datadog_session_replay.dart';
+import 'package:datadog_session_replay/src/capture/element_recorders/raster_resources.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_interface.dart';
 import 'package:datadog_session_replay/src/datadog_session_replay_platform_noop.dart';
 import 'package:datadog_session_replay/src/rum_context.dart';
@@ -26,18 +27,22 @@ void main() {
     expect(initialPlatform, isInstanceOf<DatadogSessionReplayPlatformNoop>());
   });
 
-  test('DatadogSessionReplayConfiguration default fontFamilyTransform is none',
-      () {
-    final c = DatadogSessionReplayConfiguration(replaySampleRate: 100.0);
-    expect(c.fontFamilyTransform.strategy, FontFamilyStrategy.none);
-    expect(c.fontFamilyTransform.rules, isEmpty);
-  });
+  test(
+    'DatadogSessionReplayConfiguration default fontFamilyTransform is none',
+    () {
+      final c = DatadogSessionReplayConfiguration(replaySampleRate: 100.0);
+      expect(c.fontFamilyTransform.strategy, FontFamilyStrategy.none);
+      expect(c.fontFamilyTransform.rules, isEmpty);
+    },
+  );
 
-  test('DatadogSessionReplayConfiguration default imageDownscaling is disabled',
-      () {
-    final c = DatadogSessionReplayConfiguration(replaySampleRate: 100.0);
-    expect(c.imageDownscaling, ImageDownscaling.disabled);
-  });
+  test(
+    'DatadogSessionReplayConfiguration default imageDownscaling is disabled',
+    () {
+      final c = DatadogSessionReplayConfiguration(replaySampleRate: 100.0);
+      expect(c.imageDownscaling, ImageDownscaling.disabled);
+    },
+  );
 
   group('DatadogSessionReplay', () {
     final mockPlatform = MockDatadogSessionReplayPlatform();
@@ -50,6 +55,55 @@ void main() {
       registerFallbackValue(
         DatadogSessionReplayConfiguration(replaySampleRate: 100),
       );
+    });
+
+    group('maxImagePixelBudget', () {
+      for (final budget in [-640000, -1, 0]) {
+        test('$budget is replaced by the default with a warning', () {
+          final logger = MockInternalLogger();
+
+          final result = DatadogSessionReplay.validMaxImagePixelBudget(
+            budget,
+            logger,
+          );
+
+          expect(result, defaultMaxImagePixelBudget);
+          verify(() => logger.warn(any(that: contains('maxImagePixelBudget'))));
+        });
+      }
+
+      for (final budget in [1, 20000, defaultMaxImagePixelBudget]) {
+        test('$budget is kept', () {
+          final logger = MockInternalLogger();
+
+          final result = DatadogSessionReplay.validMaxImagePixelBudget(
+            budget,
+            logger,
+          );
+
+          expect(result, budget);
+          verifyNever(() => logger.warn(any()));
+        });
+      }
+
+      test('.init() warns about an invalid budget', () async {
+        when(
+          () => mockPlatform.enable(any(), any()),
+        ).thenAnswer((_) => Future.value(false));
+        final logger = MockInternalLogger();
+
+        await DatadogSessionReplay.init(
+          DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            maxImagePixelBudget: -1,
+            textCaptureMode: TextCaptureMode.highFidelity,
+          ),
+          logger,
+        );
+        addTearDown(DatadogSessionReplay.resetInstance);
+
+        verify(() => logger.warn(any(that: contains('maxImagePixelBudget'))));
+      });
     });
 
     test('.init() calls enable on platform', () {
@@ -92,9 +146,7 @@ void main() {
 
       setUp(() {
         // Returning false avoids spawning the processor isolate in tests
-        when(
-          () => mockPlatform.enable(any(), any()),
-        ).thenAnswer((invocation) {
+        when(() => mockPlatform.enable(any(), any())).thenAnswer((invocation) {
           deliverRumContext =
               invocation.positionalArguments[1] as void Function(RUMContext);
           return Future.value(false);
@@ -107,8 +159,10 @@ void main() {
 
       test('is not recording after init', () async {
         // When
-        final sr =
-            await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        final sr = await DatadogSessionReplay.init(
+          defaultConfig,
+          mockInternalLogger,
+        );
 
         // Then
         expect(sr.isCapturing, false);
@@ -116,8 +170,10 @@ void main() {
 
       test('startRecording() sets isCapturing to true', () async {
         // Given
-        final sr =
-            await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        final sr = await DatadogSessionReplay.init(
+          defaultConfig,
+          mockInternalLogger,
+        );
         enterSampledSession();
 
         // When
@@ -129,8 +185,10 @@ void main() {
 
       test('stopRecording() sets isCapturing to false', () async {
         // Given
-        final sr =
-            await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        final sr = await DatadogSessionReplay.init(
+          defaultConfig,
+          mockInternalLogger,
+        );
         sr.startRecording();
 
         // When
@@ -142,8 +200,10 @@ void main() {
 
       test('calling startRecording() keeps the recording active', () async {
         // Given
-        final sr =
-            await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        final sr = await DatadogSessionReplay.init(
+          defaultConfig,
+          mockInternalLogger,
+        );
         enterSampledSession();
         sr.startRecording();
 
@@ -156,8 +216,10 @@ void main() {
 
       test('start/stop/start cycle works', () async {
         // Given
-        final sr =
-            await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        final sr = await DatadogSessionReplay.init(
+          defaultConfig,
+          mockInternalLogger,
+        );
         enterSampledSession();
 
         // When
@@ -171,8 +233,10 @@ void main() {
 
       test('stopRecording() is safe when not recording', () async {
         // Given
-        final sr =
-            await DatadogSessionReplay.init(defaultConfig, mockInternalLogger);
+        final sr = await DatadogSessionReplay.init(
+          defaultConfig,
+          mockInternalLogger,
+        );
 
         // When / Then
         expect(() => sr.stopRecording(), returnsNormally);
@@ -180,28 +244,34 @@ void main() {
       });
 
       test(
-          'isCapturing is true after init with startRecordingImmediately: true',
-          () async {
-        // Given — enable() must return true so _start() reaches startRecording()
-        when(() => mockPlatform.enable(any(), any())).thenAnswer((invocation) {
-          deliverRumContext =
-              invocation.positionalArguments[1] as void Function(RUMContext);
-          return Future.value(true);
-        });
-        when(() => mockPlatform.isolateToken).thenReturn(null);
+        'isCapturing is true after init with startRecordingImmediately: true',
+        () async {
+          // Given — enable() must return true so _start() reaches startRecording()
+          when(() => mockPlatform.enable(any(), any())).thenAnswer((
+            invocation,
+          ) {
+            deliverRumContext =
+                invocation.positionalArguments[1] as void Function(RUMContext);
+            return Future.value(true);
+          });
+          when(() => mockPlatform.isolateToken).thenReturn(null);
 
-        final config = DatadogSessionReplayConfiguration(
-          replaySampleRate: 100.0,
-          startRecordingImmediately: true,
-        );
+          final config = DatadogSessionReplayConfiguration(
+            replaySampleRate: 100.0,
+            startRecordingImmediately: true,
+          );
 
-        // When
-        final sr = await DatadogSessionReplay.init(config, mockInternalLogger);
-        enterSampledSession();
+          // When
+          final sr = await DatadogSessionReplay.init(
+            config,
+            mockInternalLogger,
+          );
+          enterSampledSession();
 
-        // Then
-        expect(sr.isCapturing, true);
-      });
+          // Then
+          expect(sr.isCapturing, true);
+        },
+      );
     });
   });
 }

@@ -5,8 +5,11 @@
 import 'package:datadog_common_test/datadog_common_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Map<String, dynamic> _view(int documentVersion, Map<String, dynamic> view,
-    {Map<String, dynamic>? context}) {
+Map<String, dynamic> _view(
+  int documentVersion,
+  Map<String, dynamic> view, {
+  Map<String, dynamic>? context,
+}) {
   return {
     'type': 'view',
     'date': 1000,
@@ -14,28 +17,22 @@ Map<String, dynamic> _view(int documentVersion, Map<String, dynamic> view,
     '_dd': {'document_version': documentVersion},
     'session': {'id': 'session-id'},
     'context': context ?? {},
-    'view': {
-      'id': 'view-id',
-      'name': 'ViewName',
-      'url': 'ViewName',
-      ...view,
-    },
+    'view': {'id': 'view-id', 'name': 'ViewName', 'url': 'ViewName', ...view},
   };
 }
 
-Map<String, dynamic> _viewUpdate(int documentVersion, Map<String, dynamic> view,
-    {Map<String, dynamic>? context}) {
+Map<String, dynamic> _viewUpdate(
+  int documentVersion,
+  Map<String, dynamic> view, {
+  Map<String, dynamic>? context,
+}) {
   return {
     'type': 'view_update',
     'date': 1000,
     '_dd': {'document_version': documentVersion},
     'session': {'id': 'session-id'},
     if (context != null) 'context': context,
-    'view': {
-      'id': 'view-id',
-      'url': 'ViewName',
-      ...view,
-    },
+    'view': {'id': 'view-id', 'url': 'ViewName', ...view},
   };
 }
 
@@ -61,10 +58,11 @@ void main() {
       }),
     ].map(RumEventDecoder.new).toList();
 
-    final session = RumSessionDecoder.fromEvents(events);
+    final sessions = RumSessionDecoder.fromEvents(events);
 
-    expect(session.visits.length, 1);
-    final visit = session.visits[0];
+    expect(sessions.length, 1);
+    expect(sessions[0].visits.length, 1);
+    final visit = sessions[0].visits[0];
     expect(visit.name, 'ViewName');
     expect(visit.viewEvents.length, 3);
 
@@ -75,8 +73,10 @@ void main() {
     expect(last.view.errorCount, 1);
     expect(last.view.isActive, isFalse);
     expect(last.timeSpent, 300);
-    expect(last.rumEvent['view']['accessibility'],
-        {'bold_text_enabled': true, 'rtl_enabled': false});
+    expect(last.rumEvent['view']['accessibility'], {
+      'bold_text_enabled': true,
+      'rtl_enabled': false,
+    });
   });
 
   test('view_update replaces non-view fields wholesale', () {
@@ -85,9 +85,49 @@ void main() {
       _viewUpdate(2, {'time_spent': 200}, context: {'a': 1}),
     ].map(RumEventDecoder.new).toList();
 
-    final session = RumSessionDecoder.fromEvents(events);
+    final sessions = RumSessionDecoder.fromEvents(events);
 
-    expect(session.visits[0].viewEvents.last.context, {'a': 1});
+    expect(sessions[0].visits[0].viewEvents.last.context, {'a': 1});
+  });
+
+  test(
+    'a full view wins over a view_update with the same document version',
+    () {
+      // Arrival order varies; the view_update must not shadow the full view.
+      for (final events in [
+        [
+          _view(2, {'time_spent': 100}, context: {'a': 1}),
+          _viewUpdate(4, {'time_spent': 200}),
+          _view(4, {'time_spent': 200}, context: {'a': 1, 'b': 2}),
+        ],
+        [
+          _view(2, {'time_spent': 100}, context: {'a': 1}),
+          _view(4, {'time_spent': 200}, context: {'a': 1, 'b': 2}),
+          _viewUpdate(4, {'time_spent': 200}),
+        ],
+      ]) {
+        final sessions = RumSessionDecoder.fromEvents(
+          events.map(RumEventDecoder.new).toList(),
+        );
+
+        final viewEvents = sessions[0].visits[0].viewEvents;
+        expect(viewEvents.length, 2);
+        expect(viewEvents.last.context, {'a': 1, 'b': 2});
+      }
+    },
+  );
+
+  test('a view_update older than the current state is ignored', () {
+    final events = [
+      _view(5, {'time_spent': 500}),
+      _viewUpdate(3, {'time_spent': 300}),
+    ].map(RumEventDecoder.new).toList();
+
+    final sessions = RumSessionDecoder.fromEvents(events);
+
+    final viewEvents = sessions[0].visits[0].viewEvents;
+    expect(viewEvents.length, 1);
+    expect(viewEvents.last.timeSpent, 500);
   });
 
   test('view_update without a baseline view is ignored', () {
@@ -95,8 +135,8 @@ void main() {
       _viewUpdate(2, {'time_spent': 200}),
     ].map(RumEventDecoder.new).toList();
 
-    final session = RumSessionDecoder.fromEvents(events);
+    final sessions = RumSessionDecoder.fromEvents(events);
 
-    expect(session.visits, isEmpty);
+    expect(sessions, isEmpty);
   });
 }

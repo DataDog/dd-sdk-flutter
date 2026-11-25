@@ -1,6 +1,11 @@
+// Legacy API compatibility until the next major release.
+// ignore_for_file: deprecated_member_use
+
 // Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
+
+import 'dart:async';
 
 import 'package:datadog_flags/datadog_flags.dart';
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
@@ -15,6 +20,141 @@ class MockDatadogFlags extends Mock implements DatadogFlags {}
 class MockDatadogFlagsClient extends Mock implements DatadogFlagsClient {}
 
 void main() {
+  test('initialize reaches a resolved delegate before returning', () async {
+    final delegate = MockDatadogFlagsClient();
+    when(() => delegate.initialize(any())).thenAnswer((_) async {});
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+    await client.initialize(const FlagsEvaluationContext(targetingKey: 'A'));
+    final changing = client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'B'),
+    );
+    verify(
+      () => delegate.initialize(
+        any(
+          that: isA<FlagsEvaluationContext>().having(
+            (context) => context.targetingKey,
+            'targetingKey',
+            'B',
+          ),
+        ),
+      ),
+    ).called(1);
+    await changing;
+  });
+
+  test('reset and initialize reach the delegate in call order', () async {
+    final delegate = MockDatadogFlagsClient();
+    when(() => delegate.initialize(any())).thenAnswer((_) async {});
+    when(() => delegate.reset()).thenAnswer((_) async {});
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
+    await client.initialize(const FlagsEvaluationContext(targetingKey: 'A'));
+    final resetting = client.reset();
+    final changing = client.initialize(
+      const FlagsEvaluationContext(targetingKey: 'B'),
+    );
+    await Future.wait([resetting, changing]);
+    verifyInOrder([
+      () => delegate.reset(),
+      () => delegate.initialize(
+        any(
+          that: isA<FlagsEvaluationContext>().having(
+            (context) => context.targetingKey,
+            'targetingKey',
+            'B',
+          ),
+        ),
+      ),
+    ]);
+  });
+
+  for (final hops in [0, 1, 2, 3, 4]) {
+    test('a later initialize stays last after $hops microtasks', () async {
+      final delegate = MockDatadogFlagsClient();
+      final keys = <String?>[];
+      when(() => delegate.initialize(any())).thenAnswer((invocation) async {
+        final context =
+            invocation.positionalArguments.single as FlagsEvaluationContext;
+        keys.add(context.targetingKey);
+      });
+      final ready = Completer<void>();
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () async {
+          await ready.future;
+          return delegate;
+        },
+        addRumFeatureFlagEvaluation: null,
+      );
+      final first = client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'A'),
+      );
+      ready.complete();
+      for (var i = 0; i < hops; i++) {
+        await Future<void>.value();
+      }
+      final second = client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'B'),
+      );
+      await Future.wait([first, second]);
+      expect(keys, ['A', 'B']);
+    });
+  }
+
+  test('overlapping lifecycle calls resolve the delegate once', () async {
+    const context = FlagsEvaluationContext(targetingKey: 'a');
+    final delegate = MockDatadogFlagsClient();
+    when(() => delegate.initialize(context)).thenAnswer((_) async {});
+    when(() => delegate.reset()).thenAnswer((_) async {});
+    when(() => delegate.shutdown()).thenAnswer((_) async {});
+    final gate = Completer<void>();
+    var resolves = 0;
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async {
+        resolves++;
+        await gate.future;
+        return delegate;
+      },
+      addRumFeatureFlagEvaluation: null,
+    );
+    final initializing = client.initialize(context);
+    final resetting = client.reset();
+    gate.complete();
+    await Future.wait([initializing, resetting]);
+    expect(resolves, 1);
+    await client.shutdown();
+  });
+
+  test(
+    'shutdown returns before pending resolve and retires the late delegate',
+    () async {
+      const context = FlagsEvaluationContext(targetingKey: 'a');
+      final delegate = MockDatadogFlagsClient();
+      when(() => delegate.shutdown()).thenAnswer((_) async {});
+      final gate = Completer<DatadogFlagsClient>();
+      final client = DatadogFlutterFlagsClient(
+        name: 'default',
+        resolveDelegate: () => gate.future,
+        addRumFeatureFlagEvaluation: null,
+      );
+      final initializing = client.initialize(context);
+      await client.shutdown().timeout(const Duration(seconds: 1));
+      gate.complete(delegate);
+      await initializing;
+      verify(() => delegate.shutdown()).called(1);
+      verifyNever(() => delegate.initialize(context));
+      await expectLater(client.initialize(context), throwsStateError);
+    },
+  );
+
   late MockDatadogSdk mockSdk;
 
   setUpAll(() {
@@ -38,9 +178,11 @@ void main() {
 
   test('creates flags configuration from Datadog SDK configuration', () async {
     DatadogFlagsConfiguration? capturedConfiguration;
-    final flags = _mockFlags(onEnable: (configuration) {
-      capturedConfiguration = configuration;
-    });
+    final flags = _mockFlags(
+      onEnable: (configuration) {
+        capturedConfiguration = configuration;
+      },
+    );
     final configuration = DatadogConfiguration(
       clientToken: 'client-token',
       env: 'prod',
@@ -68,10 +210,13 @@ void main() {
 
   test('keeps standalone flags configuration overrides', () async {
     DatadogFlagsConfiguration? capturedConfiguration;
-    final flags = _mockFlags(onEnable: (configuration) {
-      capturedConfiguration = configuration;
-    });
+    final flags = _mockFlags(
+      onEnable: (configuration) {
+        capturedConfiguration = configuration;
+      },
+    );
     final date = DateTime.utc(2026);
+    const flagSelection = FlagSelection(tags: ['team:mobile']);
     final flagsDatadogConfig = DatadogFlagsConfig(
       clientToken: 'flags-token',
       env: 'staging',
@@ -84,6 +229,7 @@ void main() {
       clientToken: 'sdk-token',
       env: 'prod',
       site: DatadogSite.us1,
+      service: 'sdk-service',
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
 
@@ -101,6 +247,7 @@ void main() {
         evaluationFlushInterval: const Duration(seconds: 2),
         datadogConfig: flagsDatadogConfig,
         dateProvider: () => date,
+        flagSelection: flagSelection,
       ),
     );
 
@@ -108,6 +255,7 @@ void main() {
     await plugin.ready;
 
     final flagsConfiguration = capturedConfiguration!;
+    expect(flagsConfiguration.flagSelection, same(flagSelection));
     expect(flagsConfiguration.datadogConfig, same(flagsDatadogConfig));
     expect(
       flagsConfiguration.customFlagsEndpoint,
@@ -141,6 +289,7 @@ void main() {
       clientToken: 'client-token',
       env: 'prod',
       site: DatadogSite.us1Fed,
+      service: 'client-service',
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
 
@@ -151,9 +300,7 @@ void main() {
 
     verifyNever(
       () => flags.enable(
-        configuration: any<DatadogFlagsConfiguration>(
-          named: 'configuration',
-        ),
+        configuration: any<DatadogFlagsConfiguration>(named: 'configuration'),
       ),
     );
   });
@@ -165,6 +312,7 @@ void main() {
       clientToken: 'client-token',
       env: 'prod',
       site: DatadogSite.us1,
+      service: 'client-service',
     );
     when(() => mockSdk.configuration).thenReturn(configuration);
 
@@ -186,11 +334,7 @@ void main() {
         defaultValue: any<bool>(named: 'defaultValue'),
       ),
     ).thenReturn(
-      const FlagDetails(
-        key: 'checkout.enabled',
-        value: true,
-        variant: 'on',
-      ),
+      const FlagDetails(key: 'checkout.enabled', value: true, variant: 'on'),
     );
     final rumEvaluations = <MapEntry<String, Object>>[];
     final client = DatadogFlutterFlagsClient(
@@ -245,38 +389,31 @@ void main() {
     },
   );
 
-  test(
-    'accepts a null RUM integration callback',
-    () async {
-      final delegate = _mockClient();
-      when(
-        () => delegate.getBooleanDetails(
-          key: any<String>(named: 'key'),
-          defaultValue: any<bool>(named: 'defaultValue'),
-        ),
-      ).thenReturn(
-        const FlagDetails(
-          key: 'checkout.enabled',
-          value: true,
-          variant: 'on',
-        ),
-      );
-      final client = DatadogFlutterFlagsClient(
-        name: 'default',
-        resolveDelegate: () async => delegate,
-        addRumFeatureFlagEvaluation: null,
-      );
+  test('accepts a null RUM integration callback', () async {
+    final delegate = _mockClient();
+    when(
+      () => delegate.getBooleanDetails(
+        key: any<String>(named: 'key'),
+        defaultValue: any<bool>(named: 'defaultValue'),
+      ),
+    ).thenReturn(
+      const FlagDetails(key: 'checkout.enabled', value: true, variant: 'on'),
+    );
+    final client = DatadogFlutterFlagsClient(
+      name: 'default',
+      resolveDelegate: () async => delegate,
+      addRumFeatureFlagEvaluation: null,
+    );
 
-      await client.initialize(FlagsEvaluationContext.empty);
-      final details = client.getBooleanDetails(
-        key: 'checkout.enabled',
-        defaultValue: false,
-      );
+    await client.initialize(FlagsEvaluationContext.empty);
+    final details = client.getBooleanDetails(
+      key: 'checkout.enabled',
+      defaultValue: false,
+    );
 
-      expect(details.value, isTrue);
-      expect(details.variant, 'on');
-    },
-  );
+    expect(details.value, isTrue);
+    expect(details.variant, 'on');
+  });
 
   test('returns providerNotReady before client initialization', () {
     final client = DatadogFlutterFlagsClient(
@@ -325,9 +462,7 @@ MockDatadogFlags _mockFlags({
   final flags = MockDatadogFlags();
   when(
     () => flags.enable(
-      configuration: any<DatadogFlagsConfiguration>(
-        named: 'configuration',
-      ),
+      configuration: any<DatadogFlagsConfiguration>(named: 'configuration'),
     ),
   ).thenAnswer((invocation) async {
     onEnable?.call(

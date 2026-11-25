@@ -6,13 +6,11 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 
-// Because Flutter Web Driver has trouble importing package:flutter/foundation
-// from a dependent package, we set this with the value of `kIsWeb` at start-up
-// in all tests
-bool kManualIsWeb = false;
+import 'is_web.dart';
 
 T? getNestedProperty<T>(String key, Map<String, Object?> from) {
-  if (kManualIsWeb || Platform.isAndroid) {
+  if (testIsWeb() || Platform.isAndroid) {
+    // Android and Web always produce nested JSON objects.
     Map<String, dynamic>? lookupMap = from;
     var parts = key.split('.');
     parts.forEachIndexedWhile((index, element) {
@@ -22,6 +20,27 @@ T? getNestedProperty<T>(String key, Map<String, Object?> from) {
         lookupMap = null;
       }
       // Continue until we're the second to last index
+      return lookupMap != null && (index + 1) < (parts.length - 1);
+    });
+
+    return lookupMap?[parts.last] as T?;
+  }
+
+  if (Platform.isWindows || Platform.isLinux) {
+    // The C SDK mixes flat dot-notation keys (error.message, logger.name) with
+    // nested objects (usr, account). Check the raw key first, then fall back to
+    // nested traversal.
+    final flat = from[key];
+    if (flat != null) return flat as T?;
+
+    Map<String, dynamic>? lookupMap = from;
+    var parts = key.split('.');
+    parts.forEachIndexedWhile((index, element) {
+      if (lookupMap![element] case final Map<String, dynamic> next) {
+        lookupMap = next;
+      } else {
+        lookupMap = null;
+      }
       return lookupMap != null && (index + 1) < (parts.length - 1);
     });
 

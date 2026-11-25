@@ -1,0 +1,1007 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0. This product includes software
+// developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2019-Present Datadog, Inc.
+
+import 'dart:async';
+
+import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart'
+    as openfeature;
+
+import 'assignment.dart';
+import 'datadog_flags.dart';
+import 'default_flags_client.dart';
+import 'evaluation_aggregator.dart';
+import 'evaluation_context.dart';
+import 'exposure_hook.dart';
+import 'exposure_logger.dart';
+import 'flag_selection.dart';
+import 'flags_client.dart';
+import 'flags_configuration.dart';
+import 'flags_error.dart';
+import 'flags_log.dart';
+import 'flags_repository.dart';
+import 'flags_runtime.dart';
+
+/// An OpenFeature provider backed by the pure-Dart Datadog Flags runtime.
+///
+/// One provider instance owns one OpenFeature domain. Context reconciliation
+/// installs assignments only after the new context has loaded.
+///
+/// By default, attribute-only changes retain assignments while loading or after
+/// failure. Targeting-key changes return application defaults until assignments
+/// for the new key are available.
+///
+/// Set [strictContextSwitchingAttribute] to `true` in the evaluation context's
+/// attributes to withhold assignments during attribute changes and failed loads.
+/// The provider removes this attribute from assignment requests and telemetry.
+final class DatadogProvider
+    implements
+        openfeature.FeatureProvider,
+        openfeature.InitializableProvider,
+        openfeature.ContextReconciliationProvider,
+        openfeature.ShutdownProvider,
+        openfeature.ProviderEventSource,
+        openfeature.DomainScopedProvider,
+        openfeature.ProviderHooks {
+  /// OpenFeature flag metadata key containing the Datadog allocation key.
+  static const allocationKeyMetadata = datadogAllocationKeyMetadata;
+
+  /// Metadata key containing the assignment logging policy.
+  static const doLogMetadata = datadogDoLogMetadata;
+
+  /// Largest initialization budget accepted by this provider.
+  ///
+  /// The budget must expire before OpenFeature's 30-second lifecycle deadline.
+  /// An isolated API with a shorter deadline must use a smaller budget.
+  static const maxInitializationTimeout = Duration(seconds: 20);
+
+  /// Prints diagnostics from every `datadog_flags` component in this isolate,
+  /// including [ExposureHook] and `DatadogFlags` clients, at this level and
+  /// above, in any build mode. The default is `null`, which prints nothing.
+  /// Diagnostics are always written to the Dart developer log.
+  static FlagsLoggerLevel? get verbosity => FlagsLogger.printLevel;
+
+  static set verbosity(FlagsLoggerLevel? level) =>
+      FlagsLogger.printLevel = level;
+
+  final Set<Future<void>> _retiring = {};
+  final List<_ExposureFrame> _exposureFrames = [];
+  openfeature.EvaluationContext? _requestedContext;
+
+  /// Datadog runtime configuration used by each context revision.
+  final DatadogFlagsConfiguration _configuration;
+  String? _fatalMessage;
+
+  final StreamController<openfeature.ProviderEvent> _events =
+      StreamController<openfeature.ProviderEvent>.broadcast(sync: true);
+
+  _ProviderResources? _resources;
+  Future<void>? _lastShutdown;
+  _ProviderRuntime? _activeRuntime;
+  _ProviderRuntime? _retainedRuntime;
+  _ProviderRuntime? _pendingRuntime;
+  final _flagSelectionDropLog = FlagSelectionDropLog();
+  bool _requiresContextRetry = false;
+  bool _hasCommittedContext = false;
+  bool _requiresFreshAssignments = false;
+  var _contextRevision = 0;
+  var _shutdownGeneration = 0;
+  Future<void>? _contextOperation;
+  String? _resolvedClientName;
+
+  /// Creates a provider from a Datadog runtime configuration.
+  ///
+  /// The domain name identifies stored snapshots. The default domain uses
+  /// [DatadogFlags.defaultClientName].
+  DatadogProvider.fromConfiguration(DatadogFlagsConfiguration configuration)
+    : _configuration = configuration;
+
+  @override
+  Stream<openfeature.ProviderEvent> get events => _events.stream;
+
+  /// Records exposures in `finallyAfter` when evaluation and all `before` and
+  /// `after` hooks succeeded. An exposure stands when a later `finallyAfter`
+  /// hook fails.
+  ///
+  /// Exposures need these hooks to run. Direct `resolve...Value` calls, and
+  /// wrappers that skip these hooks, leave the exposure unrecorded.
+  @override
+  late final List<openfeature.Hook> hooks = List.unmodifiable([
+    _ExposureAdmissionHook(_exposureFrames),
+  ]);
+
+  @override
+  openfeature.ProviderMetadata get metadata =>
+      const openfeature.ProviderMetadata(name: datadogProviderName);
+
+  @override
+  Future<void> initialize(
+    openfeature.EvaluationContext context, {
+    String? domain,
+  }) async {
+    _requestedContext = context;
+    _requiresContextRetry = false;
+    _resolvedClientName = domain ?? DatadogFlags.defaultClientName;
+    await _runContextOperation(context, isInitialization: true);
+  }
+
+  @override
+  Future<void> onContextChanged(
+    openfeature.EvaluationContext previousContext,
+    openfeature.EvaluationContext newContext,
+  ) async {
+    if (_fatalMessage case final message?) {
+      // OpenFeature needs a terminal event for each context-change operation.
+      _emitLoadError(message, fatal: true);
+      return;
+    }
+    // A successful reconciliation installs assignments for the requested context.
+    // Retained assignments remain eligible only for the same key and, in strict
+    // mode, the same targeting attributes, without a failure for that context.
+    _requestedContext = newContext;
+    _requiresContextRetry = true;
+    final requested = newContext.datadogContext;
+    final retained = _retainedRuntime;
+    final retainedContext = retained?.client.evaluationContext;
+    if (_activeRuntime == null &&
+        retained != null &&
+        retainedContext != null &&
+        !_requiresFreshAssignments &&
+        retainedContext.targetingKey == requested.targetingKey &&
+        (!requested.strictContextSwitching ||
+            targetingContextsMatch(retainedContext, requested))) {
+      _activeRuntime = retained;
+      _retainedRuntime = null;
+    }
+    final active = _activeRuntime;
+    final activeKey = active?.client.evaluationContext?.targetingKey ?? '';
+    if (active != null &&
+        (requested.targetingKey != activeKey ||
+            (requested.strictContextSwitching &&
+                !targetingContextsMatch(
+                  active.client.evaluationContext ??
+                      FlagsEvaluationContext.empty,
+                  requested,
+                )))) {
+      _withholdActiveAssignments();
+    }
+    if (_activeRuntime ?? _retainedRuntime case final previous?
+        when (previous.client.evaluationContext?.targetingKey ?? '') !=
+            requested.targetingKey) {
+      previous.client.cancelPendingLoad();
+    }
+    _events.add(
+      openfeature.ProviderEvent(
+        type: openfeature.ProviderEventType.reconciling,
+      ),
+    );
+    await _runContextOperation(newContext, isInitialization: false);
+  }
+
+  /// Refreshes assignments for the active context.
+  ///
+  /// Waits for pending initialization or context reconciliation. After failed
+  /// reconciliation, retry the context change through OpenFeature before refreshing.
+  ///
+  /// Before assignments have been activated, retries the initial context.
+  /// Activation emits ready, followed by stale when using stored assignments.
+  /// It does not emit configuration-changed. Failure without usable assignments
+  /// emits error. A retry replaces the pending initial assignment request.
+  /// Avoid retrying from every error event.
+  /// After a fatal configuration error, refresh does nothing. Register a new
+  /// provider with valid configuration to recover.
+  ///
+  /// After assignments have been activated, a successful refresh emits ready
+  /// followed by configuration-changed. A failed refresh preserves usable
+  /// assignments by default and emits error then stale. In strict mode, failure
+  /// emits error and withholds assignments until a successful fetch.
+  /// A retry keeps those assignments withheld.
+  /// Throws [StateError] before initialization, after shutdown, or after failed
+  /// context reconciliation.
+  Future<void> refresh() async {
+    final generation = _shutdownGeneration;
+    while (_contextOperation != null) {
+      await _contextOperation;
+      if (generation != _shutdownGeneration) break;
+    }
+    if (generation != _shutdownGeneration) {
+      throw StateError('The provider shut down while refresh was waiting.');
+    }
+    if (_fatalMessage != null) return;
+    final context = _requestedContext;
+    if (context == null || _requiresContextRetry) {
+      throw StateError(
+        'Initialize or reconcile the provider before refreshing assignments.',
+      );
+    }
+    await _loadContext(
+      context,
+      isInitialization: !_hasCommittedContext,
+      isRefresh: _hasCommittedContext,
+    );
+  }
+
+  @override
+  Future<void> shutdown() async {
+    _fatalMessage = null;
+    _shutdownGeneration += 1;
+    _contextRevision += 1;
+    final resources = _resources;
+    _resources = null;
+    final activeRuntime = _activeRuntime;
+    final pendingRuntime = _pendingRuntime;
+    final retainedRuntime = _retainedRuntime;
+    _activeRuntime = null;
+    _pendingRuntime = null;
+    _resolvedClientName = null;
+    _requestedContext = null;
+    _requiresContextRetry = false;
+    _hasCommittedContext = false;
+    _requiresFreshAssignments = false;
+    _retainedRuntime = null;
+    // A concurrent shutdown also waits for work that an earlier call started.
+    final previous = _lastShutdown;
+    final operation = Future.wait([
+      ?previous,
+      _shutdownRuntimes(
+        activeRuntime,
+        retainedRuntime,
+        pendingRuntime,
+        resources,
+      ),
+    ]);
+    _lastShutdown = operation;
+    try {
+      await operation;
+    } finally {
+      // Do not keep a settled failure for shutdowns after reinitialization.
+      if (identical(_lastShutdown, operation)) _lastShutdown = null;
+    }
+  }
+
+  Future<void> _shutdownRuntimes(
+    _ProviderRuntime? activeRuntime,
+    _ProviderRuntime? retainedRuntime,
+    _ProviderRuntime? pendingRuntime,
+    _ProviderResources? resources,
+  ) async {
+    await Future.wait([
+      ..._retiring,
+      if (activeRuntime != null) _disableQuietly(activeRuntime),
+      if (retainedRuntime != null && !identical(retainedRuntime, activeRuntime))
+        _disableQuietly(retainedRuntime),
+      if (pendingRuntime != null && !identical(pendingRuntime, activeRuntime))
+        _disableQuietly(pendingRuntime),
+    ]);
+    await resources?.shutdown();
+  }
+
+  @override
+  openfeature.ResolutionDetails<bool> resolveBooleanValue(
+    String flagKey,
+    bool defaultValue,
+    openfeature.EvaluationContext context,
+  ) {
+    final client = _activeRuntime?.client;
+    if (client == null) {
+      return _notReady(defaultValue);
+    }
+    return _resolution(
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.boolean,
+        ),
+      ),
+      defaultValue,
+    );
+  }
+
+  @override
+  openfeature.ResolutionDetails<String> resolveStringValue(
+    String flagKey,
+    String defaultValue,
+    openfeature.EvaluationContext context,
+  ) {
+    final client = _activeRuntime?.client;
+    if (client == null) {
+      return _notReady(defaultValue);
+    }
+    return _resolution(
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.string,
+        ),
+      ),
+      defaultValue,
+    );
+  }
+
+  @override
+  openfeature.ResolutionDetails<int> resolveIntegerValue(
+    String flagKey,
+    int defaultValue,
+    openfeature.EvaluationContext context,
+  ) {
+    final client = _activeRuntime?.client;
+    if (client == null) {
+      return _notReady(defaultValue);
+    }
+    return _resolution(
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.integer,
+        ),
+      ),
+      defaultValue,
+    );
+  }
+
+  @override
+  openfeature.ResolutionDetails<double> resolveDoubleValue(
+    String flagKey,
+    double defaultValue,
+    openfeature.EvaluationContext context,
+  ) {
+    final client = _activeRuntime?.client;
+    if (client == null) {
+      return _notReady(defaultValue);
+    }
+    return _resolution(
+      _admit(
+        flagKey,
+        client.resolveDeferringExposure(
+          key: flagKey,
+          defaultValue: defaultValue,
+          requestedType: FlagVariationType.float,
+        ),
+      ),
+      defaultValue,
+    );
+  }
+
+  @override
+  openfeature.ResolutionDetails<Map<String, Object?>> resolveStructureValue(
+    String flagKey,
+    Map<String, Object?> defaultValue,
+    openfeature.EvaluationContext context,
+  ) {
+    final client = _activeRuntime?.client;
+    if (client == null) {
+      return _notReady(defaultValue);
+    }
+
+    final details = _admit(
+      flagKey,
+      client.resolveDeferringExposure(
+        key: flagKey,
+        defaultValue: defaultValue,
+        requestedType: FlagVariationType.object,
+        valueGuard: (value) => value is Map<String, Object?>,
+      ),
+    );
+    final errorCode = details.error?.openFeatureCode;
+    if (errorCode != null) {
+      return openfeature.ResolutionDetails(
+        value: defaultValue,
+        errorCode: errorCode,
+        errorMessage: details.error!.message,
+        reason: 'ERROR',
+        flagMetadata: details.flagMetadata,
+      );
+    }
+
+    return openfeature.ResolutionDetails(
+      value: _immutableJsonValue(details.value) as Map<String, Object?>,
+      reason: details.reason,
+      variant: details.variant,
+      flagMetadata: details.flagMetadata,
+    );
+  }
+
+  Future<void> _runContextOperation(
+    openfeature.EvaluationContext context, {
+    required bool isInitialization,
+  }) {
+    late final Future<void> operation;
+    operation = _loadContext(context, isInitialization: isInitialization)
+        .whenComplete(() {
+          if (identical(_contextOperation, operation)) {
+            _contextOperation = null;
+          }
+        });
+    _contextOperation = operation;
+    return operation;
+  }
+
+  Future<void> _loadContext(
+    openfeature.EvaluationContext context, {
+    required bool isInitialization,
+    bool isRefresh = false,
+  }) async {
+    final revision = ++_contextRevision;
+    final previousPending = _pendingRuntime;
+    _pendingRuntime = null;
+    _retire(previousPending);
+    if (revision != _contextRevision) {
+      return;
+    }
+
+    final datadogConfig = _configuration.datadogConfig;
+    if (datadogConfig == null) {
+      _emitLoadError('Datadog Flags configuration is required.', fatal: true);
+      return;
+    }
+
+    final budget = _configuration.initializationTimeout;
+    if (budget == null ||
+        budget <= Duration.zero ||
+        budget > maxInitializationTimeout) {
+      _emitLoadError(
+        'initializationTimeout must be positive and at most '
+        '${maxInitializationTimeout.inSeconds} seconds. It must expire '
+        'before the OpenFeature lifecycle timeout.',
+        fatal: true,
+      );
+      return;
+    }
+
+    _ProviderRuntime? runtime;
+    var initializationReturned = false;
+    try {
+      final resources = _resources ??= _ProviderResources(
+        FlagsRuntime(
+          configuration: _configuration,
+          datadogConfig: datadogConfig,
+          httpClient: _configuration.httpClient ?? http.Client(),
+          flagSelectionDropLog: _flagSelectionDropLog,
+        ),
+        ownsHttpClient: _configuration.httpClient == null,
+      );
+      final client = resources.createClient(
+        _resolvedClientName ?? DatadogFlags.defaultClientName,
+      );
+      final lifecycle = client as DatadogFlagsClientLifecycle;
+      final candidate = _ProviderRuntime(client);
+      runtime = candidate;
+      _pendingRuntime = candidate;
+      candidate.statusSubscription = lifecycle.statusChanges.listen((status) {
+        if (initializationReturned) {
+          unawaited(
+            _handleLateStatus(
+              candidate,
+              status,
+              revision: revision,
+              isInitialization: isInitialization,
+            ),
+          );
+        }
+      });
+
+      try {
+        await client.initialize(context.datadogContext);
+      } on FlagsInitializationTimeoutException {
+        // The core operation continues. Published assignments are usable even
+        // when storage is still pending; initial late success can recover.
+      }
+      initializationReturned = true;
+      await _handleCompletedInitialization(
+        candidate,
+        lifecycle.status,
+        revision: revision,
+        isInitialization: isInitialization,
+        isRefresh: isRefresh,
+      );
+    } on Object catch (error) {
+      initializationReturned = false;
+      if (runtime != null) {
+        if (identical(_pendingRuntime, runtime)) {
+          _pendingRuntime = null;
+        }
+        if (!identical(_activeRuntime, runtime)) {
+          await _disableQuietly(runtime);
+        }
+      }
+      if (revision == _contextRevision) {
+        if ((_requestedContext?.datadogContext.strictContextSwitching ??
+                false) &&
+            (_activeRuntime != null || !_hasCommittedContext)) {
+          _requiresFreshAssignments = true;
+          _withholdActiveAssignments();
+        }
+        _emitLoadError('Datadog provider initialization failed: $error');
+        if (_activeRuntime != null) {
+          _events.add(
+            openfeature.ProviderEvent(
+              type: openfeature.ProviderEventType.stale,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _handleCompletedInitialization(
+    _ProviderRuntime runtime,
+    DatadogFlagsClientStatus status, {
+    required int revision,
+    required bool isInitialization,
+    bool isRefresh = false,
+  }) async {
+    if (!_isCurrent(runtime, revision)) {
+      if (!identical(_activeRuntime, runtime)) {
+        await _disableQuietly(runtime);
+      }
+      return;
+    }
+
+    if (isInitialization &&
+        _requiresFreshAssignments &&
+        (status == DatadogFlagsClientStatus.notReady ||
+            status == DatadogFlagsClientStatus.stale)) {
+      _emitLoadError(
+        'Fresh Datadog assignments are not available before the initialization deadline.',
+      );
+      return;
+    }
+
+    if ((isRefresh || _requiresFreshAssignments) &&
+        status != DatadogFlagsClientStatus.ready) {
+      _pendingRuntime = null;
+      _retire(runtime);
+      if (_requestedContext?.datadogContext.strictContextSwitching ?? false) {
+        _requiresFreshAssignments = true;
+        _withholdActiveAssignments();
+      }
+      _emitLoadError(
+        _loadMessage(
+          runtime,
+          isRefresh
+              ? 'Datadog assignment refresh failed.'
+              : 'Datadog context reconciliation failed.',
+        ),
+      );
+      if (_activeRuntime != null) {
+        _events.add(
+          openfeature.ProviderEvent(
+            type: openfeature.ProviderEventType.stale,
+            message: 'Using existing Datadog assignments.',
+          ),
+        );
+      }
+      return;
+    }
+
+    switch (status) {
+      case DatadogFlagsClientStatus.ready:
+      case DatadogFlagsClientStatus.stale:
+        await _activateRuntime(
+          runtime,
+          status,
+          revision: revision,
+          isInitialization: isInitialization,
+          isRefresh: isRefresh,
+        );
+      case DatadogFlagsClientStatus.notReady:
+        if (!isInitialization) {
+          // OpenFeature retains its active context when reconciliation fails.
+          // A late candidate cannot silently change that context afterwards.
+          _pendingRuntime = null;
+          _retire(runtime);
+          if (_activeRuntime != null &&
+              (_requestedContext?.datadogContext.strictContextSwitching ??
+                  false)) {
+            _requiresFreshAssignments = true;
+            _withholdActiveAssignments();
+          }
+        }
+        _emitLoadError(
+          'Datadog assignments are not available before the initialization '
+          'deadline.',
+        );
+      case DatadogFlagsClientStatus.error:
+        if ((_requestedContext?.datadogContext.strictContextSwitching ??
+                false) &&
+            (_activeRuntime != null || !_hasCommittedContext)) {
+          _requiresFreshAssignments = true;
+          _withholdActiveAssignments();
+        }
+        _pendingRuntime = null;
+        await _disableQuietly(runtime);
+        if (revision == _contextRevision) {
+          _emitLoadError(
+            _loadMessage(
+              runtime,
+              'Datadog assignments are not available for the requested context.',
+            ),
+          );
+        }
+    }
+  }
+
+  Future<void> _handleLateStatus(
+    _ProviderRuntime runtime,
+    DatadogFlagsClientStatus status, {
+    required int revision,
+    required bool isInitialization,
+  }) async {
+    if (!_isCurrent(runtime, revision)) {
+      if (!identical(_activeRuntime, runtime)) {
+        await _disableQuietly(runtime);
+      }
+      return;
+    }
+
+    if (identical(_activeRuntime, runtime)) {
+      if (status == DatadogFlagsClientStatus.ready) {
+        _requiresFreshAssignments = false;
+        _events.add(
+          openfeature.ProviderEvent(type: openfeature.ProviderEventType.ready),
+        );
+      } else if (status == DatadogFlagsClientStatus.stale &&
+          runtime.client.lastLoadError != null) {
+        _emitLoadError(
+          _loadMessage(runtime, 'Datadog assignment loading failed.'),
+        );
+        _events.add(
+          openfeature.ProviderEvent(type: openfeature.ProviderEventType.stale),
+        );
+      } else if (status == DatadogFlagsClientStatus.error) {
+        _requiresFreshAssignments = true;
+        _withholdActiveAssignments();
+        _emitLoadError(
+          _loadMessage(runtime, 'Datadog assignment loading failed.'),
+        );
+      }
+      return;
+    }
+
+    if (!isInitialization) {
+      if (status != DatadogFlagsClientStatus.notReady) {
+        _pendingRuntime = null;
+        await _disableQuietly(runtime);
+      }
+      return;
+    }
+
+    switch (status) {
+      case DatadogFlagsClientStatus.ready:
+      case DatadogFlagsClientStatus.stale:
+        await _activateRuntime(
+          runtime,
+          status,
+          revision: revision,
+          isInitialization: true,
+        );
+      case DatadogFlagsClientStatus.error:
+        _pendingRuntime = null;
+        await _disableQuietly(runtime);
+      case DatadogFlagsClientStatus.notReady:
+        return;
+    }
+  }
+
+  Future<void> _activateRuntime(
+    _ProviderRuntime runtime,
+    DatadogFlagsClientStatus status, {
+    required int revision,
+    required bool isInitialization,
+    bool isRefresh = false,
+  }) async {
+    if (!_isCurrent(runtime, revision)) {
+      if (!identical(_activeRuntime, runtime)) {
+        await _disableQuietly(runtime);
+      }
+      return;
+    }
+
+    if (_requiresFreshAssignments && status != DatadogFlagsClientStatus.ready) {
+      return;
+    }
+    final previous = _activeRuntime;
+    final replacedRuntime = previous ?? _retainedRuntime;
+    _retainedRuntime = null;
+    _activeRuntime = runtime;
+    _hasCommittedContext = true;
+    if (status == DatadogFlagsClientStatus.ready) {
+      _requiresFreshAssignments = false;
+    }
+    if (!isRefresh) _requiresContextRetry = false;
+    if (identical(_pendingRuntime, runtime)) {
+      _pendingRuntime = null;
+    }
+    if (isRefresh) {
+      _events.add(
+        openfeature.ProviderEvent(type: openfeature.ProviderEventType.ready),
+      );
+    }
+    _events.add(
+      openfeature.ProviderEvent(
+        type: isRefresh
+            ? openfeature.ProviderEventType.configurationChanged
+            : isInitialization
+            ? openfeature.ProviderEventType.ready
+            : openfeature.ProviderEventType.contextChanged,
+      ),
+    );
+    if (status == DatadogFlagsClientStatus.stale &&
+        _isCurrent(runtime, revision) &&
+        runtime.client.status == DatadogFlagsClientStatus.stale) {
+      _events.add(
+        openfeature.ProviderEvent(
+          type: openfeature.ProviderEventType.stale,
+          message: _loadMessage(
+            runtime,
+            'Using existing Datadog assignments. Fresh assignments are not available.',
+          ),
+        ),
+      );
+    }
+    if (replacedRuntime != null && !identical(replacedRuntime, runtime)) {
+      _retire(replacedRuntime);
+    }
+  }
+
+  void _withholdActiveAssignments() {
+    final active = _activeRuntime;
+    if (active == null) return;
+    _activeRuntime = null;
+    _retainedRuntime = active;
+    unawaited(active.statusSubscription?.cancel());
+    active.statusSubscription = null;
+  }
+
+  bool _isCurrent(_ProviderRuntime runtime, int revision) {
+    return revision == _contextRevision &&
+        (identical(_activeRuntime, runtime) ||
+            identical(_pendingRuntime, runtime));
+  }
+
+  void _retire(_ProviderRuntime? runtime) {
+    if (runtime == null) return;
+    final retiring = _disableQuietly(runtime);
+    _retiring.add(retiring);
+    unawaited(retiring.whenComplete(() => _retiring.remove(retiring)));
+  }
+
+  static Future<void> _disableQuietly(_ProviderRuntime? runtime) async {
+    try {
+      await runtime?.disable();
+    } on Object {
+      // Preserve assignment readiness when an inactive repository fails to close.
+    }
+  }
+
+  String _loadMessage(_ProviderRuntime runtime, String message) {
+    final error = runtime.client.lastLoadError;
+    if (error is FlagsException && error.type == FlagsErrorType.networkError) {
+      return '$message ${error.message}';
+    }
+    if (error is FlagsException) return '$message ${error.type.name}.';
+    return message;
+  }
+
+  void _emitLoadError(String message, {bool fatal = false}) {
+    if (fatal) _fatalMessage = message;
+    _events.add(
+      openfeature.ProviderEvent(
+        type: openfeature.ProviderEventType.error,
+        errorCode: fatal
+            ? openfeature.ErrorCode.providerFatal
+            : openfeature.ErrorCode.general,
+        message: message,
+      ),
+    );
+  }
+
+  FlagDetails<T> _admit<T>(
+    String flagKey,
+    ({FlagDetails<T> details, PendingExposure? exposure}) resolution,
+  ) {
+    final exposure = resolution.exposure;
+    final details = resolution.details;
+    if (exposure == null) return details;
+    // Without a frame from the provider hook, nothing records the exposure.
+    if (_exposureFrames.lastOrNull case final frame?
+        when frame.flagKey == flagKey) {
+      frame.exposure = exposure;
+    }
+    return FlagDetails(
+      key: details.key,
+      value: details.value,
+      variant: details.variant,
+      reason: details.reason,
+      error: details.error,
+      flagMetadata: {
+        ...details.flagMetadata,
+        datadogInternalDoLogMetadata: true,
+        splitSerialIdMetadata: ?exposure.assignment.serialId,
+      },
+    );
+  }
+
+  static openfeature.ResolutionDetails<T> _resolution<T extends Object>(
+    FlagDetails<T> details,
+    T defaultValue,
+  ) {
+    final errorCode = details.error?.openFeatureCode;
+    return openfeature.ResolutionDetails(
+      value: errorCode == null ? details.value : defaultValue,
+      errorCode: errorCode,
+      errorMessage: details.error?.message,
+      reason: errorCode == null ? details.reason : 'ERROR',
+      variant: details.variant,
+      flagMetadata: details.flagMetadata,
+    );
+  }
+
+  openfeature.ResolutionDetails<T> _notReady<T extends Object>(T defaultValue) {
+    return openfeature.ResolutionDetails(
+      value: defaultValue,
+      errorCode: _fatalMessage == null
+          ? openfeature.ErrorCode.providerNotReady
+          : openfeature.ErrorCode.providerFatal,
+      errorMessage:
+          _fatalMessage ?? 'The Datadog provider has not loaded assignments.',
+      reason: 'ERROR',
+    );
+  }
+
+  static Object? _immutableJsonValue(Object? value) {
+    if (value is Map<String, Object?>) {
+      return Map<String, Object?>.unmodifiable(
+        value.map((key, child) => MapEntry(key, _immutableJsonValue(child))),
+      );
+    }
+    if (value is List<Object?>) {
+      return List<Object?>.unmodifiable(value.map(_immutableJsonValue));
+    }
+    return value;
+  }
+}
+
+/// Resources shared by every context revision of one provider.
+final class _ProviderResources {
+  final FlagsRuntime flagsRuntime;
+  final bool ownsHttpClient;
+  final ExposureLogger exposureLogger;
+  final EvaluationAggregator evaluationAggregator;
+  Future<void>? _shutdown;
+
+  _ProviderResources(this.flagsRuntime, {required this.ownsHttpClient})
+    : exposureLogger = ExposureLogger(flagsRuntime),
+      evaluationAggregator = EvaluationAggregator(flagsRuntime);
+
+  DefaultDatadogFlagsClient createClient(String name) {
+    return DefaultDatadogFlagsClient(
+      name: name,
+      repository: FlagsRepository.forRuntime(flagsRuntime, clientName: name),
+      exposureLogger: exposureLogger,
+      evaluationAggregator: evaluationAggregator,
+      ownsTelemetry: false,
+    );
+  }
+
+  // Every caller gets the same drain. The first call starts it, and later calls
+  // return its future, so telemetry is flushed and the client closed once.
+  Future<void> shutdown() => _shutdown ??= _drain();
+
+  Future<void> _drain() async {
+    try {
+      await Future.wait([
+        exposureLogger.shutdown(),
+        evaluationAggregator.shutdown(),
+      ]);
+    } finally {
+      if (ownsHttpClient) flagsRuntime.httpClient.close();
+    }
+  }
+}
+
+final class _ProviderRuntime {
+  final DefaultDatadogFlagsClient client;
+  StreamSubscription<DatadogFlagsClientStatus>? statusSubscription;
+  Future<void>? _disabling;
+
+  _ProviderRuntime(this.client);
+
+  Future<void> disable() => _disabling ??= _disable();
+
+  Future<void> _disable() async {
+    await statusSubscription?.cancel();
+    await client.shutdown();
+  }
+}
+
+final class _ExposureFrame {
+  final String flagKey;
+  PendingExposure? exposure;
+
+  _ExposureFrame(this.flagKey);
+}
+
+final class _ExposureAdmissionHook extends openfeature.HookAdapter {
+  static const _frameKey = 'datadog.exposureFrame';
+
+  final List<_ExposureFrame> _frames;
+
+  _ExposureAdmissionHook(this._frames);
+
+  @override
+  void before(openfeature.HookContext context, openfeature.HookHints hints) {
+    final frame = _ExposureFrame(context.flagKey);
+    _frames.add(frame);
+    context.hookData[_frameKey] = frame;
+  }
+
+  @override
+  void finallyAfter(
+    openfeature.HookContext context,
+    openfeature.FlagEvaluationDetails<Object> details,
+    openfeature.HookHints hints,
+  ) {
+    markDatadogEvaluation(details);
+    final frame = context.hookData.remove(_frameKey);
+    if (frame is! _ExposureFrame) return;
+    _frames.remove(frame);
+    final exposure = frame.exposure;
+    if (exposure == null || details.errorCode != null) return;
+    // record() returns before any code that can throw, so a throw means a
+    // new exposure.
+    var isCacheHit = false;
+    try {
+      isCacheHit = exposure.record();
+    } finally {
+      recordExposureDecision(details, isCacheHit: isCacheHit);
+    }
+  }
+}
+
+extension _DatadogContext on openfeature.EvaluationContext {
+  FlagsEvaluationContext get datadogContext => FlagsEvaluationContext(
+    targetingKey: targetingKey,
+    attributes: {
+      for (final MapEntry(:key, :value) in attributes.entries)
+        key: _jsonAttribute(value),
+    },
+  );
+}
+
+extension _OpenFeatureError on FlagEvaluationError {
+  openfeature.ErrorCode get openFeatureCode => switch (this) {
+    FlagEvaluationError.providerNotReady =>
+      openfeature.ErrorCode.providerNotReady,
+    FlagEvaluationError.flagNotFound => openfeature.ErrorCode.flagNotFound,
+    FlagEvaluationError.typeMismatch => openfeature.ErrorCode.typeMismatch,
+  };
+
+  String get message => 'Datadog flag evaluation failed with $code.';
+}
+
+Object? _jsonAttribute(Object? value) => switch (value) {
+  DateTime() => value.toUtc().toIso8601String(),
+  double() when !value.isFinite => null,
+  Map<String, Object?>() => {
+    for (final MapEntry(:key, :value) in value.entries)
+      key: _jsonAttribute(value),
+  },
+  List<Object?>() => [for (final item in value) _jsonAttribute(item)],
+  _ => value,
+};
+
+/// Test access to the exposure frames of a [DatadogProvider].
+@visibleForTesting
+extension DatadogProviderTesting on DatadogProvider {
+  int get openExposureFrames => _exposureFrames.length;
+}

@@ -5,12 +5,13 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
 import 'package:datadog_flutter_plugin/datadog_internal.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
 import '../datadog_session_replay.dart';
+import 'capture/element_recorders/raster_resources.dart'
+    show defaultMaxImagePixelBudget;
 import 'capture/recorder.dart';
 import 'datadog_session_replay_platform_interface.dart';
 import 'processor/processor.dart';
@@ -52,6 +53,7 @@ class DatadogSessionReplay {
   bool _recordingRequested = false;
   bool _sessionSampled = false;
   String? _currentSessionId;
+  String? _currentViewId;
 
   /// Whether Session Replay is recording.
   bool get isCapturing => _captureTimer != null;
@@ -78,18 +80,35 @@ class DatadogSessionReplay {
     this._configuration,
     this.internalLogger,
     double rumSampleRate,
-  )   : _sessionSampler = DeterministicSampler(rumSampleRate)
-            .combined(_configuration.replaySampleRate),
-        defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
-        _recorder = SessionReplayRecorder(
-          defaultCapturePrivacy: TreeCapturePrivacy(
-            textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
-            imagePrivacyLevel: _configuration.imagePrivacyLevel,
-          ),
-          touchPrivacyLevel: _configuration.touchPrivacyLevel,
-          imageDownscaling: _configuration.imageDownscaling,
-          maxImagePixelBudget: _configuration.maxImagePixelBudget,
-        );
+  ) : _sessionSampler = DeterministicSampler(
+        rumSampleRate,
+      ).combined(_configuration.replaySampleRate),
+      defaultTouchPrivacyLevel = _configuration.touchPrivacyLevel,
+      _recorder = SessionReplayRecorder(
+        defaultCapturePrivacy: TreeCapturePrivacy(
+          textAndInputPrivacyLevel: _configuration.textAndInputPrivacyLevel,
+          imagePrivacyLevel: _configuration.imagePrivacyLevel,
+        ),
+        touchPrivacyLevel: _configuration.touchPrivacyLevel,
+        imageDownscaling: _configuration.imageDownscaling,
+        maxImagePixelBudget: validMaxImagePixelBudget(
+          _configuration.maxImagePixelBudget,
+          internalLogger,
+        ),
+        textCaptureMode: _configuration.textCaptureMode,
+      );
+
+  /// [budget] if it allows at least one pixel. Otherwise, warns and returns
+  /// [defaultMaxImagePixelBudget], since no bitmap could fit a smaller budget.
+  @visibleForTesting
+  static int validMaxImagePixelBudget(int budget, InternalLogger logger) {
+    if (budget >= 1) return budget;
+    logger.warn(
+      'DatadogSessionReplayConfiguration.maxImagePixelBudget must be at least '
+      '1, but was $budget. Using the default of $defaultMaxImagePixelBudget.',
+    );
+    return defaultMaxImagePixelBudget;
+  }
 
   void addElement(Key key, Element e) {
     _recorder.addElement(key, e);
@@ -103,6 +122,10 @@ class DatadogSessionReplay {
     if (context.sessionId != _currentSessionId) {
       _currentSessionId = context.sessionId;
       _sessionSampled = _isSessionSampled(context.sessionId);
+      DatadogSessionReplayPlatform.instance.setSessionSampled(
+        context.sessionId,
+        _sessionSampled,
+      );
       if (!_sessionSampled) {
         internalLogger.debug(
           'Flutter Session Replay was not selected by replaySampleRate for '
@@ -115,7 +138,9 @@ class DatadogSessionReplay {
     if (_sessionSampled) {
       _recorder.onContextChanged(context);
     }
+    _currentViewId = context.viewId;
     _evaluateRecording();
+    if (isCapturing) _publishHasReplay(true);
   }
 
   /// Samples [sessionId] deterministically, as the native SDKs do: the same
@@ -151,14 +176,24 @@ class DatadogSessionReplay {
     if (_recordingRequested && _sessionSampled) {
       if (_captureTimer != null) return;
       _startPeriodicCapture();
+      _publishHasReplay(true);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Let capture know that a new element tree is available for capture.
         _newFrameBuilt = true;
       });
     } else {
+      if (_captureTimer == null) return;
       _captureTimer?.cancel();
       _captureTimer = null;
+      _publishHasReplay(false);
     }
+  }
+
+  void _publishHasReplay(bool hasReplay) {
+    DatadogSessionReplayPlatform.instance.setHasReplay(
+      _currentViewId ?? '',
+      hasReplay,
+    );
   }
 
   Future<void> _start() async {

@@ -11,38 +11,56 @@ import 'assignment.dart';
 import 'datadog_flags_config.dart';
 import 'flags_configuration.dart';
 import 'evaluation_context.dart';
+import 'flag_key_obfuscation.dart';
+import 'flag_selection.dart';
 import 'flags_error.dart';
+import 'flags_log.dart';
 import 'precompute_request.dart';
 import 'precompute_response.dart';
+import 'split_features.dart';
 
 class FlagAssignmentsFetcher {
   final DatadogFlagsConfig datadogConfig;
   final DatadogFlagsConfiguration configuration;
   final http.Client httpClient;
+  final UnknownDestinationWarnings _unknownDestinations;
+
+  /// Canonical selection sent with every request, or null when none is sent.
+  final FlagSelection? flagSelection;
 
   FlagAssignmentsFetcher({
     required this.datadogConfig,
     required this.configuration,
     required this.httpClient,
-  });
+    FlagsLogger logger = const FlagsLogger(),
+    FlagSelectionDropLog? dropLog,
+  }) : _unknownDestinations = UnknownDestinationWarnings(logger),
+       flagSelection = resolveFlagSelection(
+         configuration.flagSelection,
+         logger,
+         dropLog: dropLog,
+       );
 
   Future<PrecomputedAssignments> fetch(
-    FlagsEvaluationContext evaluationContext,
-  ) async {
-    final endpoint = configuration.customFlagsEndpoint ??
+    FlagsEvaluationContext evaluationContext, {
+    Future<void>? abortTrigger,
+  }) async {
+    final endpoint =
+        configuration.customFlagsEndpoint ??
         datadogConfig.flagsEndpoint().replace(path: '/precompute-assignments');
     final http.Response response;
     try {
-      response = await httpClient.post(
-        endpoint,
-        headers: _headers(),
-        body: jsonEncode(
-          PrecomputeRequest.fromContext(
-            datadogConfig: datadogConfig,
-            evaluationContext: evaluationContext,
-          ).toJson(),
-        ),
-      );
+      final request =
+          http.AbortableRequest('POST', endpoint, abortTrigger: abortTrigger)
+            ..headers.addAll(_headers())
+            ..body = jsonEncode(
+              PrecomputeRequest.fromContext(
+                datadogConfig: datadogConfig,
+                evaluationContext: evaluationContext,
+                flagSelection: flagSelection,
+              ).toJson(),
+            );
+      response = await http.Response.fromStream(await httpClient.send(request));
     } catch (error) {
       throw FlagsException.networkError(
         'Failed to fetch flag assignments.',
@@ -61,10 +79,17 @@ class FlagAssignmentsFetcher {
         _asObject(jsonDecode(response.body), 'response'),
       );
       final attributes = decoded.data.attributes;
+      for (final assignment in attributes.flags.values) {
+        _unknownDestinations.check(assignment.features);
+      }
       return PrecomputedAssignments(
         flags: attributes.flags,
         createdAt: attributes.createdAt,
         environment: attributes.environment,
+        obfuscation: attributes.obfuscation,
+        flagSelectionIgnoredReason: flagSelection == null
+            ? null
+            : flagSelectionIgnoredReason(response.headers),
       );
     } catch (error) {
       throw FlagsException.invalidResponse(
@@ -77,9 +102,16 @@ class FlagAssignmentsFetcher {
   Map<String, String> _headers() {
     return {
       'Content-Type': 'application/vnd.api+json',
+      // Avoid adding a header that a web proxy's CORS policy may reject.
+      if (configuration.customFlagsEndpoint == null)
+        'X-DD-FEATURE-FLAGS-CAPABILITIES':
+            (supportedFlagsCapabilities
+                    .map((capability) => capability.wireName)
+                    .toList()
+                  ..sort())
+                .join(','),
       'dd-client-token': datadogConfig.clientToken,
-      if (datadogConfig.applicationId case final applicationId?)
-        'dd-application-id': applicationId,
+      'dd-application-id': ?datadogConfig.applicationId,
       ...?configuration.customFlagsHeaders,
     };
   }

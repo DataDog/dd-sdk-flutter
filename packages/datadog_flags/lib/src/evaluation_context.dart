@@ -18,8 +18,10 @@ final class FlagsEvaluationContext {
   static const empty = FlagsEvaluationContext();
 
   /// Primary subject key, such as a user id, device id, or organization id.
-  @JsonKey(includeIfNull: false)
-  final String? targetingKey;
+  ///
+  /// A missing key is stored as `""`. Datadog treats both as the same subject.
+  @JsonKey(defaultValue: '')
+  final String targetingKey;
 
   /// JSON-compatible targeting attributes sent with assignment requests.
   @JsonKey(toJson: sanitizeJsonValue)
@@ -27,9 +29,9 @@ final class FlagsEvaluationContext {
 
   /// Creates an evaluation context for assignment requests.
   const FlagsEvaluationContext({
-    this.targetingKey,
+    String? targetingKey,
     this.attributes = const {},
-  });
+  }) : targetingKey = targetingKey ?? '';
 
   /// Creates an evaluation context from a JSON map.
   factory FlagsEvaluationContext.fromJson(Map<String, Object?> json) =>
@@ -37,4 +39,78 @@ final class FlagsEvaluationContext {
 
   /// Converts this context to a JSON map.
   Map<String, Object?> toJson() => _$FlagsEvaluationContextToJson(this);
+}
+
+/// Set this attribute to `true` in evaluation context attributes to enable
+/// strict context matching.
+const strictContextSwitchingAttribute =
+    'dd_strict_evaluation_context_switching';
+
+// Local context controls are excluded from assignment and telemetry attributes.
+extension ContextSwitchingPolicy on FlagsEvaluationContext {
+  bool get strictContextSwitching =>
+      attributes[strictContextSwitchingAttribute] == true;
+
+  FlagsEvaluationContext get targetingContext =>
+      !attributes.containsKey(strictContextSwitchingAttribute)
+      ? this
+      : FlagsEvaluationContext(
+          targetingKey: targetingKey,
+          attributes: {
+            for (final entry in attributes.entries)
+              if (entry.key != strictContextSwitchingAttribute)
+                entry.key: entry.value,
+          },
+        );
+}
+
+bool targetingContextsMatch(
+  FlagsEvaluationContext left,
+  FlagsEvaluationContext right,
+) {
+  if (left.targetingKey != right.targetingKey) {
+    return false;
+  }
+
+  try {
+    return _jsonValuesMatch(
+      sanitizeJsonValue(left.targetingContext.attributes),
+      sanitizeJsonValue(right.targetingContext.attributes),
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+bool _jsonValuesMatch(Object? left, Object? right) {
+  if (left is Map<Object?, Object?> && right is Map<Object?, Object?>) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      if (!right.containsKey(entry.key) ||
+          !_jsonValuesMatch(entry.value, right[entry.key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (left is Iterable<Object?> && right is Iterable<Object?>) {
+    final leftIterator = left.iterator;
+    final rightIterator = right.iterator;
+    while (true) {
+      final hasLeft = leftIterator.moveNext();
+      final hasRight = rightIterator.moveNext();
+      if (hasLeft != hasRight) {
+        return false;
+      }
+      if (!hasLeft) {
+        return true;
+      }
+      if (!_jsonValuesMatch(leftIterator.current, rightIterator.current)) {
+        return false;
+      }
+    }
+  }
+  return left == right;
 }

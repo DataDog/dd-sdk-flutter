@@ -14,7 +14,7 @@ import 'app.dart';
 String? customEndpoint;
 
 Future<void> main() async {
-  await dotenv.load(mergeWith: Platform.environment);
+  await dotenv.load(fileName: 'dd.env', mergeWith: Platform.environment);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
@@ -26,6 +26,7 @@ Future<void> main() async {
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
     site: DatadogSite.us1,
+    service: 'com.datadoghq.flutter.webview_tracking.integration',
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
     nativeCrashReportEnabled: true,

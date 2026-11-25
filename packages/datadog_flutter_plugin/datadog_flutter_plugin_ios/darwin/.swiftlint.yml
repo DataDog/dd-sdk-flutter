@@ -1,0 +1,8 @@
+disabled_rules:
+  - force_cast
+
+included:
+  - datadog_flutter_plugin_ios/Sources
+
+excluded:
+  - datadog_flutter_plugin_ios/.build

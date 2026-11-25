@@ -13,6 +13,7 @@ import 'evaluation_context.dart';
 import 'flags_runtime.dart';
 import 'intake_request.dart';
 import 'json_value.dart';
+import 'split_features.dart';
 
 class EvaluationAggregator {
   static const int defaultMaxBatchSize = 1000;
@@ -31,20 +32,26 @@ class EvaluationAggregator {
   Timer? _periodicFlushTimer;
   Timer? _retryFlushTimer;
   bool _shutdownDrainActive = false;
+  final UploadBackoff _backoff = UploadBackoff();
 
   EvaluationAggregator(this.runtime) {
     if (runtime.configuration.trackEvaluations) {
-      _periodicFlushTimer = Timer.periodic(
-        runtime.configuration.evaluationFlushInterval,
-        (_) => unawaited(flush()),
-      );
+      _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
     }
+  }
+
+  void _schedulePeriodicFlush(Duration delay) {
+    _periodicFlushTimer?.cancel();
+    _periodicFlushTimer = Timer(delay, () {
+      _schedulePeriodicFlush(runtime.configuration.evaluationFlushInterval);
+      unawaited(flush());
+    });
   }
 
   void recordEvaluation({
     required String flagKey,
     required FlagAssignment? assignment,
-    required FlagsEvaluationContext evaluationContext,
+    required FlagsEvaluationContext? evaluationContext,
     required String? error,
   }) {
     final configuration = runtime.configuration;
@@ -53,12 +60,16 @@ class EvaluationAggregator {
     }
 
     final now = configuration.dateProvider().millisecondsSinceEpoch;
+    final features = error == null && assignment != null
+        ? assignment.features.forDestination(SplitFeatureDestination.evaluation)
+        : const <String, Object>{};
     final key = _aggregationKey(
       flagKey: flagKey,
       allocationKey: assignment?.allocationKey,
       variantKey: assignment?.variationKey,
       evaluationContext: evaluationContext,
       error: error,
+      features: features,
     );
     final existing = _aggregations[key];
     if (existing != null) {
@@ -74,9 +85,10 @@ class EvaluationAggregator {
       flagKey: flagKey,
       variantKey: assignment?.variationKey,
       allocationKey: assignment?.allocationKey,
-      targetingKey: evaluationContext.targetingKey,
+      targetingKey: evaluationContext?.targetingKey ?? '',
       error: error,
-      attributes: evaluationContext.attributes,
+      attributes: evaluationContext?.attributes ?? const {},
+      features: features,
       firstEvaluation: now,
       lastEvaluation: now,
       evaluationCount: 1,
@@ -117,13 +129,8 @@ class EvaluationAggregator {
     _shutdownDrainActive = true;
     try {
       final activeUpload = _uploadInFlight;
-      if (activeUpload != null) {
-        final succeeded = await activeUpload;
-        if (!succeeded) {
-          return;
-        }
-      }
-
+      final activeSucceeded = await activeUpload ?? true;
+      if (!activeSucceeded) return;
       await _uploadPendingEvaluations(rescheduleOnFailure: false);
     } finally {
       _shutdownDrainActive = false;
@@ -133,6 +140,10 @@ class EvaluationAggregator {
   Future<void> _flushPendingEvaluations({
     required bool rescheduleOnFailure,
   }) async {
+    if (_backoff.remaining > Duration.zero) {
+      _scheduleRetryFlush(_backoff.remaining);
+      return;
+    }
     if (_uploadInFlight != null) {
       if (rescheduleOnFailure) {
         _scheduleRetryFlush();
@@ -143,9 +154,7 @@ class EvaluationAggregator {
     await _uploadPendingEvaluations(rescheduleOnFailure: rescheduleOnFailure);
   }
 
-  Future<bool> _uploadPendingEvaluations({
-    required bool rescheduleOnFailure,
-  }) {
+  Future<bool> _uploadPendingEvaluations({required bool rescheduleOnFailure}) {
     final configuration = runtime.configuration;
     if (!configuration.trackEvaluations || _aggregations.isEmpty) {
       return Future.value(true);
@@ -155,14 +164,15 @@ class EvaluationAggregator {
     _aggregations.clear();
 
     late final Future<bool> uploadOperation;
-    uploadOperation = _sendEvaluations(
-      evaluations,
-      rescheduleOnFailure: rescheduleOnFailure,
-    ).whenComplete(() {
-      if (identical(_uploadInFlight, uploadOperation)) {
-        _uploadInFlight = null;
-      }
-    });
+    uploadOperation =
+        _sendEvaluations(
+          evaluations,
+          rescheduleOnFailure: rescheduleOnFailure,
+        ).whenComplete(() {
+          if (identical(_uploadInFlight, uploadOperation)) {
+            _uploadInFlight = null;
+          }
+        });
     _uploadInFlight = uploadOperation;
     return uploadOperation;
   }
@@ -184,21 +194,21 @@ class EvaluationAggregator {
 
     try {
       final response = await runtime.httpClient
-          .post(
-            request.endpoint,
-            headers: request.headers,
-            body: request.body,
-          )
+          .post(request.endpoint, headers: request.headers, body: request.body)
           .timeout(uploadTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         if (shouldRetryFlagsUpload(response.statusCode)) {
+          _backoff.failed();
           _restore(evaluations, reschedule: rescheduleOnFailure);
           return false;
         }
+        _backoff.reset();
         return true;
       }
+      _backoff.reset();
       return true;
     } catch (_) {
+      _backoff.failed();
       _restore(evaluations, reschedule: rescheduleOnFailure);
       return false;
     }
@@ -221,12 +231,12 @@ class EvaluationAggregator {
 
       existing.firstEvaluation =
           existing.firstEvaluation < evaluation.firstEvaluation
-              ? existing.firstEvaluation
-              : evaluation.firstEvaluation;
+          ? existing.firstEvaluation
+          : evaluation.firstEvaluation;
       existing.lastEvaluation =
           existing.lastEvaluation > evaluation.lastEvaluation
-              ? existing.lastEvaluation
-              : evaluation.lastEvaluation;
+          ? existing.lastEvaluation
+          : evaluation.lastEvaluation;
       existing.evaluationCount += evaluation.evaluationCount;
     }
 
@@ -275,12 +285,17 @@ class EvaluationAggregator {
     });
   }
 
-  void _scheduleRetryFlush() {
+  void _scheduleRetryFlush([Duration? remaining]) {
+    final delay =
+        remaining ??
+        (_backoff.remaining > Duration.zero
+            ? _backoff.remaining
+            : _evaluationFlushRetryDelay);
     if (_retryFlushTimer != null) {
       return;
     }
 
-    _retryFlushTimer = Timer(_evaluationFlushRetryDelay, () {
+    _retryFlushTimer = Timer(delay, () {
       _retryFlushTimer = null;
       unawaited(_flushPendingEvaluations(rescheduleOnFailure: true));
     });
@@ -291,16 +306,18 @@ String _aggregationKey({
   required String flagKey,
   required String? allocationKey,
   required String? variantKey,
-  required FlagsEvaluationContext evaluationContext,
+  required FlagsEvaluationContext? evaluationContext,
   required String? error,
+  required Map<String, Object> features,
 }) {
   return jsonEncode({
     'flagKey': flagKey,
     'variantKey': variantKey,
     'allocationKey': allocationKey,
-    'targetingKey': evaluationContext.targetingKey,
+    'targetingKey': evaluationContext?.targetingKey ?? '',
     'error': error,
-    'context': _sortedJson(evaluationContext.attributes),
+    'context': _sortedJson(evaluationContext?.attributes ?? const {}),
+    if (features.isNotEmpty) 'features': _sortedJson(features),
   });
 }
 
@@ -309,9 +326,10 @@ class _AggregatedEvaluation {
   final String flagKey;
   final String? variantKey;
   final String? allocationKey;
-  final String? targetingKey;
+  final String targetingKey;
   final String? error;
   final Map<String, Object?> attributes;
+  final Map<String, Object> features;
   int firstEvaluation;
   int lastEvaluation;
   int evaluationCount;
@@ -325,6 +343,7 @@ class _AggregatedEvaluation {
     required this.targetingKey,
     required this.error,
     required this.attributes,
+    required this.features,
     required this.firstEvaluation,
     required this.lastEvaluation,
     required this.evaluationCount,
@@ -351,14 +370,18 @@ class _AggregatedEvaluation {
       'runtime_default_used': runtimeDefaultUsed ? true : null,
       'error': error == null ? null : {'message': error},
       'context': eventContext.isEmpty ? null : eventContext,
+      'features': features.isEmpty ? null : features,
     });
   }
 }
 
 Map<String, Object?> _removeNullValues(Map<String, Object?> input) {
   return Map.fromEntries(
-    input.entries.where((entry) => entry.value != null).map(
-        (entry) => MapEntry(entry.key, _removeNestedNullValues(entry.value))),
+    input.entries
+        .where((entry) => entry.value != null)
+        .map(
+          (entry) => MapEntry(entry.key, _removeNestedNullValues(entry.value)),
+        ),
   );
 }
 

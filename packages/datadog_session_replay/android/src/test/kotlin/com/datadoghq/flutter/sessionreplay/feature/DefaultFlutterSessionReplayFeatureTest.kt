@@ -9,10 +9,14 @@ package com.datadoghq.flutter.sessionreplay.feature
 import android.os.Handler
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotEqualTo
 import assertk.assertions.isNotNull
+import com.datadog.android.api.InternalLogger
 import com.datadog.android.api.feature.Feature
+import com.datadog.android.api.feature.FeatureScope
 import com.datadog.android.api.feature.FeatureSdkCore
+import com.datadog.android.api.feature.StorageBackedFeature
 import fr.xgouchet.elmyr.annotation.BoolForgery
 import fr.xgouchet.elmyr.annotation.IntForgery
 import fr.xgouchet.elmyr.annotation.LongForgery
@@ -21,6 +25,7 @@ import fr.xgouchet.elmyr.junit5.ForgeExtension
 import io.mockk.every
 import io.mockk.invoke
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -100,6 +105,8 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
             lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
         }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+        feature.registerSessionReplayContext()
 
         // When
         feature.setHasReplay(viewId, hasReplay)
@@ -137,6 +144,8 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
             lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
         }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+        feature.registerSessionReplayContext()
 
         // When
         feature.setRecordCount(viewId, recordCount)
@@ -152,7 +161,155 @@ internal class DefaultFlutterSessionReplayFeatureTest {
         val viewMap = context[viewId] as? MutableMap<String, Any?>
         assertThat(viewMap).isNotNull()
         assertThat(viewMap?.get("has_replay")).isEqualTo(true)
-        assertThat(viewMap?.get("records_count")).isEqualTo(recordCount)
+        assertThat(viewMap?.get("records_count")).isEqualTo(recordCount.toLong())
+    }
+
+    @Test
+    fun `M register the session replay context feature W registerSessionReplayContext {name free}`(
+        @StringForgery customEndpoint: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+
+        // When
+        feature.registerSessionReplayContext()
+
+        // Then
+        val registered = slot<Feature>()
+        verify { mockCore.registerFeature(capture(registered)) }
+        assertThat(registered.captured).isInstanceOf(SessionReplayContextFeature::class)
+        assertThat(registered.captured.name).isEqualTo(Feature.SESSION_REPLAY_FEATURE_NAME)
+    }
+
+    @Test
+    fun `M publish the privacy levels W registerSessionReplayContext {name free}`(
+        @StringForgery customEndpoint: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            privacyLevels = PrivacyLevels(
+                textAndInput = "mask_sensitive_inputs",
+                image = "mask_none",
+                touch = "show"
+            ),
+            mainThreadHandler = mockHandler
+        )
+        val context = mutableMapOf<String, Any?>()
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
+            lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+
+        // When
+        feature.registerSessionReplayContext()
+
+        // Then - native WebView tracking reads these when a WebView is tracked
+        assertThat(context["session_replay_text_and_input_privacy"]).isEqualTo("mask_sensitive_inputs")
+        assertThat(context["session_replay_image_privacy"]).isEqualTo("mask_none")
+        assertThat(context["session_replay_touch_privacy"]).isEqualTo("show")
+    }
+
+    @Test
+    fun `M set session_replay_is_enabled W setSessionSampled`(
+        @StringForgery customEndpoint: String,
+        @StringForgery sessionId: String,
+        @BoolForgery sampled: Boolean
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        val context = mutableMapOf<String, Any?>()
+        every { mockCore.updateFeatureContext(any(), any(), captureLambda()) } answers {
+            lambda<(MutableMap<String, Any?>) -> Unit>().invoke(context)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns null
+        feature.registerSessionReplayContext()
+
+        // When
+        feature.setSessionSampled(sessionId, sampled)
+
+        // Then - native WebView tracking only writes WebView records while this is true
+        assertThat(context["session_replay_is_enabled"]).isEqualTo(sampled)
+    }
+
+    @Test
+    fun `M not register nor publish W registerSessionReplayContext {native Session Replay present}`(
+        @StringForgery customEndpoint: String,
+        @StringForgery viewId: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        val nativeScope = mockk<FeatureScope> {
+            every { unwrap<Feature>() } returns mockk<StorageBackedFeature>(relaxed = true)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns nativeScope
+
+        // When
+        feature.registerSessionReplayContext()
+        feature.setHasReplay(viewId, true)
+        feature.setRecordCount(viewId, 1)
+        feature.setSessionSampled(viewId, true)
+
+        // Then
+        verify(exactly = 0) { mockCore.registerFeature(any()) }
+        verify(exactly = 0) { mockCore.updateFeatureContext(any(), any(), any()) }
+        val message = slot<() -> String>()
+        verify {
+            mockCore.internalLogger.log(
+                InternalLogger.Level.WARN,
+                InternalLogger.Target.USER,
+                capture(message),
+                any(),
+                any(),
+                any()
+            )
+        }
+        assertThat(message.captured())
+            .isEqualTo(DefaultFlutterSessionReplayFeature.NATIVE_SESSION_REPLAY_PRESENT_WARNING)
+    }
+
+    @Test
+    fun `M publish without registering again W registerSessionReplayContext {already registered by Flutter}`(
+        @StringForgery customEndpoint: String,
+        @StringForgery viewId: String
+    ) {
+        // Given
+        val feature = DefaultFlutterSessionReplayFeature(
+            mockCore,
+            mockk(relaxed = true),
+            customEndpoint,
+            mainThreadHandler = mockHandler
+        )
+        val contextScope = mockk<FeatureScope> {
+            every { unwrap<Feature>() } returns SessionReplayContextFeature(mockCore, feature)
+        }
+        every { mockCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME) } returns contextScope
+
+        // When
+        feature.registerSessionReplayContext()
+        feature.setHasReplay(viewId, true)
+
+        // Then
+        verify(exactly = 0) { mockCore.registerFeature(any()) }
+        verify { mockCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME, true, any()) }
     }
 
     @Test

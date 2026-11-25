@@ -10,12 +10,16 @@ FlagAssignment _$FlagAssignmentFromJson(Map<String, dynamic> json) =>
     FlagAssignment._(
       allocationKey: json['allocationKey'] as String,
       variationKey: json['variationKey'] as String,
-      variationType:
-          FlagVariationType.fromWireName(json['variationType'] as String),
+      variationType: FlagVariationType.fromWireName(
+        json['variationType'] as String,
+      ),
       variationValue: json['variationValue'] as Object,
       reason: json['reason'] as String,
       doLog: json['doLog'] as bool,
       serialId: (json['serialId'] as num?)?.toInt(),
+      features: json['features'] == null
+          ? const []
+          : SplitFeature.listFromJson(json['features']),
     );
 
 Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
@@ -27,4 +31,5 @@ Map<String, dynamic> _$FlagAssignmentToJson(FlagAssignment instance) =>
       'reason': instance.reason,
       'doLog': instance.doLog,
       'serialId': instance.serialId,
+      'features': ?instance._storedFeatures?.map((e) => e.toJson()).toList(),
     };

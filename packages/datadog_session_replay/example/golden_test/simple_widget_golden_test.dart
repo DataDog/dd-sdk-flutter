@@ -515,11 +515,7 @@ void main() {
                   thumbColor: Colors.red,
                 ),
                 // With secondary track value.
-                Slider(
-                  value: 0.3,
-                  secondaryTrackValue: 0.7,
-                  onChanged: (_) {},
-                ),
+                Slider(value: 0.3, secondaryTrackValue: 0.7, onChanged: (_) {}),
                 // Discrete slider with tick marks.
                 Slider(value: 0.4, divisions: 5, onChanged: (_) {}),
                 // M3-2024 (year2023 = false) — handle thumb + gap + stop indicator.
@@ -611,11 +607,7 @@ void main() {
                   thumbColor: Colors.red,
                 ),
                 // With secondary track value.
-                Slider(
-                  value: 0.3,
-                  secondaryTrackValue: 0.7,
-                  onChanged: (_) {},
-                ),
+                Slider(value: 0.3, secondaryTrackValue: 0.7, onChanged: (_) {}),
                 // Discrete slider with tick marks.
                 Slider(value: 0.4, divisions: 5, onChanged: (_) {}),
                 // M3-2024 (year2023 = false) — handle thumb + gap + stop indicator.

@@ -18,11 +18,7 @@ const double _padding = 8.0;
 const double _thumbRadius = 14.0;
 const double _trackHalfHeight = 1.0;
 
-typedef _SliderGeometry = ({
-  Rect inactiveTrack,
-  Rect activeTrack,
-  Rect thumb,
-});
+typedef _SliderGeometry = ({Rect inactiveTrack, Rect activeTrack, Rect thumb});
 
 /// Detects [CupertinoSlider] widgets and renders them in Session Replay.
 class CupertinoSliderRecorder implements ElementRecorder {
@@ -57,8 +53,10 @@ class CupertinoSliderRecorder implements ElementRecorder {
       scaleY: attributes.scaleY,
     );
 
-    final inactiveTrackKey =
-        keyGenerator.keyForElement(element, wireframeId: 0);
+    final inactiveTrackKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 0,
+    );
     final activeTrackKey = keyGenerator.keyForElement(element, wireframeId: 1);
     final thumbKey = keyGenerator.keyForElement(element, wireframeId: 2);
 

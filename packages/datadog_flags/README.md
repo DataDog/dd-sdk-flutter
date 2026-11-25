@@ -1,365 +1,297 @@
 # Datadog Flags
 
-`datadog_flags` is the native Dart SDK for Datadog Feature Flags and
-Experimentation in client applications. It fetches precomputed assignments from
-Datadog, evaluates typed flag values locally, and reports exposure and flag
-evaluation events back to Datadog.
+`datadog_flags` provides the Datadog OpenFeature provider for Dart and Flutter.
+The provider fetches precomputed assignments, evaluates flags locally, and sends
+Datadog exposure and evaluation telemetry. It does not use the native iOS or
+Android Flags SDKs.
 
-This package is Dart-only. It does not bridge to the Datadog iOS or Android
-flagging SDKs, and it does not require a Flutter dependency. Flutter
-applications can use it directly from Dart code.
+Use OpenFeature as the application API. The legacy Datadog evaluation API is
+deprecated and is scheduled for removal in the next major version.
 
-The API follows the same client-side concepts used by OpenFeature providers:
-configure the provider, initialize a client for an evaluation context, evaluate
-typed details with a programmatic default, and shut the client down when the app
-no longer needs it.
+The SDK automatically supports assignment responses with obfuscated flag keys.
+Applications continue to evaluate flags with their original keys.
+Flag values and telemetry identifiers do not change.
 
-## Installation
+## Requirements
 
-For Dart:
+This integration requires Dart 3.10 or later and the published
+`openfeature_dart_client_sdk: ^0.0.1` package.
 
-```bash
-dart pub add datadog_flags
-```
-
-For Flutter:
-
-```bash
-flutter pub add datadog_flags
-```
-
-Then import the public API:
+## Initialize and evaluate
 
 ```dart
 import 'package:datadog_flags/datadog_flags.dart';
-```
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
-## Quick Start
-
-Enable Datadog Flags, initialize a client with an evaluation context, and
-evaluate typed details from the current assignment state:
-
-```dart
-final datadogFlags = DatadogFlags.instance;
-
-await datadogFlags.enable(
-  configuration: DatadogFlagsConfiguration(
-    datadogConfig: const DatadogFlagsConfig(
-      clientToken: 'pub...',
+final api = OpenFeatureAPI.instance;
+await api.setEvaluationContextAndWait(
+  EvaluationContext(
+    targetingKey: 'user-123',
+    attributes: {'plan': 'pro'},
+  ),
+);
+final provider = DatadogProvider.fromConfiguration(
+  DatadogFlagsConfiguration(
+    datadogConfig: DatadogFlagsConfig(
+      clientToken: '<CLIENT_TOKEN>',
       env: 'production',
       site: DatadogFlagsSite.us1,
-      applicationId: 'rum-application-id',
-      service: 'shopping-app',
-      version: '1.2.3',
     ),
   ),
 );
-
-final flags = datadogFlags.sharedClient();
+final client = api.getClient();
+client.addHandler(ProviderEventType.ready, (_) {
+  // Reevaluate flags after initial readiness or recovery.
+});
 try {
-  await flags.initialize(
-    const FlagsEvaluationContext(
-      targetingKey: 'user-123',
-      attributes: {
-        'plan': 'pro',
-        'companyId': 'company-456',
-      },
-    ),
-  );
-} on FlagsInitializationTimeoutException {
-  // Continue startup with stored assignments or evaluation defaults.
+  await api.setProviderAndWait(provider);
+} on OpenFeatureException {
+  // Evaluations return defaults until initial assignments become available.
 }
-
-final details = flags.getBooleanDetails(
-  key: 'checkout.enabled',
-  defaultValue: false,
-);
-
-if (details.error == null && details.value) {
-  showNewCheckout();
-}
+final enabled = client.getBooleanValue('checkout.enabled', false);
+final details = client.getStringDetails('checkout.copy', 'Continue');
 ```
 
-Call `shutdown()` when a client is no longer needed, or call
-`DatadogFlags.instance.disable()` when the application is tearing down the
-flags SDK:
+Evaluations are synchronous. OpenFeature handles hooks, events, defaults,
+provider registration, and context reconciliation. Use `getBooleanValue`,
+`getStringValue`, `getIntegerValue`, `getDoubleValue`, or `getStructureValue`.
+Each method also has a corresponding `get...Details` method.
+
+Structure evaluations accept JSON objects (`Map<String, Object?>`). A list or
+scalar assignment returns the default with `ErrorCode.typeMismatch`. Failed
+evaluations do not emit exposures. Successful structure values are immutable.
+
+Details include the variant, reason, error code, and provider metadata.
+The provider supplies `allocationKey`, `doLog`, and `variationType`, available
+through `DatadogProvider.allocationKeyMetadata` and `doLogMetadata`. The
+provider name is `datadog`. Metadata keys that start with `__dd_` are internal
+and can change, except the split feature keys that start with `__dd_feature.`
+(see [Exposures in your own data store](#exposures-in-your-own-data-store)).
+
+## Identity, refresh, and shutdown
 
 ```dart
-await flags.shutdown();
-await DatadogFlags.instance.disable();
+await api.setEvaluationContextAndWait(
+  EvaluationContext(targetingKey: 'another-user'),
+);
+await provider.refresh();
+await api.setEvaluationContextAndWait(EvaluationContext.empty); // Sign out.
+await api.shutdown();
 ```
 
-`shutdown()` drains pending exposure and flag evaluation uploads before clearing
-the client's in-memory assignments.
+Each provider instance owns one OpenFeature domain. For a named domain, register
+with `setProviderForDomainAndWait(domain, provider)` and use `getClient(domain)`.
+The provider uses the domain name as its Datadog client name, or `default` for
+the default domain.
 
-## Configuration
+By default, when only targeting attributes change, evaluations retain the previous assignments
+while loading or after failure. When the targeting key changes, including sign-out,
+evaluations return application defaults until assignments for the new key load.
+A targeting-key change cancels the previous key's pending load.
+A missing targeting key and an empty key identify the same subject.
+If reconciliation fails, OpenFeature retains the previous active context.
+The provider discards late results from that failed reconciliation.
 
-`DatadogFlagsConfig` contains the Datadog identity and routing information used
-for precompute and intake requests:
+Use `strictContextSwitchingAttribute` from `package:datadog_flags/datadog_flags.dart`
+to use downloaded assignments only while both the targeting key and targeting
+attributes match:
 
 ```dart
-const DatadogFlagsConfig(
-  clientToken: 'pub...',
-  env: 'production',
-  site: DatadogFlagsSite.us1,
-  applicationId: 'rum-application-id',
-  service: 'shopping-app',
-  version: '1.2.3',
+await api.setEvaluationContextAndWait(
+  EvaluationContext(
+    targetingKey: 'user-123',
+    attributes: {strictContextSwitchingAttribute: true},
+  ),
 );
 ```
+Strict mode returns defaults during an attribute change and after a failed fetch.
+An unchanged-context refresh keeps assignments while pending, then returns defaults
+if loading fails. Retries keep assignments withheld after a failure for their
+context until a successful fetch. Returning to an exact retained context can reuse
+its assignments when only a different context failed. The SDK removes this attribute, whatever its value,
+from assignment requests, stored assignments, and telemetry. Other OpenFeature
+hooks and providers still receive it.
+Only the boolean value `true` enables strict mode.
 
-- `clientToken` is the public Datadog client token used for client-side SDKs.
-- `env` is sent as `dd_env` to the precompute assignments API and included in
-  flag evaluation intake context.
-- `site` selects the Datadog site for both precompute and intake requests. Use
-  the site that matches the Datadog organization.
-- `applicationId` is optional. When present, intake context includes the RUM
-  application ID.
-- `service` and `version` are optional intake context fields.
+`refresh()` reloads assignments for the current context. It waits for pending
+initialization or context reconciliation before starting.
 
-`DatadogFlagsConfiguration` controls SDK behavior:
+- After assignments have been activated, including stored assignments, a successful
+  refresh emits `ready` followed by `configurationChanged`.
+- By default, a failed refresh emits `error` followed by `stale` when previous
+  assignments remain usable. Evaluations continue to use those assignments.
+- In strict mode, a failed refresh emits `error` and evaluations return defaults
+  until a successful fetch.
+- Before any assignments have been activated, `refresh()` retries the initial
+  context. Activation emits `ready`, followed by `stale` when using stored
+  assignments. It does not emit `configurationChanged`. Failure without usable
+  assignments emits `error`.
+
+After a failed context change, `refresh()` throws `StateError` until a later
+`setEvaluationContextAndWait` succeeds. This also applies to same-key attribute
+changes when previous assignments remain usable. Calling `refresh()` before
+initialization or after shutdown also throws `StateError`.
+
+An initialization retry replaces any pending initial assignment request. Avoid
+calling `refresh()` from every error event: repeated retries can prevent a slow
+request from completing.
+Each `setEvaluationContextAndWait` call reloads assignments, even when the context
+is unchanged. The provider does not poll automatically.
+
+Shutdown clears active assignments, cancels pending assignment publication,
+and drains pending telemetry. Repeated shutdown is safe. A caller-supplied
+HTTP client remains owned by the caller. The provider closes its own client.
+
+## Initialization deadline
+
+`DatadogFlagsConfiguration.initializationTimeout` defaults to five seconds.
+The provider requires a positive value of at most 20 seconds. This leaves time
+before the default OpenFeature lifecycle deadline of 30 seconds. Applications
+using an isolated API with a shorter deadline must choose a smaller budget.
+Missing configuration or an invalid budget produces `PROVIDER_FATAL`. Evaluations
+return caller defaults with that error. Recovery requires a new provider with
+corrected configuration. A valid budget expiring remains a recoverable error.
+
+The provider applies this budget to initialization, each context change, and
+each refresh. The core budget covers cache loading, the request, decoding, state publication,
+and cache storage. Synchronous work can delay timer delivery. The deadline bounds
+the caller's wait; it does not cancel the underlying HTTP or store operation.
+
+The provider catches the initialization timeout and reports availability through
+OpenFeature events. Matching cached assignments produce `stale`. With no
+assignments, registration fails and evaluations return defaults.
+
+If the initial request succeeds after the deadline, the provider emits `ready`
+and makes assignments available. The provider publishes assignments before it
+writes to the cache, so a slow store cannot hide a successful response.
+
+`stale` means assignments are usable but fresh assignments are unavailable. It
+can indicate a pending refresh or a failed refresh.
+
+## Configuration and storage
+
+`DatadogFlagsConfig` contains the client token, environment, site, and optional
+application ID, service, and version. The environment is sent as `dd_env`.
+
+`DatadogFlagsConfiguration` supports:
+
+- `customFlagsEndpoint` and `customFlagsHeaders` for assignment transport.
+- `httpClient` for an application-owned HTTP client.
+- `store` for a `DatadogFlagsStore` implementation.
+- `initializationTimeout` for the lifecycle budget described above.
+- `trackExposures` and `customExposureEndpoint` for exposure telemetry. With
+  `trackExposures: false`, the SDK sends no exposures to Datadog, but it still
+  deduplicates exposures for `ExposureHook`.
+- `trackEvaluations`, `customEvaluationEndpoint`, and `evaluationFlushInterval`
+  for evaluation telemetry. The interval must be between 1 and 60 seconds.
+  The default is 10 seconds.
+- `dateProvider` for application-controlled timestamps.
+- `flagSelection` to load only the flags that match a `FlagSelection` of tags or
+  key patterns. Stored assignments are restored only under the same selection.
+  After the selection the SDK sends is added, changed, or removed, clients
+  start without stored assignments until the next successful fetch.
+
+The store loads a `FlagsData` snapshot only when its context and configuration
+scope match the request. The scope is a digest of the site, environment, and client
+token. Snapshots without a scope are not used. After an upgrade or token rotation,
+evaluations use defaults until fresh assignments arrive if no eligible snapshot exists.
+Cache writes and deletes are serialized per store instance and client name.
+A store operation that never completes can block later persistence operations.
+Implement store operations so they always complete.
+
+Storage adapters must preserve the complete `FlagsData.toJson()` result and
+restore it with `FlagsData.fromJson()`. These methods retain the metadata needed
+to evaluate obfuscated assignments.
+
+Snapshots contain the targeting key and attributes. Context changes and shutdown
+do not delete stored snapshots. A successful load for the same client name replaces
+the snapshot. To remove stored data, call `delete` on your store with the domain
+name, or `default` for the default domain.
+
+OpenFeature `DateTime` attributes become UTC ISO-8601 strings. Non-finite numbers
+become `null`. These conversions also apply inside structures and lists.
+Assignment requests send structures and lists in targeting attributes as
+JSON-encoded strings. Telemetry and stored snapshots keep them structured.
+
+Exposure telemetry follows the assignment's logging policy. Evaluation telemetry
+records successes, defaults, and errors when assignments are active. Evaluations
+without active assignments return `ErrorCode.providerNotReady` and are not recorded.
+The provider does not implement
+OpenFeature `track()`. Do not use it in place of Datadog exposure telemetry.
+
+## Diagnostics
+
+The SDK writes diagnostics to the Dart developer log under the name
+`datadog_flags`. To also print them, including in release builds, set
+`DatadogProvider.verbosity` to the lowest level to print:
 
 ```dart
-DatadogFlagsConfiguration(
-  datadogConfig: datadogConfig,
-  initializationTimeout: const Duration(seconds: 5),
-  trackExposures: true,
-  trackEvaluations: true,
-  evaluationFlushInterval: const Duration(seconds: 10),
-  store: myStore,
-);
+DatadogProvider.verbosity = FlagsLoggerLevel.warning;
 ```
 
-- `trackExposures` enables exposure events for assignments marked `doLog`.
-- `trackEvaluations` enables aggregated flag evaluation events.
-- `initializationTimeout` is the wall-clock budget for the first context
-  initialization. The default is five seconds. The SDK does not limit how large
-  this value can be. Set it to `null`, zero, or a negative value to disable it.
-- `evaluationFlushInterval` controls periodic flag evaluation uploads and is
-  bounded to 1-60 seconds.
-- `store` is optional last-known assignment storage.
-- `httpClient` and custom endpoints are available for tests and advanced
-  embedding.
+The setting applies to every `datadog_flags` component in the isolate. Nothing
+is printed by default.
 
-The initialization timeout is one wall-clock budget for the complete operation.
-The SDK does not restart the budget for each initialization stage. The budget
-covers stored assignment loading, request encoding, the network response and
-body, JSON decoding, state publication, and assignment storage. It does not
-change the HTTP client timeout or cancel the assignment operation. A late
-successful response still makes assignments available. Later context changes do
-not use the initialization timeout.
+## Exposures in your own data store
 
-If initialization is still active, the SDK stops waiting when Dart runs the
-timeout timer. Synchronous work can block the Dart isolate. Therefore, the wait
-can be longer than the configured budget. The timeout completes `initialize()`
-with `FlagsInitializationTimeoutException`. The assignment operation continues
-in the background. Matching stored assignments remain available. Evaluations
-without assignments return the caller-provided default with
-`FlagEvaluationError.providerNotReady`.
-
-If `enable()` is called without a `datadogConfig`, the SDK creates no live
-provider. Evaluations still return the caller-provided default with
-`FlagEvaluationError.providerNotReady`.
-
-## Evaluation Context
-
-Each client evaluates flags for one current `FlagsEvaluationContext`.
+To record exposures in your own data store, add an `ExposureHook`:
 
 ```dart
-const FlagsEvaluationContext(
-  targetingKey: 'user-123',
-  attributes: {
-    'companyId': 'company-456',
-    'plan': 'enterprise',
-    'loggedIn': true,
-  },
-);
+api.addHooks([
+  ExposureHook((evaluation) {
+    if (evaluation.shouldSend) {
+      myQueue.add({
+        'flag': evaluation.flagKey,
+        'variant': evaluation.variant,
+        'allocation': evaluation.allocationKey,
+        'subject': evaluation.targetingKey,
+        'features': evaluation.features,
+      });
+    }
+  }),
+]);
 ```
 
-`targetingKey` is optional so applications can initialize contexts before a user
-or organization ID is known. For the precompute request, a missing targeting key
-is sent as an empty string. Targeting attributes must be JSON-compatible values.
+The callback receives every completed evaluation from `DatadogProvider`:
 
-Use separate named clients for separate mobile subjects, such as logged-out and
-logged-in users or org-level and user-level targeting:
+- `isExposure` is true for a successful evaluation of an allocation that logs
+  exposures, repeats included.
+- `isCacheHit` is true when the subject's most recent exposure to the flag had
+  the same allocation, variant, and assignment serial ID.
+- `shouldSend` is true for a new exposure. These are the exposures that the SDK
+  sends to Datadog when `trackExposures` is on.
+- `features` contains the features of the assignment's split that are
+  published to hooks, such as `holdout.key`, `holdout.assignment_group`, and
+  `holdout.should_include_in_holdout_analysis`.
+- `flagKey`, `variant`, `allocationKey`, `targetingKey`, and
+  `evaluationContext` describe the evaluation.
 
-```dart
-final orgFlags = datadogFlags.sharedClient(name: 'org');
-await orgFlags.initialize(
-  const FlagsEvaluationContext(targetingKey: 'org-123'),
-);
+The callback runs synchronously during the evaluation. Keep it fast and do not
+do I/O in it; queue the work instead. The SDK catches exceptions from the
+callback and writes them to the Dart developer log under the name
+`datadog_flags`. The evaluation result stays the same.
 
-final userFlags = datadogFlags.sharedClient(name: 'user');
-await userFlags.initialize(
-  const FlagsEvaluationContext(targetingKey: 'user-456'),
-);
-```
+The exposure deduplication cache is in memory. After a restart, the first
+evaluation of each assignment is a new exposure.
 
-Clients are local to the Dart isolate where they are created. Background
-isolates do not share `DatadogFlags` state or client assignment caches with the
-main isolate, so each background isolate must call
-`DatadogFlags.instance.enable()`, create the clients it needs, and initialize
-them independently.
+The same features are also available in flag metadata under keys that start with
+`__dd_feature.`, for example `__dd_feature.holdout.key`. Other keys that start
+with `__dd_` are internal and can change.
 
-## Typed Evaluation
+An evaluation counts as an exposure only if the whole evaluation succeeds.
 
-The SDK evaluates details for the supported Datadog flag value types:
+## Migrate the legacy API
 
-```dart
-final enabled = flags.getBooleanDetails(
-  key: 'checkout.enabled',
-  defaultValue: false,
-);
+See the [migration guide](MIGRATING.md) for deprecated APIs and their OpenFeature
+replacements.
 
-final title = flags.getStringDetails(
-  key: 'checkout.title',
-  defaultValue: 'Checkout',
-);
+## Cached evaluation reasons
 
-final maxItems = flags.getIntegerDetails(
-  key: 'checkout.max_items',
-  defaultValue: 10,
-);
+For successful evaluations, details report `CACHED` when the installed assignments
+were restored from the configured store, including an in-memory store. After a
+network response replaces those assignments, details report the response reason.
 
-final discount = flags.getDoubleDetails(
-  key: 'checkout.discount',
-  defaultValue: 0,
-);
+## Contributing
 
-final config = flags.getObjectDetails(
-  key: 'checkout.config',
-  defaultValue: const {},
-);
-```
-
-Every evaluation method requires a caller-provided default. Evaluation methods
-do not throw for provider readiness, missing flags, or type mismatches. They
-return a `FlagDetails<T>` value:
-
-```dart
-final details = flags.getStringDetails(
-  key: 'checkout.copy',
-  defaultValue: 'Continue',
-);
-
-print(details.value);
-print(details.variant);
-print(details.reason);
-print(details.error?.code);
-```
-
-`FlagDetails.error` is set when the SDK returns the default because of one of
-these conditions:
-
-- `FlagEvaluationError.providerNotReady`: the client has no initialized
-  assignment state.
-- `FlagEvaluationError.flagNotFound`: the flag key is not present in the
-  current assignment state.
-- `FlagEvaluationError.typeMismatch`: the assignment value does not match the
-  typed evaluation method.
-
-Successful details include the evaluated value plus assignment metadata such as
-`variant` and `reason` when Datadog returned it.
-
-## Assignment Fetching and Fallbacks
-
-`initialize(context)` fetches assignments with
-`POST /precompute-assignments`. Requests use
-`Content-Type: application/vnd.api+json` and `dd-client-token`.
-`dd-application-id` is included only when configured.
-
-Assignment fetch and response decoding failures are contained by the SDK. If no
-matching stored assignments are available, later evaluations return defaults
-with `providerNotReady` or `flagNotFound` details.
-
-Unknown or malformed individual flag assignments are ignored so that one
-invalid assignment does not prevent other assignments from loading.
-
-## Exposure Events
-
-A successful typed evaluation emits an exposure event when all of the following
-are true:
-
-- `trackExposures` is enabled.
-- The assignment has `doLog: true`.
-- The same targeting key and flag key have not already emitted the same
-  allocation and variant during the client's current lifetime.
-
-If the assignment changes to a different allocation or variant, the next
-evaluation emits a new exposure. Pending exposures are uploaded automatically and
-are also drained by `shutdown()`.
-
-## Flag Evaluation Events
-
-The SDK records aggregated flag evaluation events for successful evaluations,
-defaulted evaluations, and evaluation errors when `trackEvaluations` is
-enabled.
-
-Evaluations are aggregated by flag key, assignment metadata, evaluation context,
-and error state. The SDK uploads batches on the configured flush interval, when
-the batch boundary is reached, and during `shutdown()`.
-
-## Last-Known Assignment Storage
-
-The SDK keeps assignments in memory after `initialize()` succeeds. To restore
-last-known assignments across SDK instances, provide a `DatadogFlagsStore`:
-
-```dart
-class MyFlagsStore implements DatadogFlagsStore {
-  @override
-  Future<FlagsData?> read(String clientName) async {
-    // Read and decode persisted FlagsData for this client name.
-    return null;
-  }
-
-  @override
-  Future<void> write(String clientName, FlagsData data) async {
-    // Encode and persist successful assignments for this client name.
-  }
-
-  @override
-  Future<void> delete(String clientName) async {
-    // Delete persisted assignments for this client name.
-  }
-}
-```
-
-Stored assignments are used only when their evaluation context matches the
-active context. A live successful fetch always moves the client to the newest
-assignment state and writes that state back to the store.
-
-This package does not choose a disk location or ship a Flutter-specific disk
-store. Flutter apps can implement `DatadogFlagsStore` with their preferred app
-storage mechanism.
-
-## Cached Evaluation Reasons
-
-For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
-
-## Reset and Disable
-
-`DatadogFlags.instance.reset()` clears all clients' in-memory assignment state
-and deletes stored assignments without shutting down the shared HTTP client.
-
-`DatadogFlags.instance.disable()` shuts down all clients, drains pending
-telemetry, closes the shared HTTP client when the SDK created it, clears all
-named clients, and returns the SDK to an unconfigured state.
-
-## Examples
-
-This package includes a command-line example:
-
-```bash
-DD_CLIENT_TOKEN=<client-token> \
-dart run datadog_flags_example:typed_evaluation \
-  --env production \
-  --site us1 \
-  --flag-key checkout.enabled \
-  --flag-type boolean \
-  --targeting-key user-123 \
-  --targeting-attributes '{"companyId":"company-456"}'
-```
-
-The repository also includes a Flutter example screen in `examples/simple_example`
-that can initialize the SDK, refresh assignments, and evaluate multiple flag
-types.
+See the [contributing guide](../../CONTRIBUTING.md) and
+[package contributing guide](CONTRIBUTING.md).

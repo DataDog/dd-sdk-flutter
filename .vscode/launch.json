@@ -18,7 +18,8 @@
         },
         {
             "name": "integration test app",
-            "cwd": "packages/datadog_flutter_plugin/integration_test_app",
+            "cwd": "packages/datadog_flutter_plugin/datadog_flutter_plugin/integration_test_app",
+            "program": "lib/main.dart",
             "request": "launch",
             "type": "dart"
         },

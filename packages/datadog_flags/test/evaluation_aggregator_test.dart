@@ -17,11 +17,82 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('batch and periodic triggers preserve increasing backoff', () async {
+    EvaluationAggregator.maxBatchSize = 1;
+    final requests = <http.Request>[];
+    final clock = Stopwatch()..start();
+    final times = <int>[];
+    final client = MockClient((request) async {
+      requests.add(request);
+      times.add(clock.elapsedMilliseconds);
+      return http.Response('{}', times.length < 3 ? 503 : 202);
+    });
+    final aggregator = _aggregator(
+      requests: requests,
+      httpClient: client,
+      flushInterval: const Duration(milliseconds: 20),
+    );
+    addTearDown(aggregator.shutdown);
+    void record(String key) => aggregator.recordEvaluation(
+      flagKey: key,
+      assignment: _assignment(),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+      error: null,
+    );
+    record('first');
+    await _waitUntil(() => times.length == 1);
+    for (var i = 0; i < 10; i++) {
+      record('next-$i');
+      await aggregator.flush();
+    }
+    expect(times, hasLength(1));
+    await _waitUntil(() => times.length == 2);
+    for (var i = 0; i < 10; i++) {
+      record('later-$i');
+      await aggregator.flush();
+    }
+    expect(times, hasLength(2));
+    await _waitUntil(() => times.length == 3);
+    expect(times[1] - times[0], greaterThanOrEqualTo(390));
+    expect(times[2] - times[1], greaterThanOrEqualTo(790));
+    record('after-success');
+    await _waitUntil(() => times.length == 4);
+    expect(times[3] - times[2], lessThan(400));
+  });
+
   tearDown(() {
     EvaluationAggregator.maxBatchSize =
         EvaluationAggregator.defaultMaxBatchSize;
     EvaluationAggregator.uploadTimeout =
         EvaluationAggregator.defaultUploadTimeout;
+  });
+
+  test('periodic flush repeats and stops retrying after shutdown', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(
+      requests: requests,
+      flushInterval: const Duration(milliseconds: 20),
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        return http.Response('{}', requests.length < 3 ? 202 : 503);
+      }),
+    );
+    addTearDown(aggregator.shutdown);
+
+    for (var i = 1; i <= 3; i++) {
+      aggregator.recordEvaluation(
+        flagKey: 'flag-$i',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(targetingKey: 'A'),
+        error: null,
+      );
+      await _waitUntil(() => requests.length == i);
+    }
+    await aggregator.shutdown();
+    final countAfterDrain = requests.length;
+    // Failed batches remain pending, so another timer would attempt an upload.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    expect(requests, hasLength(countAfterDrain));
   });
 
   test('aggregates matching flag evaluations into one intake event', () async {
@@ -41,10 +112,7 @@ void main() {
       assignment: _assignment(),
       evaluationContext: const FlagsEvaluationContext(
         targetingKey: 'user-123',
-        attributes: {
-          'companyId': '1',
-          'plan': 'pro',
-        },
+        attributes: {'companyId': '1', 'plan': 'pro'},
       ),
       error: null,
     );
@@ -53,10 +121,7 @@ void main() {
       assignment: _assignment(),
       evaluationContext: const FlagsEvaluationContext(
         targetingKey: 'user-123',
-        attributes: {
-          'plan': 'pro',
-          'companyId': '1',
-        },
+        attributes: {'plan': 'pro', 'companyId': '1'},
       ),
       error: null,
     );
@@ -75,10 +140,7 @@ void main() {
     expect(evaluation['last_evaluation'], 2000);
     expect(evaluation['evaluation_count'], 2);
     expect(evaluation['context'], {
-      'evaluation': {
-        'companyId': '1',
-        'plan': 'pro',
-      },
+      'evaluation': {'companyId': '1', 'plan': 'pro'},
       if (isWebFlagsIntake)
         'dd': {
           'service': 'shopping-cart',
@@ -101,6 +163,62 @@ void main() {
     expect(evaluation.containsKey('runtime_default_used'), isFalse);
   });
 
+  for (final keys in <List<String?>>[
+    [null, ''],
+    ['', null],
+  ]) {
+    test('normalizes empty-subject telemetry in order $keys', () async {
+      final requests = <http.Request>[];
+      final aggregator = _aggregator(requests: requests);
+      addTearDown(aggregator.shutdown);
+
+      for (final key in [...keys, 'user-123']) {
+        aggregator.recordEvaluation(
+          flagKey: 'checkout.enabled',
+          assignment: _assignment(),
+          evaluationContext: FlagsEvaluationContext(targetingKey: key),
+          error: null,
+        );
+      }
+      await aggregator.flush();
+
+      final evaluations = _flagEvaluations(
+        _evaluationRequests(requests).single,
+      );
+      expect(evaluations, hasLength(2));
+      expect(evaluations.first['targeting_key'], '');
+      expect(evaluations.first['evaluation_count'], 2);
+      expect(evaluations.last['targeting_key'], 'user-123');
+      expect(evaluations.last['evaluation_count'], 1);
+    });
+  }
+
+  test('reports a missing context as the empty subject', () async {
+    final requests = <http.Request>[];
+    final aggregator = _aggregator(requests: requests);
+    addTearDown(aggregator.shutdown);
+
+    for (final context in <FlagsEvaluationContext?>[
+      null,
+      FlagsEvaluationContext.empty,
+      const FlagsEvaluationContext(targetingKey: ''),
+    ]) {
+      aggregator.recordEvaluation(
+        flagKey: 'checkout.enabled',
+        assignment: null,
+        evaluationContext: context,
+        error: FlagEvaluationError.providerNotReady.code,
+      );
+    }
+    await aggregator.flush();
+
+    final evaluation = _flagEvaluations(
+      _evaluationRequests(requests).single,
+    ).single;
+    expect(evaluation['targeting_key'], '');
+    expect(evaluation['evaluation_count'], 3);
+  });
+
   test('keeps runtime-default and error evaluations separate', () async {
     final requests = <http.Request>[];
     final aggregator = _aggregator(requests: requests);
@@ -109,17 +227,13 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(reason: 'DEFAULT'),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: FlagEvaluationError.typeMismatch.code,
     );
 
@@ -137,45 +251,50 @@ void main() {
     );
   });
 
-  test('restores failed uploads and merges matching later evaluations',
-      () async {
-    final requests = <http.Request>[];
-    var attempt = 0;
-    final aggregator = _aggregator(
-      requests: requests,
-      httpClient: MockClient((request) async {
-        requests.add(request);
-        attempt += 1;
-        return http.Response('{"ok":true}', attempt == 1 ? 500 : 200);
-      }),
-    );
-    addTearDown(aggregator.shutdown);
+  test(
+    'restores failed uploads and merges matching later evaluations',
+    () async {
+      final requests = <http.Request>[];
+      var attempt = 0;
+      final aggregator = _aggregator(
+        requests: requests,
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          attempt += 1;
+          return http.Response('{"ok":true}', attempt == 1 ? 500 : 200);
+        }),
+      );
+      addTearDown(aggregator.shutdown);
 
-    aggregator.recordEvaluation(
-      flagKey: 'checkout.enabled',
-      assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
-      error: null,
-    );
-    await aggregator.flush();
+      aggregator.recordEvaluation(
+        flagKey: 'checkout.enabled',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(
+          targetingKey: 'user-123',
+        ),
+        error: null,
+      );
+      await aggregator.flush();
 
-    aggregator.recordEvaluation(
-      flagKey: 'checkout.enabled',
-      assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
-      error: null,
-    );
-    await aggregator.flush();
+      aggregator.recordEvaluation(
+        flagKey: 'checkout.enabled',
+        assignment: _assignment(),
+        evaluationContext: const FlagsEvaluationContext(
+          targetingKey: 'user-123',
+        ),
+        error: null,
+      );
+      await aggregator.flush();
 
-    expect(_evaluationRequests(requests), hasLength(2));
-    final resentEvaluation =
-        _flagEvaluations(_evaluationRequests(requests).last).single;
-    expect(resentEvaluation['evaluation_count'], 2);
-  });
+      expect(_evaluationRequests(requests), hasLength(1));
+      await Future<void>.delayed(const Duration(milliseconds: 650));
+      expect(_evaluationRequests(requests), hasLength(2));
+      final resentEvaluation = _flagEvaluations(
+        _evaluationRequests(requests).last,
+      ).single;
+      expect(resentEvaluation['evaluation_count'], 2);
+    },
+  );
 
   test('drops non-retryable client error uploads', () async {
     final requests = <http.Request>[];
@@ -191,9 +310,7 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
     await aggregator.flush();
@@ -212,9 +329,7 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
 
@@ -223,18 +338,13 @@ void main() {
 
   test('does not send evaluations when tracking is disabled', () async {
     final requests = <http.Request>[];
-    final aggregator = _aggregator(
-      requests: requests,
-      trackEvaluations: false,
-    );
+    final aggregator = _aggregator(requests: requests, trackEvaluations: false);
     addTearDown(aggregator.shutdown);
 
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
     await aggregator.flush();
@@ -258,9 +368,7 @@ void main() {
     aggregator.recordEvaluation(
       flagKey: 'checkout.enabled',
       assignment: _assignment(),
-      evaluationContext: const FlagsEvaluationContext(
-        targetingKey: 'user-123',
-      ),
+      evaluationContext: const FlagsEvaluationContext(targetingKey: 'user-123'),
       error: null,
     );
 
@@ -278,6 +386,7 @@ EvaluationAggregator _aggregator({
   required List<http.Request> requests,
   http.Client? httpClient,
   bool trackEvaluations = true,
+  Duration flushInterval = const Duration(hours: 1),
   DateTime Function()? dateProvider,
 }) {
   final client = httpClient ?? _successClient(requests);
@@ -286,7 +395,7 @@ EvaluationAggregator _aggregator({
       configuration: DatadogFlagsConfiguration(
         datadogConfig: _datadogConfig(),
         trackEvaluations: trackEvaluations,
-        evaluationFlushInterval: const Duration(hours: 1),
+        evaluationFlushInterval: flushInterval,
         httpClient: client,
         dateProvider: dateProvider ?? DateTime.now,
       ),
@@ -368,10 +477,7 @@ void _expectIntakeMetadata(
   expect(request.headers['Content-Type'], nativeContentType);
   expect(request.headers['DD-API-KEY'], 'client-token');
   expect(request.headers['DD-EVP-ORIGIN'], datadogFlagsSource);
-  expect(
-    request.headers['DD-EVP-ORIGIN-VERSION'],
-    datadogFlagsSdkVersion,
-  );
+  expect(request.headers['DD-EVP-ORIGIN-VERSION'], datadogFlagsSdkVersion);
   expect(request.headers['DD-REQUEST-ID'], isNotEmpty);
 }
 

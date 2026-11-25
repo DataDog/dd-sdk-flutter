@@ -3,6 +3,9 @@
 // developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019-Present Datadog, Inc.
 
+// These tests preserve compatibility with the deprecated Datadog API.
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -70,6 +73,9 @@ class Harness {
   static Future<Harness> create({String reason = 'TARGETING_MATCH'}) async {
     final h = Harness();
     h.store.data = FlagsData.fromJson({
+      // Scope for us1 / test / token.
+      'scope':
+          '5857eb8e471b87dd4a8c92f8d85ec9a5a715cdf8fe966517f8f83adfb1ecf2a9',
       'context': context.toJson(),
       'date': '2026-01-01T00:00:00.000Z',
       'flags': {

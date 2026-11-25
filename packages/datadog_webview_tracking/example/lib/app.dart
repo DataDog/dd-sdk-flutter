@@ -20,8 +20,9 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    datadogObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    datadogObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
   }
 
   @override

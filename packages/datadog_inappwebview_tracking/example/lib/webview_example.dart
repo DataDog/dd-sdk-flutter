@@ -22,26 +22,23 @@ class _WebviewExampleState extends State<WebviewExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('WebView Example'),
-      ),
+      appBar: AppBar(title: const Text('WebView Example')),
       body: SafeArea(
-          child: InAppWebView(
-        key: _webViewKey,
-        initialUserScripts: UnmodifiableListView([
-          DatadogInAppWebViewUserScript(
-            datadog: DatadogSdk.instance,
-            allowedHosts: {'shopist.io'},
-          ),
-        ]),
-        initialUrlRequest: URLRequest(url: WebUri('https://shopist.io')),
-        initialSettings: InAppWebViewSettings(
-          isInspectable: kDebugMode,
+        child: InAppWebView(
+          key: _webViewKey,
+          initialUserScripts: UnmodifiableListView([
+            DatadogInAppWebViewUserScript(
+              datadog: DatadogSdk.instance,
+              allowedHosts: {'shopist.io'},
+            ),
+          ]),
+          initialUrlRequest: URLRequest(url: WebUri('https://shopist.io')),
+          initialSettings: InAppWebViewSettings(isInspectable: kDebugMode),
+          onWebViewCreated: (controller) async {
+            controller.trackDatadogEvents(DatadogSdk.instance);
+          },
         ),
-        onWebViewCreated: (controller) async {
-          controller.trackDatadogEvents(DatadogSdk.instance);
-        },
-      )),
+      ),
     );
   }
 }

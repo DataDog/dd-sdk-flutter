@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.3.0
+
+Note - this package's version was bumped a minor version despite having breaking changes. This is because all of the breaking changes are new minimum required versions.
+The dependency on Datadog's v4 previews and the Dart version solver will prevent an accidental upgrade to this version.
+
+### Breaking Changes
+
+- The minimum supported versions are now Dart 3.10 and Flutter 3.38; upgrade your SDK before updating to this version.
+- The minimum supported iOS deployment target is now iOS 15.
+
 ## 3.2.0
 
 ### Features

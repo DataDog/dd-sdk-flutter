@@ -25,10 +25,7 @@ typedef _SliderThumbGeometry = ({
   _SliderThumbStyle style,
 });
 
-typedef _SliderTrackSegmentGeometry = ({
-  Rect rect,
-  BorderRadius borderRadius,
-});
+typedef _SliderTrackSegmentGeometry = ({Rect rect, BorderRadius borderRadius});
 
 typedef _SliderGeometry = ({
   _SliderThumbGeometry thumb,
@@ -141,27 +138,38 @@ class SliderRecorder implements ElementRecorder {
     // We only need the background color to create a fake gap, between the Track and the Thumb,
     // so we only grab it when geometry.gap is set. This will be true for Material 3, or when
     // year2023 is false.
-    final Color? gapColor =
-        geometry.gap != null ? _findBackgroundColor(element, theme) : null;
+    final Color? gapColor = geometry.gap != null
+        ? _findBackgroundColor(element, theme)
+        : null;
 
     final int tickCount =
         geometry.activeTickMarks.length + geometry.inactiveTickMarks.length;
 
-    final inactiveTrackKey =
-        keyGenerator.keyForElement(element, wireframeId: 0);
-    final secondaryActiveTrackKey =
-        keyGenerator.keyForElement(element, wireframeId: 1);
+    final inactiveTrackKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 0,
+    );
+    final secondaryActiveTrackKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 1,
+    );
     final activeTrackKey = keyGenerator.keyForElement(element, wireframeId: 2);
     final List<int> tickMarkKeys = [
       for (int i = 0; i < tickCount; i++)
         keyGenerator.keyForElement(element, wireframeId: 3 + i),
     ];
-    final gapKey =
-        keyGenerator.keyForElement(element, wireframeId: 3 + tickCount);
-    final stopIndicatorKey =
-        keyGenerator.keyForElement(element, wireframeId: 4 + tickCount);
-    final thumbKey =
-        keyGenerator.keyForElement(element, wireframeId: 5 + tickCount);
+    final gapKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 3 + tickCount,
+    );
+    final stopIndicatorKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 4 + tickCount,
+    );
+    final thumbKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 5 + tickCount,
+    );
 
     final node = SliderNode(
       attributes,
@@ -313,8 +321,10 @@ class SliderRecorder implements ElementRecorder {
       );
     } else {
       thumbStyle = _SliderThumbStyle.round;
-      thumbSize =
-          Size(_roundedThumbDiameter * scale, _roundedThumbDiameter * scale);
+      thumbSize = Size(
+        _roundedThumbDiameter * scale,
+        _roundedThumbDiameter * scale,
+      );
     }
 
     final double overlayWidth = 48.0 * scale;
@@ -371,8 +381,12 @@ class SliderRecorder implements ElementRecorder {
       final secX = trackLeft + trackWidth * secRatio;
       if (secX > trackLeft) {
         secondaryActiveTrack = (
-          rect:
-              Rect.fromLTRB(trackLeft, trackTop, secX.toDouble(), trackBottom),
+          rect: Rect.fromLTRB(
+            trackLeft,
+            trackTop,
+            secX.toDouble(),
+            trackBottom,
+          ),
           borderRadius: BorderRadius.all(trackEndRadius),
         );
       }
@@ -385,8 +399,9 @@ class SliderRecorder implements ElementRecorder {
     );
     final _SliderThumbGeometry thumb = (
       rect: thumbRect,
-      borderRadius:
-          BorderRadius.all(Radius.circular(thumbSize.shortestSide / 2)),
+      borderRadius: BorderRadius.all(
+        Radius.circular(thumbSize.shortestSide / 2),
+      ),
       style: thumbStyle,
     );
 
@@ -513,7 +528,8 @@ class SliderRecorder implements ElementRecorder {
       final w = ancestor.widget;
       Color? c;
       if (w is Material && w.type != MaterialType.transparency) {
-        c = w.color ??
+        c =
+            w.color ??
             (w.type == MaterialType.card ? theme.cardColor : theme.canvasColor);
       } else if (w is ColoredBox) {
         c = w.color;
@@ -604,37 +620,45 @@ class SliderNode extends CaptureNode {
     ];
 
     if (secondaryActiveTrackRect != null) {
-      wireframes.add(ShapeWireframeBuilder.shape(
-        id: secondaryActiveTrackWireframeId,
-        rect: secondaryActiveTrackRect!,
-        color: secondaryActiveColor,
-      ));
+      wireframes.add(
+        ShapeWireframeBuilder.shape(
+          id: secondaryActiveTrackWireframeId,
+          rect: secondaryActiveTrackRect!,
+          color: secondaryActiveColor,
+        ),
+      );
     }
 
-    wireframes.add(ShapeWireframeBuilder.shape(
-      id: activeTrackWireframeId,
-      rect: activeTrackRect,
-      color: activeColor,
-    ));
+    wireframes.add(
+      ShapeWireframeBuilder.shape(
+        id: activeTrackWireframeId,
+        rect: activeTrackRect,
+        color: activeColor,
+      ),
+    );
 
     // Tick marks for discrete sliders. Drawn before the gap so the gap
     // overpaints any tick near the thumb. Active ticks (over the active
     // track) use activeTickMarkColor; inactive ticks use the inactive color.
     int tickIdx = 0;
     for (final rect in activeTickMarkRects) {
-      wireframes.add(ShapeWireframeBuilder.shape(
-        id: tickMarkWireframeIds[tickIdx],
-        rect: rect,
-        color: activeTickMarkColor,
-      ));
+      wireframes.add(
+        ShapeWireframeBuilder.shape(
+          id: tickMarkWireframeIds[tickIdx],
+          rect: rect,
+          color: activeTickMarkColor,
+        ),
+      );
       tickIdx++;
     }
     for (final rect in inactiveTickMarkRects) {
-      wireframes.add(ShapeWireframeBuilder.shape(
-        id: tickMarkWireframeIds[tickIdx],
-        rect: rect,
-        color: inactiveTickMarkColor,
-      ));
+      wireframes.add(
+        ShapeWireframeBuilder.shape(
+          id: tickMarkWireframeIds[tickIdx],
+          rect: rect,
+          color: inactiveTickMarkColor,
+        ),
+      );
       tickIdx++;
     }
 
@@ -642,27 +666,33 @@ class SliderNode extends CaptureNode {
     // color. Sharp corners (cornerRadius: 0) so the cut against the rounded
     // track edges produces a clean band.
     if (gapRect != null && gapColor != null) {
-      wireframes.add(ShapeWireframeBuilder.shape(
-        id: gapWireframeId,
-        rect: gapRect!,
-        color: gapColor!,
-        cornerRadius: 0,
-      ));
+      wireframes.add(
+        ShapeWireframeBuilder.shape(
+          id: gapWireframeId,
+          rect: gapRect!,
+          color: gapColor!,
+          cornerRadius: 0,
+        ),
+      );
     }
 
     if (stopIndicatorRect != null) {
-      wireframes.add(ShapeWireframeBuilder.shape(
-        id: stopIndicatorWireframeId,
-        rect: stopIndicatorRect!,
-        color: activeColor,
-      ));
+      wireframes.add(
+        ShapeWireframeBuilder.shape(
+          id: stopIndicatorWireframeId,
+          rect: stopIndicatorRect!,
+          color: activeColor,
+        ),
+      );
     }
 
-    wireframes.add(ShapeWireframeBuilder.shape(
-      id: thumbWireframeId,
-      rect: thumbRect,
-      color: thumbColor,
-    ));
+    wireframes.add(
+      ShapeWireframeBuilder.shape(
+        id: thumbWireframeId,
+        rect: thumbRect,
+        color: thumbColor,
+      ),
+    );
 
     return wireframes;
   }

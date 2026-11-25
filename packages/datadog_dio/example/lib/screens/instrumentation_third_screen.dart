@@ -24,12 +24,8 @@ class _InstrumentationThirdScreenState extends State<InstrumentationThirdScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Third Screen'),
-      ),
-      body: const Center(
-        child: Text('Third Screen'),
-      ),
+      appBar: AppBar(title: const Text('Third Screen')),
+      body: const Center(child: Text('Third Screen')),
     );
   }
 }

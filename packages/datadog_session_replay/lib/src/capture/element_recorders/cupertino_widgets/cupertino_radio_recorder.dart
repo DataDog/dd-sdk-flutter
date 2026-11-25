@@ -26,19 +26,19 @@ const Color _disabledBorderColor = CupertinoDynamicColor.withBrightness(
 );
 const CupertinoDynamicColor _defaultBorderColor =
     CupertinoDynamicColor.withBrightness(
-  color: Color.fromARGB(255, 209, 209, 214),
-  darkColor: Color.fromARGB(64, 0, 0, 0),
-);
+      color: Color.fromARGB(255, 209, 209, 214),
+      darkColor: Color.fromARGB(64, 0, 0, 0),
+    );
 const CupertinoDynamicColor _defaultInnerColor =
     CupertinoDynamicColor.withBrightness(
-  color: CupertinoColors.white,
-  darkColor: Color.fromARGB(255, 222, 232, 248),
-);
+      color: CupertinoColors.white,
+      darkColor: Color.fromARGB(255, 222, 232, 248),
+    );
 const CupertinoDynamicColor _defaultOuterColor =
     CupertinoDynamicColor.withBrightness(
-  color: CupertinoColors.activeBlue,
-  darkColor: Color.fromARGB(255, 50, 100, 215),
-);
+      color: CupertinoColors.activeBlue,
+      darkColor: Color.fromARGB(255, 50, 100, 215),
+    );
 
 /// Detects 'CupertinoRadio' widgets and places a Radio icon
 /// on SessionReplay.
@@ -63,14 +63,25 @@ class CupertinoRadioRecorder implements ElementRecorder {
     final bool isMasked = capturePrivacy.shouldMaskInputs;
 
     final Set<WidgetState> states = RadioRecorder.getState(
-        element: element, widget: widget, isMasked: isMasked);
+      element: element,
+      widget: widget,
+      isMasked: isMasked,
+    );
 
-    final Color backgroundColor =
-        _getBackgroundColor(element: element, widget: widget, states: states);
-    final Color fillColor =
-        _getFillColor(element: element, widget: widget, states: states);
-    final BorderSide borderSide =
-        _getBorderSide(element: element, states: states);
+    final Color backgroundColor = _getBackgroundColor(
+      element: element,
+      widget: widget,
+      states: states,
+    );
+    final Color fillColor = _getFillColor(
+      element: element,
+      widget: widget,
+      states: states,
+    );
+    final BorderSide borderSide = _getBorderSide(
+      element: element,
+      states: states,
+    );
     // cupertino inner radius is not customize
 
     final adjustedBounds = Rect.fromCenter(
@@ -86,13 +97,19 @@ class CupertinoRadioRecorder implements ElementRecorder {
     );
 
     final double dotRadius = RadioRecorder.getRadius(
-        attributes: attributes, radius: _innerRadius * attributes.scaleX);
+      attributes: attributes,
+      radius: _innerRadius * attributes.scaleX,
+    );
 
     // WireFrame keys
-    final backgroundWireframeKey =
-        keyGenerator.keyForElement(element, wireframeId: 0);
-    final foregroundWireframeKey =
-        keyGenerator.keyForElement(element, wireframeId: 1);
+    final backgroundWireframeKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 0,
+    );
+    final foregroundWireframeKey = keyGenerator.keyForElement(
+      element,
+      wireframeId: 1,
+    );
 
     final node = RadioNode(
       attributes,

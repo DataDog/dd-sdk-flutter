@@ -22,21 +22,23 @@ TestingConfiguration? testingConfiguration;
 
 class ClientListener extends DatadogTrackingHttpClientListener {
   @override
-  void requestStarted(
-      {required Object resourceKey,
-      required HttpClientRequest request,
-      required Map<String, Object?> userAttributes}) {
+  void requestStarted({
+    required Object resourceKey,
+    required HttpClientRequest request,
+    required Map<String, Object?> userAttributes,
+  }) {
     if (kDebugMode) {
       print('($resourceKey) Request started');
     }
   }
 
   @override
-  void responseFinished(
-      {required Object resourceKey,
-      required HttpClientResponse response,
-      required Map<String, Object?> userAttributes,
-      Object? error}) {
+  void responseFinished({
+    required Object resourceKey,
+    required HttpClientResponse response,
+    required Map<String, Object?> userAttributes,
+    Object? error,
+  }) {
     if (kDebugMode) {
       print('($resourceKey) Request finished');
     }
@@ -45,7 +47,7 @@ class ClientListener extends DatadogTrackingHttpClientListener {
 
 Future<void> main() async {
   final merge = kIsWeb ? <String, String>{} : Platform.environment;
-  await dotenv.load(mergeWith: merge);
+  await dotenv.load(fileName: 'dd.env', mergeWith: merge);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
@@ -73,6 +75,7 @@ Future<void> main() async {
   final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
+    service: 'com.datadoghq.flutter.tracking_http_client.integration',
     site: DatadogSite.us1,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
@@ -111,9 +114,7 @@ Future<void> main() async {
   }
 
   if (RumAutoInstrumentationScenarioConfig.instance.enableIoHttpTracking) {
-    configuration.enableHttpTracking(
-      clientListener: ClientListener(),
-    );
+    configuration.enableHttpTracking(clientListener: ClientListener());
   }
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
@@ -130,19 +131,17 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    final navObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
       child: MaterialApp(
-          title: 'Flutter Demo',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-          ),
-          navigatorObservers: [
-            navObserver,
-          ],
-          home: const ScenarioSelectScreen()),
+        title: 'Flutter Demo',
+        theme: ThemeData(primarySwatch: Colors.blue),
+        navigatorObservers: [navObserver],
+        home: const ScenarioSelectScreen(),
+      ),
     );
   }
 }

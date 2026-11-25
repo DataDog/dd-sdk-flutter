@@ -24,7 +24,7 @@ TestingConfiguration? testingConfiguration;
 
 Future<void> main() async {
   final merge = kIsWeb ? <String, String>{} : Platform.environment;
-  await dotenv.load(mergeWith: merge);
+  await dotenv.load(fileName: 'dd.env', mergeWith: merge);
 
   var clientToken = dotenv.get('DD_CLIENT_TOKEN', fallback: '');
   var applicationId = dotenv.maybeGet('DD_APPLICATION_ID');
@@ -52,6 +52,7 @@ Future<void> main() async {
   final configuration = DatadogConfiguration(
     clientToken: clientToken,
     env: dotenv.get('DD_ENV', fallback: ''),
+    service: 'com.datadoghq.flutter.dio.integration',
     site: DatadogSite.us1,
     uploadFrequency: UploadFrequency.frequent,
     batchSize: BatchSize.small,
@@ -90,12 +91,9 @@ Future<void> main() async {
   }
 
   await DatadogSdk.runApp(configuration, TrackingConsent.granted, () async {
-    final dio = Dio(BaseOptions(
-      validateStatus: (status) => status != null && status < 300,
-    ))
-      ..addDatadogInterceptor(
-        DatadogSdk.instance,
-      );
+    final dio = Dio(
+      BaseOptions(validateStatus: (status) => status != null && status < 300),
+    )..addDatadogInterceptor(DatadogSdk.instance);
     // User for testing baggage headers
     DatadogSdk.instance.setUserInfo(id: 'integration_test_user');
     DatadogSdk.instance.setAccountInfo(id: 'integration_test_account');
@@ -111,18 +109,15 @@ class DatadogAutoIntegrationTestApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navObserver =
-        DatadogNavigationObserver(datadogSdk: DatadogSdk.instance);
+    final navObserver = DatadogNavigationObserver(
+      datadogSdk: DatadogSdk.instance,
+    );
     return DatadogNavigationObserverProvider(
       navObserver: navObserver,
       child: MaterialApp(
         title: 'Flutter Demo',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        navigatorObservers: [
-          navObserver,
-        ],
+        theme: ThemeData(primarySwatch: Colors.blue),
+        navigatorObservers: [navObserver],
         home: InstrumentationScenario(dio: dio),
       ),
     );

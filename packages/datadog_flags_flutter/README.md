@@ -1,127 +1,113 @@
 # Datadog Flags Flutter
 
-`datadog_flags_flutter` integrates the standalone
-[`datadog_flags`](https://pub.dev/packages/datadog_flags) Dart package with
-[`datadog_flutter_plugin`](https://pub.dev/packages/datadog_flutter_plugin).
+Use OpenFeature to evaluate Datadog feature flags in Flutter applications.
+`datadog_flags` supplies `DatadogProvider`. This package supplies
+`DatadogRumHook` to associate successful evaluations with the active RUM view.
 
-Use this package when your Flutter app already initializes the Datadog Flutter
-SDK and you want feature flags to reuse that configuration.
+This integration requires Flutter 3.38.1 or later, which includes stable Dart 3.10.
+It uses the published OpenFeature `0.0.1` dependency described in the
+[core package](../datadog_flags/).
+Use `datadog_flutter_plugin` 3.4.0 or later and earlier than 5.0.0, and
+`datadog_flags` 1.2.0 or later and earlier than 2.0.0.
 
-## Getting Started
+## OpenFeature with RUM
 
-Add the package:
-
-```bash
-flutter pub add datadog_flags_flutter
-```
-
-This package requires Dart 3.6 or later and Flutter 3.27 or later. It depends
-on `datadog_flutter_plugin` 3.4.0 or later.
-
-Register the plugin before initializing the Datadog Flutter SDK:
+Initialize the Datadog Flutter SDK for RUM.
+Then configure the OpenFeature provider and register the RUM hook:
 
 ```dart
 import 'package:datadog_flags_flutter/datadog_flags_flutter.dart';
 import 'package:datadog_flutter_plugin/datadog_flutter_plugin.dart';
+import 'package:flutter/widgets.dart';
+import 'package:openfeature_dart_client_sdk/openfeature_dart_client_sdk.dart';
 
+WidgetsFlutterBinding.ensureInitialized();
 final configuration = DatadogConfiguration(
+  service: 'my-flutter-app',
   clientToken: '<CLIENT_TOKEN>',
-  env: '<ENV_NAME>',
+  env: 'production',
   site: DatadogSite.us1,
-  rumConfiguration: DatadogRumConfiguration(
-    applicationId: '<RUM_APPLICATION_ID>',
-  ),
-)..addPlugin(const DatadogFlagsPluginConfiguration());
-
+  version: '1.0.0',
+  rumConfiguration: DatadogRumConfiguration(applicationId: '<RUM_APP_ID>'),
+);
 await DatadogSdk.instance.initialize(configuration, TrackingConsent.granted);
-```
-
-Evaluate flags with the same typed API as `datadog_flags`:
-
-```dart
-final flags = DatadogSdk.instance.flags;
-final client = flags?.sharedClient();
-
+final api = OpenFeatureAPI.instance;
+api.addHooks([DatadogRumHook()]);
+await api.setEvaluationContextAndWait(EvaluationContext(targetingKey: 'user-123'));
 try {
-  await client?.initialize(
-    const FlagsEvaluationContext(targetingKey: 'user-123'),
+  await api.setProviderAndWait(
+    DatadogProvider.fromConfiguration(
+      DatadogFlagsConfiguration(
+        datadogConfig: DatadogFlagsConfig(
+          clientToken: configuration.clientToken,
+          env: configuration.env,
+          site: DatadogFlagsSite.us1,
+          applicationId: configuration.rumConfiguration?.applicationId,
+          service: configuration.service,
+          version: configuration.versionTag,
+        ),
+      ),
+    ),
   );
-} on FlagsInitializationTimeoutException {
-  // Continue startup with stored assignments or evaluation defaults.
+} on OpenFeatureException {
+  // Evaluations return defaults until initial assignments become available.
 }
-
-final details = client?.getBooleanDetails(
-  key: 'checkout.enabled',
-  defaultValue: false,
-);
+final enabled = api.getClient().getBooleanValue('checkout.enabled', false);
 ```
 
-Successful evaluations emit feature flag telemetry through `datadog_flags`.
-When RUM is enabled, successful evaluations are also added to the active RUM
-view with `DatadogRum.addFeatureFlagEvaluation`.
+The hook adds the variant from a successful evaluation to the active RUM view.
+It runs in the OpenFeature `finally` stage and tags only the final result.
+It skips errors and results without a variant.
+Register it with `OpenFeatureAPI.addHooks`, and register it again after shutdown.
+A hook registered on a client applies only to that client object.
+Each `getClient()` call returns a new client.
+The provider handles Datadog exposure and evaluation telemetry separately.
 
-To evaluate flags without adding successful evaluations to the active RUM view,
-disable RUM integration when registering the plugin:
+If you create your own `DatadogSdk` instance, pass it with
+`DatadogRumHook(sdk: instance)`. If you do not use RUM, use the provider from
+`datadog_flags` without this hook.
 
-```dart
-final configuration = DatadogConfiguration(
-  clientToken: '<CLIENT_TOKEN>',
-  env: '<ENV_NAME>',
-  site: DatadogSite.us1,
-)..addPlugin(
-    const DatadogFlagsPluginConfiguration(
-      rumIntegrationEnabled: false,
-    ),
-  );
-```
+Flutter RUM requires the main isolate. For background evaluation, initialize a
+separate pure-Dart OpenFeature provider in that isolate.
 
-## Custom Flags Configuration
+## Exposures in your own data store
 
-By default, `datadog_flags_flutter` derives the client token, environment, site,
-application ID, service, and version from `DatadogConfiguration`. Pass a
-`DatadogFlagsConfiguration` to override the standalone Flags SDK configuration:
+This package exports `ExposureHook` from `datadog_flags`. Use it to record
+exposures in your own data store, even when `trackExposures` is `false`. See
+[Exposures in your own data store](https://pub.dev/packages/datadog_flags#exposures-in-your-own-data-store).
 
-```dart
-DatadogFlagsPluginConfiguration(
-  flagsConfiguration: DatadogFlagsConfiguration(
-    initializationTimeout: const Duration(seconds: 5),
-    datadogConfig: DatadogFlagsConfig(
-      clientToken: '<CLIENT_TOKEN>',
-      env: '<ENV_NAME>',
-      site: DatadogFlagsSite.us1,
-    ),
-  ),
-);
-```
+## Legacy API migration
 
-The Flutter integration preserves the core `datadog_flags` initialization
-timeout. Set it to the wall-clock budget for the first context. The budget
-covers stored assignment loading, network work, JSON decoding, state
-publication, and assignment storage. Synchronous work can block the Dart
-isolate, so the wait can be longer than this value. The SDK does not limit how
-large this value can be. The timeout completes `initialize()` with
-`FlagsInitializationTimeoutException`. The assignment operation continues in
-the background, and matching stored assignments remain available.
+`DatadogFlagsPluginConfiguration`, `DatadogFlagsPlugin`,
+`DatadogFlutterFlagsClient`, and the `DatadogSdk.flags` extension are deprecated.
+Removal is planned for the next major version. Existing users can continue to
+use the plugin during migration.
 
-Use `package:datadog_flags/datadog_flags.dart` directly for pure Dart apps or
-Flutter apps that need full lifecycle control without Datadog Flutter SDK
-integration.
+Replace plugin registration with `DatadogProvider`. Replace
+`sharedClient()` with `OpenFeatureAPI.instance.getClient()`. Replace client
+initialization with `setEvaluationContextAndWait()`. Add `DatadogRumHook` to
+preserve RUM association. Do not run both integrations for the same evaluations.
+The provider does not read the Datadog SDK configuration. Pass `applicationId`,
+`service`, and `version` as shown above to retain these fields in evaluation telemetry.
 
-## Cached Evaluation Reasons
+Legacy client shutdown is terminal. Obtain another client from `sharedClient()`
+to restart. Shutdown does not wait indefinitely for plugin readiness. A delegate
+that resolves after shutdown is released without initialization or subscription.
 
-For successful evaluations, details report `CACHED` when the installed assignments were restored from the configured store, including an in-memory store. After a network response replaces those assignments, details report the response reason.
+## Examples
 
-## Background Isolates
+- [`example`](example/) shows OpenFeature evaluation with the RUM hook.
+- [`simple_example`](../../examples/simple_example/) includes refresh, typed
+  values, and lifecycle events.
 
-`datadog_flags_flutter` does not support evaluation from background
-isolates. If your app needs to evaluate flags from a background isolate, create
-and initialize a standalone `datadog_flags` client in that isolate.
+## Cached evaluation reasons
+
+For successful evaluations, details report `CACHED` when the installed assignments
+were restored from the configured store, including an in-memory store. After a
+network response replaces those assignments, details report the response reason.
 
 ## Contributing
 
-Pull requests are welcome. For more information, read the
-[contributing guide](../../CONTRIBUTING.md) in the root repository.
-
-## License
-
-[Apache License, v2.0](LICENSE)
+See the [contributing guide](../../CONTRIBUTING.md) and
+[OpenFeature validation instructions](../datadog_flags/CONTRIBUTING.md#openfeature-validation).
+Licensed under [Apache 2.0](LICENSE).

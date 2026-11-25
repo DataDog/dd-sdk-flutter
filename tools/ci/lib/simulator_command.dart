@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:ci_helpers/android_helpers.dart';
@@ -46,7 +48,9 @@ class SimulatorCommand extends Command {
     }
     final device = args.option('device');
     print('Launching iOS Simulator: SDK: $sdk, Device Name: $device');
-    await launchIosSimulator(sdk, device);
+    if (!await launchIosSimulator(sdk, device)) {
+      exit(1);
+    }
   }
 
   Future<void> _startAndroid(ArgResults args) async {
@@ -57,8 +61,13 @@ class SimulatorCommand extends Command {
           'Must supply an API target (sdk) or emulator name (device) to launch an Android emulator.');
       return;
     }
-    print(
-        'Launching Android Emulator: API Target: $sdk, Emulator Name $device');
-    await launchAndroidEmulator(apiLevel: sdk, emulatorName: device);
+    final target = [
+      if (sdk != null) 'API $sdk',
+      if (device != null) 'AVD $device',
+    ].join(', ');
+    print('Launching Android emulator ($target)');
+    if (!await launchAndroidEmulator(apiLevel: sdk, emulatorName: device)) {
+      exit(1);
+    }
   }
 }

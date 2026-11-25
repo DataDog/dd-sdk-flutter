@@ -9,6 +9,7 @@ package com.datadoghq.flutter.sessionreplay.feature
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.datadog.android.api.InternalLogger
 import com.datadog.android.api.feature.Feature
 import com.datadog.android.api.feature.FeatureContextUpdateReceiver
 import com.datadog.android.api.feature.FeatureEventReceiver
@@ -27,8 +28,10 @@ import com.datadoghq.flutter.sessionreplay.resource.ResourceResolver
 import com.datadoghq.flutter.sessionreplay.resource.RoutedResourceWriter
 
 internal interface FlutterSessionReplayFeature : StorageBackedFeature {
+    fun registerSessionReplayContext()
     fun setHasReplay(viewId: String, hasReplay: Boolean)
     fun setRecordCount(viewId: String, recordCount: Int)
+    fun setSessionSampled(sessionId: String, sampled: Boolean)
     fun writeSegment(segment: String)
     fun readCurrentContext(): DefaultFlutterSessionReplayFeature.RumContext?
 
@@ -39,6 +42,7 @@ internal class DefaultFlutterSessionReplayFeature(
     private val sdkCore: FeatureSdkCore,
     private val onContextChanged: (RumContext) -> Unit,
     private val customEndpointUrl: String?,
+    private val privacyLevels: PrivacyLevels = PrivacyLevels.MOST_RESTRICTIVE,
     private val embeddedResourceSink: EmbeddedResourceSink = { _, _, _ -> false },
     private val mainThreadHandler: Handler = Handler(Looper.getMainLooper())
 ) : FlutterSessionReplayFeature,
@@ -60,6 +64,9 @@ internal class DefaultFlutterSessionReplayFeature(
     }
 
     override lateinit var resourceResolver: ResourceResolver
+
+    @Volatile
+    private var ownsSessionReplayContext = false
 
     override val name = FLUTTER_SESSION_REPLAY_FEATURE_NAME
     override val storageConfiguration = STORAGE_CONFIGURATION
@@ -127,11 +134,49 @@ internal class DefaultFlutterSessionReplayFeature(
         }
     }
 
-    // Both of these stay on [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
+    /**
+     * Registers a [SessionReplayContextFeature] under [Feature.SESSION_REPLAY_FEATURE_NAME], unless
+     * a feature is already registered under that name. Called once the engine is known to run
+     * standalone; until then, replay state is held back by `FlutterSessionReplayBridge`.
+     *
+     * When the native Session Replay holds the name, the app is hybrid even though Flutter Session
+     * Replay was configured as standalone: the native one owns that context, so nothing is published.
+     *
+     * Also publishes the privacy levels there, as the native Session Replay does: native WebView
+     * tracking reads them when a WebView is tracked, to pick the web privacy level.
+     */
+    override fun registerSessionReplayContext() {
+        synchronized(this) {
+            val registered = sdkCore.getFeature(Feature.SESSION_REPLAY_FEATURE_NAME)
+            ownsSessionReplayContext = when {
+                registered == null -> {
+                    sdkCore.registerFeature(SessionReplayContextFeature(sdkCore, this))
+                    sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
+                        it[TEXT_AND_INPUT_PRIVACY_KEY] = privacyLevels.textAndInput
+                        it[IMAGE_PRIVACY_KEY] = privacyLevels.image
+                        it[TOUCH_PRIVACY_KEY] = privacyLevels.touch
+                    }
+                    true
+                }
+                registered.unwrap<Feature>() is SessionReplayContextFeature -> true
+                else -> {
+                    sdkCore.internalLogger.log(
+                        InternalLogger.Level.WARN,
+                        InternalLogger.Target.USER,
+                        { NATIVE_SESSION_REPLAY_PRESENT_WARNING }
+                    )
+                    false
+                }
+            }
+        }
+    }
+
+    // Both of these write to [Feature.SESSION_REPLAY_FEATURE_NAME], unlike the registration above:
     // that context is where RUM reads `has_replay` and the record counts from, regardless of which
-    // feature wrote them. Only the standalone path reaches here, so there is no native Session
-    // Replay to contend with — see `FlutterSessionReplayBridge.setHasReplay`/`setRecordCount`.
+    // feature wrote them. Only the standalone path reaches here, and only once
+    // [registerSessionReplayContext] registered the feature owning that context.
     override fun setHasReplay(viewId: String, hasReplay: Boolean) {
+        if (!ownsSessionReplayContext) return
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")
             val viewMetadata: MutableMap<String, Any?> =
@@ -142,13 +187,21 @@ internal class DefaultFlutterSessionReplayFeature(
     }
 
     override fun setRecordCount(viewId: String, recordCount: Int) {
+        if (!ownsSessionReplayContext) return
         sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
             @Suppress("UNCHECKED_CAST")
             val viewMetadata: MutableMap<String, Any?> =
                 (it[viewId] as? MutableMap<String, Any?>) ?: mutableMapOf()
             viewMetadata[HAS_REPLAY_KEY] = true
-            viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount
+            viewMetadata[VIEW_RECORDS_COUNT_KEY] = recordCount.toLong()
             it[viewId] = viewMetadata
+        }
+    }
+
+    override fun setSessionSampled(sessionId: String, sampled: Boolean) {
+        if (!ownsSessionReplayContext) return
+        sdkCore.updateFeatureContext(Feature.SESSION_REPLAY_FEATURE_NAME) {
+            it[SESSION_REPLAY_ENABLED_KEY] = sampled
         }
     }
 
@@ -194,7 +247,16 @@ internal class DefaultFlutterSessionReplayFeature(
                 maxBatchSize = 10 * 1024 * 1024
             )
 
+        internal const val NATIVE_SESSION_REPLAY_PRESENT_WARNING =
+            "Flutter Session Replay is configured as standalone, but the native Session Replay is " +
+                "enabled. Flutter Session Replay will not report replay state to RUM; configure it " +
+                "as embedded in hybrid apps."
+
         const val HAS_REPLAY_KEY = "has_replay"
+        const val SESSION_REPLAY_ENABLED_KEY = "session_replay_is_enabled"
+        const val TEXT_AND_INPUT_PRIVACY_KEY = "session_replay_text_and_input_privacy"
+        const val IMAGE_PRIVACY_KEY = "session_replay_image_privacy"
+        const val TOUCH_PRIVACY_KEY = "session_replay_touch_privacy"
         const val VIEW_RECORDS_COUNT_KEY = "records_count"
 
         const val APPLICATION_ID_KEY = "application_id"

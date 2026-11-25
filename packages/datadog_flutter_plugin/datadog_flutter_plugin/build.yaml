@@ -1,0 +1,7 @@
+targets:
+  $default:
+    sources:
+      exclude:
+        - example/**
+        - integration_test_app/**
+        - e2e_test_app/**

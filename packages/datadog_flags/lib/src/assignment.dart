@@ -7,6 +7,8 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'json_value.dart';
+import 'flag_key_obfuscation.dart';
+import 'split_features.dart';
 
 part 'assignment.g.dart';
 
@@ -51,16 +53,22 @@ final class PrecomputedAssignments {
   final Map<String, FlagAssignment> flags;
   final DateTime? createdAt;
   final String? environment;
+  final FlagKeyObfuscation? obfuscation;
+
+  /// Reason from `DD-Flag-Selection-Ignored`, or null when not reported.
+  final String? flagSelectionIgnoredReason;
 
   const PrecomputedAssignments({
     required this.flags,
     this.createdAt,
     this.environment,
+    this.obfuscation,
+    this.flagSelectionIgnoredReason,
   });
 }
 
 @immutable
-@JsonSerializable(constructor: '_')
+@JsonSerializable(constructor: '_', explicitToJson: true)
 final class FlagAssignment {
   final String allocationKey;
   final String variationKey;
@@ -74,6 +82,12 @@ final class FlagAssignment {
   final String reason;
   final bool doLog;
   final int? serialId;
+  @JsonKey(fromJson: SplitFeature.listFromJson, includeToJson: false)
+  final List<SplitFeature> features;
+
+  // Stored assignments omit `features` when there are none.
+  @JsonKey(name: 'features', includeIfNull: false, includeToJson: true)
+  List<SplitFeature>? get _storedFeatures => features.isEmpty ? null : features;
 
   const FlagAssignment._({
     required this.allocationKey,
@@ -83,6 +97,7 @@ final class FlagAssignment {
     required this.reason,
     required this.doLog,
     this.serialId,
+    this.features = const [],
   });
 
   factory FlagAssignment.fromJson(Map<String, Object?> json) {
@@ -99,6 +114,7 @@ final class FlagAssignment {
       reason: assignment.reason,
       doLog: assignment.doLog,
       serialId: assignment.serialId,
+      features: assignment.features,
     );
   }
 
