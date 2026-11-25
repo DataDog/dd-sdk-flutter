@@ -76,10 +76,7 @@ class FlagsData {
     obfuscation?.validateKeys(flags.keys);
     return FlagsData(
       flags: flags.map((key, value) {
-        return MapEntry(
-          key,
-          FlagAssignment.fromCacheJson(Map<String, Object?>.from(value as Map)),
-        );
+        return MapEntry(key, _assignmentFromCache(value));
       }),
       context: FlagsEvaluationContext.fromJson(
         Map<String, Object?>.from(json['context'] as Map),
@@ -122,6 +119,18 @@ class FlagsData {
         'obfuscation': obfuscation!.toJson(),
       },
     };
+  }
+}
+
+// A stored entry that cannot be decoded becomes a per-flag parse error, so the
+// remaining flags in the snapshot stay usable.
+FlagAssignment _assignmentFromCache(Object? value) {
+  try {
+    return FlagAssignment.fromCacheJson(
+      Map<String, Object?>.from(value as Map),
+    );
+  } catch (_) {
+    return const FlagAssignment.parseError();
   }
 }
 

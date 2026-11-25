@@ -446,7 +446,7 @@ void main() {
         harness.client
             .getBooleanDetails(key: 'future', defaultValue: false)
             .error,
-        FlagEvaluationError.flagNotFound,
+        FlagEvaluationError.parseError,
       );
     },
   );

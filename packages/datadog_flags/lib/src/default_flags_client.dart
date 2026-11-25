@@ -234,6 +234,20 @@ class DefaultDatadogFlagsClient
       );
     }
 
+    if (assignment.parseError) {
+      _evaluationAggregator.recordEvaluation(
+        flagKey: key,
+        assignment: null,
+        evaluationContext: context,
+        error: FlagEvaluationError.parseError.code,
+      );
+      return FlagDetails(
+        key: key,
+        value: defaultValue,
+        error: FlagEvaluationError.parseError,
+      );
+    }
+
     final variationValue = assignment.variationValue;
     final numericValue = assignment.numericValue;
     final assignmentType = assignment.variationType;

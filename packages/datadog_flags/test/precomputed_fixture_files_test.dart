@@ -213,22 +213,18 @@ void main() {
                 _ => throw StateError('Unsupported fixture getter'),
               };
               executedEvaluations++;
-              if (restored && details.error == null) {
-                expect(details.reason, 'CACHED');
-              }
               final actual = {
                 'value': details.value,
                 'reason': details.error == null ? details.reason : 'ERROR',
                 'errorCode': details.error?.code,
                 'variantKey': details.variant,
               };
-              for (final entry
-                  in (evaluation['expectedResult'] as Map).entries) {
-                if (restored &&
-                    entry.key == 'reason' &&
-                    details.error == null) {
-                  continue;
-                }
+              final expectedResult = {
+                ...(evaluation['expectedResult'] as Map),
+                if (restored && details.error == null)
+                  'reason': evaluation['restoredReason'] ?? 'CACHED',
+              };
+              for (final entry in expectedResult.entries) {
                 if (entry.key == 'value') {
                   checkValue(
                     details.value,

@@ -73,7 +73,7 @@ Map<String, FlagAssignment> _flagsFromJson(Map<String, dynamic> json) {
         Map<String, Object?>.from(entry.value as Map),
       );
     } catch (_) {
-      continue;
+      assignments[entry.key] = const FlagAssignment.parseError();
     }
   }
   return assignments;

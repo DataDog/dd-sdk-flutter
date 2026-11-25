@@ -103,7 +103,14 @@ final class FlagAssignment {
   @JsonKey(name: 'features', includeIfNull: false, includeToJson: true)
   List<SplitFeature>? get _storedFeatures => features.isEmpty ? null : features;
 
+  /// Whether the server entry could not be decoded.
+  ///
+  /// Evaluating such a flag returns the default value with `PARSE_ERROR`.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final bool parseError;
+
   const FlagAssignment._({
+    this.parseError = false,
     required this.allocationKey,
     required this.variationKey,
     required this.variationType,
@@ -114,6 +121,18 @@ final class FlagAssignment {
     this.serialId,
     this.features = const [],
   });
+
+  /// Marks a flag whose entry could not be decoded.
+  const FlagAssignment.parseError()
+    : this._(
+        parseError: true,
+        allocationKey: '',
+        variationKey: '',
+        variationType: FlagVariationType.object,
+        variationValue: const <String, Object?>{},
+        reason: '',
+        doLog: false,
+      );
 
   factory FlagAssignment.fromJson(Map<String, Object?> json) {
     final assignment = _$FlagAssignmentFromJson(json);
@@ -137,6 +156,9 @@ final class FlagAssignment {
   }
 
   factory FlagAssignment.fromCacheJson(Map<String, Object?> json) {
+    if (json['parseError'] == true) {
+      return const FlagAssignment.parseError();
+    }
     final value = json['variationValue'];
     if (const ['number', 'integer', 'float'].contains(json['variationType'])) {
       final literal = json.containsKey('_numericLiteral')
@@ -155,6 +177,9 @@ final class FlagAssignment {
   }
 
   Map<String, Object?> toJson() {
+    if (parseError) {
+      return const {'parseError': true};
+    }
     final json = _$FlagAssignmentToJson(this);
     if (numericValue case final numeric?) {
       json['_numericLiteral'] = numeric.literal;
