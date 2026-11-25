@@ -27,7 +27,7 @@ export 'version_bump.dart';
 final _log = Logger('release_plan');
 
 /// The only [PackageGroup.key] whose members get native SDK version
-/// resolution. Other packages' podspec/gradle files are never read for
+/// resolution. Other packages' native manifests are never read for
 /// this purpose, even if one declares a Datadog dependency.
 const _nativeSdkEligibleGroupKey = 'datadog_flutter_plugin';
 
@@ -949,8 +949,7 @@ Version _applyBump(Version base, VersionBumpType bump) {
 /// make the iOS packages eligible, not sweep every pure-Dart package in the
 /// repo into the release alongside them.
 bool _hasForcedNativeUpdate(NativeDependencyFiles files, RunContext ctx) =>
-    ((files.iosPodspec != null || files.iosSpmManifest != null) &&
-        ctx.iosSdkVersionOverride != null) ||
+    (files.iosSpmManifest != null && ctx.iosSdkVersionOverride != null) ||
     (files.androidGradle != null && ctx.androidSdkVersionOverride != null) ||
     (files.cppCMakeLists.isNotEmpty && ctx.cppVersionOverride != null);
 
@@ -1001,16 +1000,12 @@ Future<List<NativeSdkDelta>> _computeNativeSdkDeltas(
 
   final perSdkFiles = {
     NativeSdk.ios: (
-      files: [?files.iosPodspec, ?files.iosSpmManifest],
+      files: [?files.iosSpmManifest],
       override: ctx.iosSdkVersionOverride,
       current: currentIosDeclaration(
-        podspecContent: await historicalContent(files.iosPodspec),
-        spmContent: await historicalContent(files.iosSpmManifest),
+        await historicalContent(files.iosSpmManifest),
       ),
-      declared: currentIosDeclaration(
-        podspecContent: workingTreeContent(files.iosPodspec),
-        spmContent: workingTreeContent(files.iosSpmManifest),
-      ),
+      declared: currentIosDeclaration(workingTreeContent(files.iosSpmManifest)),
     ),
     NativeSdk.android: (
       files: [?files.androidGradle],
@@ -1118,17 +1113,11 @@ Future<List<NativeDependencyChange>> _nativeDependencyChanges(
     );
   }
 
-  if (files.iosPodspec != null || files.iosSpmManifest != null) {
+  if (files.iosSpmManifest case final iosSpmManifest?) {
     checkFor(
       NativeSdk.ios,
-      currentIosDeclaration(
-        podspecContent: files.iosPodspec?.readAsStringSync(),
-        spmContent: files.iosSpmManifest?.readAsStringSync(),
-      ),
-      currentIosDeclaration(
-        podspecContent: await historicalContent(files.iosPodspec),
-        spmContent: await historicalContent(files.iosSpmManifest),
-      ),
+      currentIosDeclaration(iosSpmManifest.readAsStringSync()),
+      currentIosDeclaration(await historicalContent(iosSpmManifest)),
     );
   }
 

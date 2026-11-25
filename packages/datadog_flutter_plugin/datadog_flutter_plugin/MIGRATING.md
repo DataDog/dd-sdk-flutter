@@ -14,7 +14,13 @@ Version 4.0 requires Flutter 3.38+ and Dart 3.10+. This applies to `datadog_flut
 
 ## iOS Changes
 
-The minimum supported iOS version is now 15.0 (previously 13.0). Update your Podfile (`platform :ios, '15.0'`) and your Xcode project's iOS deployment target. If you use Swift Package Manager, the same minimum applies.
+The minimum supported iOS version is now 15.0 (previously 13.0). Update your Xcode project's iOS deployment target.
+
+CocoaPods is no longer supported. The Datadog iOS SDK stopped publishing to CocoaPods after 3.20, so the Datadog Flutter packages ship only as Swift packages. Enable Flutter's [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers) integration (`flutter config --enable-swift-package-manager`, on by default from Flutter 3.44) before building for iOS or macOS. Plugins that only support CocoaPods keep working alongside it.
+
+If you embed Flutter in an existing iOS app (add-to-app), CocoaPods module embedding (`install_all_flutter_pods`, `flutter build ios-framework`) can no longer include the Datadog packages. Use `flutter build swift-package` instead, which requires Flutter 3.44 or later. See the [hybrid app example](https://github.com/DataDog/dd-sdk-flutter/tree/develop/examples/native-hybrid-app) for a working setup.
+
+If you build for Android, web, or desktop on Linux or Windows from a project with an `ios/` folder, use Flutter 3.41 or later. Earlier versions fail `flutter pub get` because Swift Package Manager can't be enabled without Xcode.
 
 ## RUM Changes
 
@@ -31,7 +37,7 @@ The "feature operation" APIs have been renamed to "operations":
 
 Version 4.0 adds support for macOS (13.0+), Windows, and Linux. No migration is required for existing platforms, but if you add a desktop target:
 
-* On macOS, Swift Package Manager must be enabled for your app (`flutter config --enable-swift-package-manager`). If a CocoaPods build fails with `they required a higher minimum deployment target`, enable Swift Package Manager.
+* On macOS, Swift Package Manager must be enabled for your app (`flutter config --enable-swift-package-manager`).
 * On Windows and Linux, set `DatadogConfiguration.desktopDataDirectory` to the directory where the SDK should store its data (`DatadogConfiguration.getSuggestedDesktopDataDirectory` returns a conventional location). If it is not set, the SDK logs a warning and uses a `.datadog` directory in the current working directory, which is only suitable for development.
 * On Linux, the system `libcurl` development package must be installed to build your app.
 * Several APIs are not yet supported on Windows and Linux. See the [README](README.md#desktop-windows-and-linux) for the list.

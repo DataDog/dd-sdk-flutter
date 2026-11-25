@@ -23,10 +23,11 @@ scripts:
   build:
     run: melos build:ios && melos build:android && melos build:web
 
+  # Checks Swift Package Manager once for every app, then builds each one.
   build:ios:
-    exec:
-      concurrency: 1
-    run: cd example && flutter build ios --release --no-codesign
+    run: >-
+      dart $MELOS_ROOT_PATH/tools/ci/bin/check_swift_package_manager.dart --app-subdir example $(melos list --parsable) &&
+      melos exec -c 1 -- "cd example && flutter build ios --release --no-codesign"
     packageFilters:
       dirExists: example/ios
 
@@ -44,10 +45,11 @@ scripts:
     packageFilters:
       dirExists: ios/Runner.xcodeproj
 
+  # Checks Swift Package Manager once for every app, then builds each one.
   build:macos:
-    exec:
-      concurrency: 1
-    run: cd example && flutter clean && flutter build macos --release
+    run: >-
+      dart $MELOS_ROOT_PATH/tools/ci/bin/check_swift_package_manager.dart --app-subdir example $(melos list --parsable) &&
+      melos exec -c 1 -- "cd example && flutter clean && flutter build macos --release"
     packageFilters:
       dirExists: example/macos
 
@@ -466,6 +468,7 @@ scripts:
 
   e2e_tests:ios:
     exec: |
+      export DD_SDK_COMPILED_FOR_TESTING=1
       cd e2e_test_app
       dart $MELOS_ROOT_PATH/tools/ci/bin/integration_tests.dart --platform ios --output $MELOS_ROOT_PATH/.build/test-results
     packageFilters:
@@ -478,26 +481,6 @@ scripts:
     packageFilters:
       scope: 'datadog_flutter_plugin'
 
-  remove_cocoapods:
-    exec:
-      concurrency: 1
-    run: |
-      for dir in example/ios example/macos integration_test_app/ios integration_test_app/macos; do
-        if [ -d "\$dir" ]; then
-          (cd "\$dir" && pod deintegrate; rm Podfile || true; rm Podfile.lock || true)
-        fi
-      done
-    description: |
-      Remove Cocoapods support from examples and the integration test app. This prevents some
-      build failures when testing spm support. This change is permanent and should not be
-      committed to source control.
-    packageFilters:
-      dirExists:
-        - example/ios
-        - example/macos
-        - integration_test_app/ios
-        - integration_test_app/macos
-
   prepare:
     run: melos pub:get && melos generate_env && melos generate_env:e2e
     description: |
@@ -508,16 +491,6 @@ scripts:
       concurrency: 1
     run: flutter pub get
 
-  # Deletes the committed Podfile.lock so Flutter's own `pod install` (run as part of
-  # `flutter build`/`flutter test`) resolves git-branch pods (e.g. dd-sdk-ios @ develop) against
-  # their current HEAD instead of a stale pinned commit. A standalone `pod update` here instead
-  # would leave CocoaPods state installed before Flutter's own SPM integration runs, which breaks
-  # resolution of local SPM packages (e.g. FlutterFramework) declared by some plugins.
-  remove_podfile_lock:
-    run: rm -f example/ios/Podfile.lock integration_test_app/ios/Podfile.lock
-    exec:
-      concurrency: 1
-  
   build_runner:
     exec:
       concurrency: 1
@@ -544,7 +517,7 @@ scripts:
       concurrency: 1
     run: dart $MELOS_ROOT_PATH/tools/releaser/bin/pinner.dart --platform ios --package \$MELOS_PACKAGE_PATH
     packageFilters:
-      fileExists: "ios/Podfile"
+      scope: datadog_flutter_plugin_ios
   
   pin:android:
     exec: 

@@ -46,7 +46,6 @@ import 'package:path/path.dart' as p;
 import 'package:releaser/changelog_util.dart';
 import 'package:releaser/cli_logging.dart';
 import 'package:releaser/cmake_util.dart';
-import 'package:releaser/cocoapod_util.dart';
 import 'package:releaser/dependency_constraints.dart';
 import 'package:releaser/git/git_dir.dart';
 import 'package:releaser/git/release_git.dart';
@@ -292,7 +291,6 @@ Future<void> prepareRelease(
   bool commitHeadless = false,
   bool skipPublishValidation = false,
   PublishedVersionsGateway? publishedVersions,
-  CocoaPodsVersionLookup podVersionExists = cocoaPodVersionExists,
 }) async {
   // Mainline always PRs into `main`; running it from anywhere but `develop`
   // -- e.g. an ordinary feature branch, if `--trigger=auto` resolved to
@@ -368,11 +366,6 @@ Future<void> prepareRelease(
     }
   }
 
-  await validateIosPodAvailability([
-    for (final package in plan.packages) ...package.nativeSdkDeltas,
-    ...plan.unshippedNativeSdkPins,
-  ], lookup: podVersionExists);
-
   final target = _ReleaseTarget.forTrigger(ctx);
   final contentBranch = target.contentBranchName;
   final publisher = ReleasePublisher(
@@ -435,14 +428,12 @@ Future<void> prepareRelease(
 
   // -- Commit B: publish-prep -- see the file-level comment above.
   //
-  // Podfile overrides and snapshot maven repositories are stripped from
-  // every workspace package -- its own `android/build.gradle` and its
-  // example apps -- not just the ones releasing this run: an override
-  // floats a Pod on dd-sdk-ios's `develop` branch, and a snapshots repo lets
-  // Gradle silently resolve a newer, unreleased dd-sdk-android build -- a
-  // release-prep branch needs the whole workspace to build in a stable,
-  // reproducible state, whether or not a given package is part of this
-  // release.
+  // Snapshot maven repositories are stripped from every workspace package
+  // -- its own `android/build.gradle` and its example apps -- not just the
+  // ones releasing this run: a snapshots repo lets Gradle silently resolve a
+  // newer, unreleased dd-sdk-android build, and a release-prep branch needs
+  // the whole workspace to build in a stable, reproducible state, whether or
+  // not a given package is part of this release.
   for (final pkg in allGroups.expand((g) => g.members)) {
     final packageRoot = pkg.absolutePath(ctx.repoRoot);
 
@@ -456,11 +447,6 @@ Future<void> prepareRelease(
       'integration_test_app',
       'e2e_test_app',
     ]) {
-      final podfile = File(p.join(packageRoot, exampleDir, 'ios', 'Podfile'));
-      if (podfile.existsSync()) {
-        await removePodfileOverrides(podfile, _log, false);
-      }
-
       final exampleGradle = File(
         p.join(packageRoot, exampleDir, 'android', 'build.gradle'),
       );
@@ -779,9 +765,9 @@ extension NativeSdkDeltaResolution on Iterable<NativeSdkDelta> {
   /// SDK at all, or no declaration to fall back to.
   String? firstOrNullResolvedVersion() {
     for (final delta in this) {
-      // currentDeclaration is a raw constraint (CocoaPods' `~> 3.5.0`,
-      // SPM's `from: "3.0.0"`, ...), not a bare version -- normalize it
-      // the same way a real target already is.
+      // currentDeclaration is a raw constraint (SPM's `from: "3.0.0"`,
+      // Gradle's `3.+`, ...), not a bare version -- normalize it the same
+      // way a real target already is.
       return delta.targetVersion ?? normalizeVersion(delta.currentDeclaration);
     }
     return null;
@@ -796,11 +782,7 @@ Future<void> _pinNativeSdkDeltas(List<NativeSdkDelta> deltas) async {
     for (final file in delta.files) {
       switch (delta.sdk) {
         case NativeSdk.ios:
-          if (file.path.endsWith('.podspec')) {
-            await pinIosPodspecVersion(file, targetVersion, _log, false);
-          } else {
-            await pinIosSpmVersion(file, targetVersion, _log, false);
-          }
+          await pinIosSpmVersion(file, targetVersion, _log, false);
           break;
         case NativeSdk.android:
           await pinAndroidGradleVersion(file, targetVersion, _log, false);

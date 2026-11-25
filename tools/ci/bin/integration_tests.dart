@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:ci_helpers/integration_test_platform.dart';
 import 'package:ci_helpers/integration_test_runner.dart';
+import 'package:ci_helpers/swift_package_manager.dart';
 import 'package:path/path.dart' as path;
 
 // Runs each integration test file with its own `flutter test` process, so
@@ -48,6 +49,9 @@ Future<void> main(List<String> arguments) async {
     final String name => TestPlatform.values.byName(name),
     _ => TestPlatform.host,
   };
+  if (platform case TestPlatform.ios || TestPlatform.macos) {
+    await requireSwiftPackageManager(['.']);
+  }
 
   final testDirectory = Directory('integration_test');
   if (!testDirectory.existsSync()) {

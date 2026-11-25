@@ -13,15 +13,6 @@ import 'package:releaser/version_bump.dart';
 
 import 'support/test_temp.dart';
 
-const _iosPodspec = '''
-Pod::Spec.new do |s|
-  s.name             = 'datadog_flutter_plugin_ios'
-  s.dependency 'Flutter'
-  s.dependency 'DatadogCore', '~> 3'
-  s.dependency 'DatadogLogs', '~> 3'
-end
-''';
-
 const _androidGradle = '''
 buildscript {
     ext.kotlin_version = "2.2.20"
@@ -68,7 +59,6 @@ void main() {
     }
 
     test('finds all native dependency files when present', () {
-      write('ios/datadog_flutter_plugin_ios.podspec', _iosPodspec);
       write('ios/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
       write('android/build.gradle', _androidGradle);
       write('windows/CMakeLists.txt', _windowsCMakeLists);
@@ -76,35 +66,17 @@ void main() {
 
       final files = resolveNativeDependencyFiles(root.path);
 
-      expect(files.iosPodspec, isNotNull);
       expect(files.iosSpmManifest, isNotNull);
       expect(files.androidGradle, isNotNull);
       expect(files.cppCMakeLists, hasLength(2));
       expect(files.isEmpty, isFalse);
     });
 
-    test(
-      'finds a Package.swift even when there is no podspec alongside it',
-      () {
-        write('ios/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
-
-        final files = resolveNativeDependencyFiles(root.path);
-
-        expect(files.iosPodspec, isNull);
-        expect(files.iosSpmManifest, isNotNull);
-      },
-    );
-
     test('finds the iOS files under darwin/', () {
-      write('darwin/datadog_flutter_plugin_ios.podspec', _iosPodspec);
       write('darwin/datadog_flutter_plugin_ios/Package.swift', _packageSwift);
 
       final files = resolveNativeDependencyFiles(root.path);
 
-      expect(
-        files.iosPodspec?.path,
-        endsWith('darwin/datadog_flutter_plugin_ios.podspec'),
-      );
       expect(
         files.iosSpmManifest?.path,
         endsWith('darwin/datadog_flutter_plugin_ios/Package.swift'),
@@ -145,14 +117,6 @@ FetchContent_Declare(some_other_dep
       expect(files.isEmpty, isTrue);
     });
 
-    test('ignores a podspec with no Datadog dependency', () {
-      write('ios/some_other_plugin.podspec', "s.dependency 'Flutter'");
-
-      final files = resolveNativeDependencyFiles(root.path);
-
-      expect(files.iosPodspec, isNull);
-    });
-
     test(
       'a pure-Dart package with no ios/android/windows/linux dirs is empty',
       () {
@@ -168,22 +132,12 @@ FetchContent_Declare(some_other_dep
     // past release's git history, not the working tree; see
     // NativeSdkDelta.currentDeclaration.
 
-    test('iOS prefers the podspec constraint over Package.swift', () {
-      expect(
-        currentIosDeclaration(
-          podspecContent: _iosPodspec,
-          spmContent: _packageSwift,
-        ),
-        '~> 3',
-      );
+    test('iOS reads the Package.swift version arg', () {
+      expect(currentIosDeclaration(_packageSwift), 'from: "3.0.0"');
     });
 
-    test('iOS falls back to the Package.swift version arg with no podspec', () {
-      expect(currentIosDeclaration(spmContent: _packageSwift), 'from: "3.0.0"');
-    });
-
-    test('iOS is null with neither content', () {
-      expect(currentIosDeclaration(), isNull);
+    test('iOS is null with no content', () {
+      expect(currentIosDeclaration(null), isNull);
     });
 
     test('Android reads the current ext.datadog_version verbatim', () {
@@ -204,10 +158,6 @@ FetchContent_Declare(some_other_dep
   });
 
   group('normalizeVersion', () {
-    test('strips a CocoaPods constraint operator', () {
-      expect(normalizeVersion('~> 3.5.0'), '3.5.0');
-    });
-
     test('pulls the version out of an SPM version argument', () {
       expect(normalizeVersion('from: "3.0.0"'), '3.0.0');
     });
@@ -405,7 +355,7 @@ FetchContent_Declare(some_other_dep
       final target = await resolveNativeSdkTarget(
         trigger: TriggerContext.mainline,
         override: null,
-        workingTreeDeclaration: '~> 3',
+        workingTreeDeclaration: 'from: "3.0.0"',
         fetchLatest: () => Future.value('3.13.0'),
         releaseExists: (version) =>
             throw StateError('should not be called with no override'),
@@ -433,6 +383,35 @@ FetchContent_Declare(some_other_dep
       },
     );
 
+    test('an SPM exact pin resolves to its bare version', () async {
+      final target = await resolveNativeSdkTarget(
+        trigger: TriggerContext.mainline,
+        override: null,
+        workingTreeDeclaration: 'exact: "3.13.1"',
+        fetchLatest: () =>
+            throw StateError('should not look for a newer release when pinned'),
+        releaseExists: (version) =>
+            throw StateError('should not be called with no override'),
+      );
+      expect(target, '3.13.1');
+    });
+
+    for (final pin in ['v1.4.0', '2.10.0-SNAPSHOT', 'a' * 40]) {
+      test('a non-SPM pin "$pin" is kept as written', () async {
+        final target = await resolveNativeSdkTarget(
+          trigger: TriggerContext.mainline,
+          override: null,
+          workingTreeDeclaration: pin,
+          fetchLatest: () => throw StateError(
+            'should not look for a newer release when pinned',
+          ),
+          releaseExists: (version) =>
+              throw StateError('should not be called with no override'),
+        );
+        expect(target, pin);
+      });
+    }
+
     test('an override beats a pin', () async {
       String? pinned;
       final target = await resolveNativeSdkTarget(
@@ -450,9 +429,9 @@ FetchContent_Declare(some_other_dep
 
   group('isPinnedDeclaration', () {
     test('a complete version with no constraint operator is a pin', () {
-      // Gradle, CocoaPods, and a C++ GIT_TAG annotation respectively.
+      // Gradle, SPM, and a C++ GIT_TAG annotation respectively.
       expect(isPinnedDeclaration('3.13.1'), isTrue);
-      expect(isPinnedDeclaration("'3.15.0'"), isTrue);
+      expect(isPinnedDeclaration('exact: "3.15.0"'), isTrue);
       expect(isPinnedDeclaration('v1.4.0'), isTrue);
     });
 
@@ -461,8 +440,6 @@ FetchContent_Declare(some_other_dep
     });
 
     test('a range or a moving ref is not a pin', () {
-      expect(isPinnedDeclaration('~> 3'), isFalse);
-      expect(isPinnedDeclaration('~> 3.15'), isFalse);
       expect(isPinnedDeclaration('3+'), isFalse);
       expect(isPinnedDeclaration('from: "3.0.0"'), isFalse);
       expect(isPinnedDeclaration('branch: "develop"'), isFalse);

@@ -203,7 +203,7 @@ class DatadogRumConfiguration {
   /// unresponsive for too long. Set the parameter to the minimal duration you
   /// want app hangs to be reported. For example, enter 0.25 to report hangs
   /// lasting at least 250 milliseconds. See [Configure the app hang
-  /// threshold](https://docs.datadoghq.com/real_user_monitoring/error_tracking/mobile/ios/?tab=cocoapods#configure-the-app-hang-threshold)
+  /// threshold](https://docs.datadoghq.com/real_user_monitoring/error_tracking/mobile/ios/#configure-the-app-hang-threshold)
   /// for more guidance on what to set this value to.
   ///
   /// Defaults to disabled (`null`).

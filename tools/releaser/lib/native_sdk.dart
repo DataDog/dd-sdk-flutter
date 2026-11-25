@@ -23,27 +23,14 @@ enum NativeSdk {
   const NativeSdk({required this.repoSlug, required this.displayName});
 }
 
-/// Matches a podspec's `s.dependency 'Datadog...', '<constraint>'` lines.
-///
-/// Private, like every pattern in this file. Nothing in this module rewrites
-/// these files -- discovery only needs to recognise one -- and sharing a
-/// pattern with the legacy CLI's pin-rewriting commands would couple a
-/// *matcher* to a *rewriter*, which want different things from it: a matcher
-/// wants to be permissive, a rewriter has to reproduce exactly what it
-/// matched.
-final _iosPodspecDependencyPattern = RegExp(
-  r"s\.dependency\s+'Datadog\w*'\s*,\s*'(?<constraint>[^']+)'",
-);
-
 /// Matches a `build.gradle`'s `ext.datadog_version = "..."` assignment.
 final _androidGradleVersionPattern = RegExp(
   r'ext\.datadog_version\s*=\s*"(?<version>[^"]+)"',
 );
 
-/// Matches a `Package.swift`'s dd-sdk-ios dependency line, e.g.
+/// Matches a `Package.swift` dd-sdk-ios dependency, e.g.
 /// `.package(url: "https://github.com/Datadog/dd-sdk-ios.git", from: "3.0.0")`.
-/// Matched case-insensitively on the URL: both `Datadog` and `DataDog`
-/// spellings appear across this repo's manifests.
+/// The URL match is case-insensitive.
 final _iosSpmDependencyPattern = RegExp(
   r'\.package\(url:\s*"[^"]*dd-sdk-ios[^"]*",\s*(?<versionArg>[^)]+)\)',
   caseSensitive: false,
@@ -53,62 +40,42 @@ final _iosSpmDependencyPattern = RegExp(
 /// resolved by checking what's actually there, not assumed from the
 /// package's name or role.
 class NativeDependencyFiles {
-  final File? iosPodspec;
-
-  /// A `Package.swift` pinning dd-sdk-ios via SPM -- independent of
-  /// [iosPodspec] since a package can ship both, each pinning the same
-  /// dependency in its own file format.
+  /// A `Package.swift` pinning dd-sdk-ios via SPM.
   final File? iosSpmManifest;
   final File? androidGradle;
   final List<File> cppCMakeLists;
 
   NativeDependencyFiles({
-    this.iosPodspec,
     this.iosSpmManifest,
     this.androidGradle,
     this.cppCMakeLists = const [],
   });
 
   bool get isEmpty =>
-      iosPodspec == null &&
-      iosSpmManifest == null &&
-      androidGradle == null &&
-      cppCMakeLists.isEmpty;
+      iosSpmManifest == null && androidGradle == null && cppCMakeLists.isEmpty;
 }
 
 /// Walks [packageRoot] (a package's own directory, not its example/test
 /// apps) for the native-dependency files this tooling knows how to read and
-/// pin: an iOS podspec with a Datadog pod dependency (under `ios/` or
-/// `darwin/`), a `Package.swift`
-/// pinning dd-sdk-ios via SPM, an Android `build.gradle` with a
+/// pin: a `Package.swift` pinning dd-sdk-ios via SPM (under `ios/` or
+/// `darwin/`), an Android `build.gradle` with a
 /// `datadog_version`, and/or a `windows/`/`linux/` `CMakeLists.txt` with a
 /// dd-sdk-cpp `GIT_TAG` inside its `FetchContent_Declare(dd-sdk-cpp ...)`
 /// block (a `CMakeLists.txt` whose only `GIT_TAG` belongs to some other
 /// vendored dependency doesn't count).
 NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
-  File? iosPodspec;
   File? iosSpmManifest;
   // `ios/` for an iOS-only plugin, `darwin/` for one shared with macOS (the
   // federated `datadog_flutter_plugin_ios`).
   for (final dirName in const ['ios', 'darwin']) {
     final iosDir = Directory(p.join(packageRoot, dirName));
     if (!iosDir.existsSync()) continue;
-    for (final entity in iosDir.listSync()) {
-      if (entity is File &&
-          entity.path.endsWith('.podspec') &&
-          _iosPodspecDependencyPattern.hasMatch(entity.readAsStringSync())) {
-        iosPodspec = entity;
-      } else if (entity is Directory) {
-        // The real layout is `<ios|darwin>/<package_name>/Package.swift` -- a
-        // manifest for building the plugin's iOS code via SPM instead of
-        // CocoaPods.
-        final packageSwift = File(p.join(entity.path, 'Package.swift'));
-        if (packageSwift.existsSync() &&
-            _iosSpmDependencyPattern.hasMatch(
-              packageSwift.readAsStringSync(),
-            )) {
-          iosSpmManifest = packageSwift;
-        }
+    // The layout Flutter expects is `<ios|darwin>/<package_name>/Package.swift`.
+    for (final entity in iosDir.listSync().whereType<Directory>()) {
+      final packageSwift = File(p.join(entity.path, 'Package.swift'));
+      if (packageSwift.existsSync() &&
+          _iosSpmDependencyPattern.hasMatch(packageSwift.readAsStringSync())) {
+        iosSpmManifest = packageSwift;
       }
     }
   }
@@ -130,23 +97,16 @@ NativeDependencyFiles resolveNativeDependencyFiles(String packageRoot) {
   }
 
   return NativeDependencyFiles(
-    iosPodspec: iosPodspec,
     iosSpmManifest: iosSpmManifest,
     androidGradle: androidGradle,
     cppCMakeLists: cppCMakeLists,
   );
 }
 
-/// The dd-sdk-ios constraint declared in [podspecContent] (e.g. `~> 3`), or,
-/// absent that, [spmContent]'s version argument (e.g. `from: "3.0.0"`).
-/// Null if neither matches. Takes content, not a [File] -- see
+/// The dd-sdk-ios version argument declared in [spmContent] (e.g.
+/// `from: "3.0.0"`), or null. Takes content, not a [File] -- see
 /// [NativeSdkDelta.currentDeclaration].
-String? currentIosDeclaration({String? podspecContent, String? spmContent}) {
-  if (podspecContent != null) {
-    return _iosPodspecDependencyPattern
-        .firstMatch(podspecContent)
-        ?.namedGroup('constraint');
-  }
+String? currentIosDeclaration(String? spmContent) {
   if (spmContent == null) return null;
   return _iosSpmDependencyPattern
       .firstMatch(spmContent)
@@ -173,8 +133,8 @@ String? currentCppDeclaration(String? cmakeListsContent) {
 
 /// The first bare semver found in [declaration], or null.
 ///
-/// Handles every real shape a native SDK pin is declared in: a CocoaPods
-/// constraint (`~> 3.5.0`), an SPM version argument (`from: "3.0.0"`), and
+/// Handles every real shape a native SDK pin is declared in: an SPM version
+/// argument (`from: "3.0.0"`), and
 /// a bare version (Android's `ext.datadog_version`, C++'s resolved
 /// `GIT_TAG`) -- all reduce to "pull out the semver", so one pattern
 /// covers them instead of a stripper per format.
@@ -188,9 +148,9 @@ String? normalizeVersion(String? declaration) {
 final _fullShaPattern = RegExp(r'^[0-9a-f]{40}$');
 
 /// Anything that makes a declaration name a *range* or a *moving ref* rather
-/// than one immutable version: CocoaPods' `~>`, Gradle's `+` prefix-match,
-/// SPM's `from:`/`branch:` forms, and a comparison operator in any of them.
-const _floatingConstraintMarkers = ['~>', '+', '<', '>', 'from', 'branch'];
+/// than one immutable version: Gradle's `+` prefix-match, SPM's
+/// `from:`/`branch:` forms, and a comparison operator in any of them.
+const _floatingConstraintMarkers = ['+', '<', '>', 'from', 'branch'];
 
 /// Whether [declaration] pins exactly one immutable version, as opposed to
 /// naming a range or a moving ref.
@@ -211,7 +171,7 @@ bool isPinnedDeclaration(String? declaration) {
 ///
 /// [targetVersion]/[targetSha] are a *target*, not a diff: `develop` (and a
 /// long-lived pre-release branch) deliberately keeps its manifests on
-/// floating constraints (`~> 3`, `branch: "develop"`, `GIT_TAG develop`), and
+/// floating constraints (`from: "3.0.0"`, `branch: "develop"`, `GIT_TAG develop`), and
 /// only the release-prep branch's copy is ever pinned. Eligibility never
 /// compares against a "current" value for exactly that reason.
 ///
@@ -241,8 +201,8 @@ class NativeSdkDelta {
   final String? targetSha;
 
   /// Every file of this package that pins this dependency and therefore needs
-  /// rewriting -- one for [NativeSdk.android] (`build.gradle`), up to two for
-  /// [NativeSdk.ios] (podspec and/or `Package.swift`), and one per platform
+  /// rewriting -- one for [NativeSdk.android] (`build.gradle`), one for
+  /// [NativeSdk.ios] (`Package.swift`), and one per platform
   /// for [NativeSdk.cpp] (`windows/CMakeLists.txt`, `linux/CMakeLists.txt`).
   /// Carried on the plan so the apply step rewrites exactly what discovery
   /// found, rather than resolving the file set a second time.
@@ -363,7 +323,13 @@ Future<String?> resolveNativeSdkTarget({
   }
 
   if (isPinnedDeclaration(workingTreeDeclaration)) {
-    final pin = workingTreeDeclaration!.trim();
+    // Only SPM's `exact: "3.16.0"` wraps its version in syntax. Other pins
+    // are exact refs (`v1.4.0`, `2.10.0-SNAPSHOT`, a commit SHA) and are
+    // kept as written.
+    final declaration = workingTreeDeclaration!.trim();
+    final pin = declaration.startsWith('exact:')
+        ? normalizeVersion(declaration) ?? declaration
+        : declaration;
     if (trigger != TriggerContext.support) onPinned?.call(pin);
     return pin;
   }

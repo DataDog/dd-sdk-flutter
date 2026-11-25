@@ -13,12 +13,6 @@ import 'support/fixture_repo.dart';
 
 class MockNativeSdkGateways extends Mock implements NativeSdkGateways {}
 
-const _iosPodspecWithDatadogDependency = '''
-Pod::Spec.new do |s|
-  s.dependency 'DatadogCore', '~> 3'
-end
-''';
-
 const _windowsCMakeListsWithGitTag = '''
 FetchContent_Declare(dd-sdk-cpp
   GIT_REPOSITORY https://github.com/DataDog/dd-sdk-cpp.git
@@ -35,6 +29,10 @@ let package = Package(
 
 void main() {
   late FixtureRepo fixture;
+
+  String packageSwiftPinnedAt(String version) =>
+      '.package(url: "https://github.com/Datadog/dd-sdk-ios.git", '
+      'exact: "$version")\n';
 
   setUp(() async {
     fixture = await FixtureRepo.create();
@@ -290,10 +288,10 @@ void main() {
       () async {
         fixture.writeFile(
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-          'datadog_flutter_plugin_ios.podspec',
-          _iosPodspecWithDatadogDependency,
+          'datadog_flutter_plugin_ios/Package.swift',
+          _packageSwiftWithDatadogDependency,
         );
-        await fixture.commit('chore: add podspec fixture');
+        await fixture.commit('chore: add Package.swift fixture');
 
         final gateways = MockNativeSdkGateways();
         when(
@@ -317,16 +315,16 @@ void main() {
       'no native SDK handling at all -- only the flagship group does',
       () async {
         // datadog_webview_tracking and datadog_inappwebview_tracking are the
-        // real shape this guards against: a loose Datadog pod/gradle
+        // real shape this guards against: a loose Datadog SPM/gradle
         // dependency in a package that should keep it loose, not have this
         // tooling start resolving and pinning it just because the file
         // happens to match the same pattern the flagship group uses.
         fixture.writeFile(
-          'packages/datadog_dio/ios/datadog_dio.podspec',
-          _iosPodspecWithDatadogDependency,
+          'packages/datadog_dio/ios/datadog_dio/Package.swift',
+          _packageSwiftWithDatadogDependency,
         );
         await fixture.commit(
-          'chore: add a podspec fixture to a non-federated package',
+          'chore: add a Package.swift fixture to a non-federated package',
         );
 
         final gateways = MockNativeSdkGateways();
@@ -359,19 +357,20 @@ void main() {
     test(
       'reports a constraint that changed since the package\'s last release',
       () async {
-        // datadog_webview_tracking's real shape: hand-edited from '~> 3' to
-        // '~> 3.15' to pick up a new dd-sdk-ios feature, with no release
+        // datadog_webview_tracking's real shape: hand-edited from
+        // `from: "3.0.0"` to `from: "3.15.0"` to pick up a new dd-sdk-ios feature, with no release
         // tooling involved.
         fixture.writeFile(
-          'packages/datadog_dio/ios/datadog_dio.podspec',
-          _iosPodspecWithDatadogDependency, // '~> 3'
+          'packages/datadog_dio/ios/datadog_dio/Package.swift',
+          _packageSwiftWithDatadogDependency, // from: "3.0.0"
         );
         await fixture.commit('chore: pin for the 2.2.0 release');
         await fixture.tag('datadog_dio/v2.2.0');
 
         fixture.writeFile(
-          'packages/datadog_dio/ios/datadog_dio.podspec',
-          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '~> 3.15'\nend\n",
+          'packages/datadog_dio/ios/datadog_dio/Package.swift',
+          '.package(url: "https://github.com/Datadog/dd-sdk-ios.git", '
+              'from: "3.15.0")\n',
         );
         await fixture.commit('feat: pick up a new dd-sdk-ios feature');
 
@@ -387,15 +386,15 @@ void main() {
 
         final change = result.packages.single.nativeDependencyChanges.single;
         expect(change.sdk, NativeSdk.ios);
-        expect(change.previous, '~> 3');
-        expect(change.current, '~> 3.15');
+        expect(change.previous, 'from: "3.0.0"');
+        expect(change.current, 'from: "3.15.0"');
       },
     );
 
     test('nothing reported when the constraint has not changed', () async {
       fixture.writeFile(
-        'packages/datadog_dio/ios/datadog_dio.podspec',
-        _iosPodspecWithDatadogDependency,
+        'packages/datadog_dio/ios/datadog_dio/Package.swift',
+        _packageSwiftWithDatadogDependency,
       );
       await fixture.commit('chore: pin for the 2.2.0 release');
       await fixture.tag('datadog_dio/v2.2.0');
@@ -417,8 +416,8 @@ void main() {
       'nothing reported for a package that has never been published',
       () async {
         fixture.writeFile(
-          'packages/datadog_dio/ios/datadog_dio.podspec',
-          _iosPodspecWithDatadogDependency,
+          'packages/datadog_dio/ios/datadog_dio/Package.swift',
+          _packageSwiftWithDatadogDependency,
         );
         await fixture.commit(
           'feat: the first release, with a native dependency',
@@ -440,8 +439,8 @@ void main() {
         // but no tag was ever pushed for it, so there is nothing reliable to
         // compare the working tree against.
         fixture.writeFile(
-          'packages/datadog_dio/ios/datadog_dio.podspec',
-          _iosPodspecWithDatadogDependency,
+          'packages/datadog_dio/ios/datadog_dio/Package.swift',
+          _packageSwiftWithDatadogDependency,
         );
         await fixture.commit('fix: something');
 
@@ -461,10 +460,10 @@ void main() {
     setUp(() async {
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-        'datadog_flutter_plugin_ios.podspec',
-        _iosPodspecWithDatadogDependency,
+        'datadog_flutter_plugin_ios/Package.swift',
+        _packageSwiftWithDatadogDependency,
       );
-      await fixture.commit('chore: add podspec fixture');
+      await fixture.commit('chore: add Package.swift fixture');
     });
 
     test(
@@ -486,44 +485,34 @@ void main() {
         expect(delta.sdk, NativeSdk.ios);
         expect(delta.targetVersion, '3.13.0');
         // Never published, so there's no past release to read a "current"
-        // declaration from -- the live '~> 3' fixture podspec above must
-        // NOT leak in here as if it were evidence of one. See the
+        // declaration from -- the live floating fixture Package.swift above
+        // must NOT leak in here as if it were evidence of one. See the
         // dedicated group below for the case where a past release exists.
         expect(delta.currentDeclaration, isNull);
       },
     );
 
-    test(
-      'a Package.swift alongside the podspec is carried for rewriting',
-      () async {
-        fixture.writeFile(
-          'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-          'datadog_flutter_plugin_ios/Package.swift',
-          _packageSwiftWithDatadogDependency,
-        );
-        await fixture.commit('chore: add Package.swift fixture');
+    test('the Package.swift is carried for rewriting', () async {
+      final gateways = MockNativeSdkGateways();
+      when(
+        () => gateways.releaseExists(any(), any()),
+      ).thenAnswer((_) async => true);
 
-        final gateways = MockNativeSdkGateways();
-        when(
-          () => gateways.releaseExists(any(), any()),
-        ).thenAnswer((_) async => true);
+      final result = await plan(
+        mainlineCtx(
+          requestedPackages: ['datadog_flutter_plugin_ios'],
+          iosSdkVersionOverride: '3.12.0',
+        ),
+        gateways: gateways,
+      );
 
-        final result = await plan(
-          mainlineCtx(
-            requestedPackages: ['datadog_flutter_plugin_ios'],
-            iosSdkVersionOverride: '3.12.0',
-          ),
-          gateways: gateways,
-        );
-
-        expect(
-          result.packages.single.nativeSdkDeltas.single.files.map(
-            (f) => p.basename(f.path),
-          ),
-          ['datadog_flutter_plugin_ios.podspec', 'Package.swift'],
-        );
-      },
-    );
+      expect(
+        result.packages.single.nativeSdkDeltas.single.files.map(
+          (f) => p.basename(f.path),
+        ),
+        ['Package.swift'],
+      );
+    });
 
     test('C++ resolves the target tag to a commit SHA', () async {
       fixture.writeFile(
@@ -536,7 +525,7 @@ void main() {
       // Stubbed for this exact repo and ref: resolving anything else is
       // unstubbed, and so fails the test. `fetchLatest('...dd-sdk-ios')` is
       // the one exception -- the group `setUp` above floats
-      // datadog_flutter_plugin_ios's podspec, so it's resolved too (for
+      // datadog_flutter_plugin_ios's Package.swift, so it's resolved too (for
       // pinning only, via ReleasePlan.unshippedNativeSdkPins) even though
       // this run only requested the desktop package.
       final gateways = MockNativeSdkGateways();
@@ -568,19 +557,19 @@ void main() {
       // Simulates a real release: DatadogCore was pinned to exactly
       // 3.10.0 when v3.10.0 was tagged and published, then development
       // moved the working tree past it to a floating constraint again --
-      // the same shape as the real datadog_flutter_plugin_ios podspec.
+      // the same shape as the real datadog_flutter_plugin_ios Package.swift.
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-            'datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        'datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for the 3.10.0 release');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-        'datadog_flutter_plugin_ios.podspec',
-        _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+        'datadog_flutter_plugin_ios/Package.swift',
+        _packageSwiftWithDatadogDependency, // floats again, back to from: "3.0.0"
       );
       await fixture.commit('chore: float the constraint again post-release');
 
@@ -598,24 +587,24 @@ void main() {
       final delta = result.packages.single.nativeSdkDeltas.single;
       expect(delta.targetVersion, '3.13.0');
       // Must be what v3.10.0 actually shipped with (3.10.0), not the
-      // working tree's current floating '~> 3'.
-      expect(delta.currentDeclaration, '3.10.0');
+      // working tree's current floating `from: "3.0.0"`.
+      expect(delta.currentDeclaration, 'exact: "3.10.0"');
     });
 
     test('a minor native SDK bump escalates the package bump level even with '
         'no qualifying commits of its own', () async {
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-            'datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        'datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for the 3.10.0 release');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-        'datadog_flutter_plugin_ios.podspec',
-        _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+        'datadog_flutter_plugin_ios/Package.swift',
+        _packageSwiftWithDatadogDependency, // floats again, back to from: "3.0.0"
       );
       await fixture.commit('chore: float the constraint again post-release');
 
@@ -645,16 +634,16 @@ void main() {
       () async {
         fixture.writeFile(
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-              'datadog_flutter_plugin_ios.podspec',
-          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+          'datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('3.10.0'),
         );
         await fixture.commit('chore: pin for the 3.10.0 release');
         await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
         fixture.writeFile(
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-          'datadog_flutter_plugin_ios.podspec',
-          _iosPodspecWithDatadogDependency, // floats again, back to '~> 3'
+          'datadog_flutter_plugin_ios/Package.swift',
+          _packageSwiftWithDatadogDependency, // floats again, back to from: "3.0.0"
         );
         await fixture.commit('chore: float the constraint again post-release');
 
@@ -690,8 +679,8 @@ void main() {
       // needs resolving (and, via prepare_release.dart, re-applying).
       fixture.writeFile(
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/ios/'
-            'datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        'datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for the 3.10.0 release');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
@@ -717,8 +706,8 @@ void main() {
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
 
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for the 3.10.0 release');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
@@ -744,16 +733,16 @@ void main() {
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
 
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for the 3.10.0 release');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
       // Someone holds the dev line at 3.12.0 while working against it.
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.12.0'\nend\n",
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.12.0'),
       );
       await fixture.commit('chore: hold the iOS SDK at 3.12.0');
 
@@ -780,8 +769,8 @@ void main() {
           'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
 
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: hold the iOS SDK at 3.10.0');
 
@@ -854,9 +843,6 @@ void main() {
     const iosPackage =
         'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios';
 
-    String podspecPinnedAt(String version) =>
-        "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '$version'\nend\n";
-
     test(
       'a patch branch reads its own line\'s tag, not a newer line\'s',
       () async {
@@ -865,15 +851,15 @@ void main() {
         // since 4.0.0 > the override, would report "no change" and wave a real
         // minor bump through the patch-branch guard.
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('3.10.0'),
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('3.10.0'),
         );
         await fixture.commit('chore: pin for 3.10.0');
         await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
 
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('4.0.0'),
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('4.0.0'),
         );
         await fixture.commit('chore: pin for 4.0.0');
         await fixture.tag('datadog_flutter_plugin_ios/v4.0.0');
@@ -883,8 +869,8 @@ void main() {
         // because the test needs both tags reachable, not because a real
         // 3.10.x branch would carry the 4.0.0 pin.
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('3.10.0'),
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('3.10.0'),
         );
         fixture.writeFile('$iosPackage/CHANGES', 'a fix');
         await fixture.commit('fix: a cherry-picked fix');
@@ -902,15 +888,15 @@ void main() {
 
         expect(
           result.packages.single.nativeSdkDeltas.single.currentDeclaration,
-          '3.10.0',
+          'exact: "3.10.0"',
         );
       },
     );
 
     test('a patch branch rejects an override implying a minor bump', () async {
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        podspecPinnedAt('3.10.0'),
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for 3.10.0');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
@@ -952,8 +938,8 @@ void main() {
     test('a patch branch rejects a major bump smuggled in via a cherry-picked '
         'manifest edit, with no override involved', () async {
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        podspecPinnedAt('3.10.0'),
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('3.10.0'),
       );
       await fixture.commit('chore: pin for 3.10.0');
       await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
@@ -961,8 +947,8 @@ void main() {
       // A cherry-picked "fix" commit that also carries a manifest edit --
       // e.g. it depends on a fix that only landed in the new native major.
       fixture.writeFile(
-        '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-        podspecPinnedAt('4.0.0'),
+        '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+        packageSwiftPinnedAt('4.0.0'),
       );
       await fixture.commit('fix: needs the native fix from 4.0.0');
 
@@ -994,8 +980,8 @@ void main() {
       'a patch branch accepts an override implying only a patch bump',
       () async {
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('3.10.0'),
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('3.10.0'),
         );
         await fixture.commit('chore: pin for 3.10.0');
         await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
@@ -1032,15 +1018,15 @@ void main() {
         // published.latest (the beta) makes the native major vanish, and a
         // fix-only run ships 3.5.1 carrying a breaking native upgrade.
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('3.10.0'),
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('3.10.0'),
         );
         await fixture.commit('chore: pin for 3.5.0');
         await fixture.tag('datadog_flutter_plugin_ios/v3.5.0');
 
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          podspecPinnedAt('4.0.0'),
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('4.0.0'),
         );
         await fixture.commit('chore: pin for the beta');
         await fixture.tag('datadog_flutter_plugin_ios/v4.0.0-beta.1');
@@ -1062,7 +1048,10 @@ void main() {
         );
 
         final packagePlan = result.packages.single;
-        expect(packagePlan.nativeSdkDeltas.single.currentDeclaration, '3.10.0');
+        expect(
+          packagePlan.nativeSdkDeltas.single.currentDeclaration,
+          'exact: "3.10.0"',
+        );
         expect(packagePlan.bumpLevel, VersionBumpType.major);
         expect(packagePlan.newVersion, '4.0.0');
       },
@@ -1241,16 +1230,16 @@ void main() {
         ),
       );
 
-      Future<void> shipIosPodspecPinnedAt3_10() async {
+      Future<void> shipIosPinnedAt3_10() async {
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          "Pod::Spec.new do |s|\n  s.dependency 'DatadogCore', '3.10.0'\nend\n",
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          packageSwiftPinnedAt('3.10.0'),
         );
         await fixture.commit('chore: pin for the 3.10.0 release');
         await fixture.tag('datadog_flutter_plugin_ios/v3.10.0');
         fixture.writeFile(
-          '$iosPackage/ios/datadog_flutter_plugin_ios.podspec',
-          _iosPodspecWithDatadogDependency,
+          '$iosPackage/ios/datadog_flutter_plugin_ios/Package.swift',
+          _packageSwiftWithDatadogDependency,
         );
         await fixture.commit('chore: float the constraint again');
       }
@@ -1330,7 +1319,7 @@ void main() {
       });
 
       test('holds the native SDK pin without asking what is newest', () async {
-        await shipIosPodspecPinnedAt3_10();
+        await shipIosPinnedAt3_10();
 
         // Nothing stubbed: asking the gateways for anything fails the test.
         final result = await plan(
@@ -1348,7 +1337,7 @@ void main() {
       });
 
       test('accepts a native SDK override implying a minor bump', () async {
-        await shipIosPodspecPinnedAt3_10();
+        await shipIosPinnedAt3_10();
         final gateways = MockNativeSdkGateways();
         when(
           () => gateways.releaseExists(any(), any()),
@@ -1373,7 +1362,7 @@ void main() {
       });
 
       test('rejects a native SDK override implying a major bump', () async {
-        await shipIosPodspecPinnedAt3_10();
+        await shipIosPinnedAt3_10();
         final gateways = MockNativeSdkGateways();
         when(
           () => gateways.releaseExists(any(), any()),

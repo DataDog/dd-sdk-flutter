@@ -15,7 +15,7 @@ extension AccountInfo: @retroactive Equatable {}
 extension AccountInfo: EquatableInTests { }
 
 // Note: These tests are in the example app because Flutter does not provide a simple
-// way to to include tests in the Podspec.
+// way to include tests in the Swift package.
 // swiftlint:disable:next type_body_length
 class FlutterSdkTests: XCTestCase {
 

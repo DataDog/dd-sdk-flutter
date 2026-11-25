@@ -58,60 +58,6 @@ void main() {
   tearDown(() => fixture.delete());
 
   test(
-    'rejects unpublished unshipped pods before creating release branches',
-    () async {
-      fixture.writeFile(
-        'packages/datadog_flutter_plugin/datadog_flutter_plugin_ios/darwin/plugin.podspec',
-        "  s.dependency 'DatadogCore', '3.21.0'\n",
-      );
-      await fixture.commit('chore: add a native pin');
-      final gitDir = await fixture.gitDir;
-      await gitDir.runCommand(['checkout', '-b', 'develop']);
-      final before = (await gitDir.runCommand(['rev-parse', 'HEAD'])).stdout;
-      final queried = <(String, String)>[];
-
-      await expectLater(
-        prepareRelease(
-          RunContext(
-            repoRoot: fixture.root.path,
-            trigger: TriggerContext.mainline,
-            currentBranch: 'develop',
-            requestedPackages: ['datadog_dio'],
-          ),
-          gitDir: gitDir,
-          github: GithubCommandWrapper(fixture.root.path),
-          aiGatewayClient: _NeverCalledAiGatewayClient(),
-          dryRun: true,
-          skipPublishValidation: true,
-          publishedVersions: _neverPublished,
-          podVersionExists: (pod, version) async {
-            queried.add((pod, version));
-            return false;
-          },
-        ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains('DatadogCore 3.21.0'),
-          ),
-        ),
-      );
-      expect(queried, [('DatadogCore', '3.21.0')]);
-      expect((await gitDir.currentBranch()).branchName, 'develop');
-      expect((await gitDir.runCommand(['rev-parse', 'HEAD'])).stdout, before);
-      expect(
-        (await gitDir.runCommand(['status', '--porcelain'])).stdout,
-        isEmpty,
-      );
-      expect(
-        (await gitDir.runCommand(['branch', '--list', 'release-*'])).stdout,
-        isEmpty,
-      );
-    },
-  );
-
-  test(
     'splits output into a content commit and a publish-prep commit',
     () async {
       final gitDir = await fixture.gitDir;
@@ -912,7 +858,7 @@ dependency_overrides:
         NativeSdkDelta(
           sdk: NativeSdk.ios,
           targetVersion: '3.16.0',
-          currentDeclaration: '~> 3.15.0',
+          currentDeclaration: 'from: "3.15.0"',
         ),
       ];
 
@@ -930,7 +876,7 @@ dependency_overrides:
         NativeSdkDelta(
           sdk: NativeSdk.ios,
           targetVersion: null,
-          currentDeclaration: '~> 3.15.0',
+          currentDeclaration: 'from: "3.15.0"',
         ),
       ];
 
