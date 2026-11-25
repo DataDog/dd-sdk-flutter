@@ -47,9 +47,5 @@ dart run build_runner build --delete-conflicting-outputs
 dart test
 ```
 
-The tests tagged `rum-events-format` resolve the real schemas at the pinned
-commit; their first run downloads it into `.tmp/`. To skip them:
-
-```sh
-dart test -x rum-events-format
-```
+The tests use the schemas in `test/fixtures`, and download nothing. The
+models generated from the real schemas are tested in `datadog_session_replay`.

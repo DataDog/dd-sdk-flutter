@@ -91,12 +91,13 @@ melos run generate:sr_models:check   # fail if they are not up to date, as CI do
    `master`, or `dart run sr_models_generator --ref <branch, tag or SHA>` from
    `tools/sr_models_generator` for another ref, then `dart run build_runner
    build --delete-conflicting-outputs` in this package. The commit is pinned
-   only once the models of its schemas are generated.
+   only once the models of its schemas are generated. A rename in
+   `type_renames` that matches no type fails here: update it.
 2. Review the diff of the generated models: new types and fields, and changed
    names.
-3. Run `dart test` in `tools/sr_models_generator`. The tests tagged
-   `rum-events-format` check the types generated from the pinned schemas; when
-   the schemas change, update:
-   * how each union tells its variants apart;
-   * `type_renames`, as a rename that matches no type fails.
+3. Run `flutter test test/generated` in this package. It decodes the official
+   samples, copied in `test/generated/sr_samples.dart`, and the smallest JSON
+   of each union variant. When the schemas change, copy the new samples of
+   rum-events-format's `samples/session-replay/mobile`, and update the
+   variants and the keys the samples drop.
 4. Commit the configuration and the generated models together.
