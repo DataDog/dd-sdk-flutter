@@ -197,60 +197,63 @@ void main() {
     await datadogFlags.disable();
   });
 
-  test('returns typed details and drops unknown variation types', () async {
-    final requests = <http.Request>[];
-    final client = await _createClient(
-      requests: requests,
-      response: _assignmentsResponse(),
-    );
-    await client.initialize(
-      const FlagsEvaluationContext(targetingKey: 'user-123'),
-    );
+  test(
+    'returns typed details and reports unknown variation types as parse errors',
+    () async {
+      final requests = <http.Request>[];
+      final client = await _createClient(
+        requests: requests,
+        response: _assignmentsResponse(),
+      );
+      await client.initialize(
+        const FlagsEvaluationContext(targetingKey: 'user-123'),
+      );
 
-    final lifecycle = client as DatadogFlagsClientLifecycle;
-    expect(lifecycle.status, DatadogFlagsClientStatus.ready);
-    expect(lifecycle.evaluationContext?.targetingKey, 'user-123');
+      final lifecycle = client as DatadogFlagsClientLifecycle;
+      expect(lifecycle.status, DatadogFlagsClientStatus.ready);
+      expect(lifecycle.evaluationContext?.targetingKey, 'user-123');
 
-    final booleanDetails = client.getBooleanDetails(
-      key: 'show-paywall',
-      defaultValue: false,
-    );
-    expect(booleanDetails.value, isTrue);
+      final booleanDetails = client.getBooleanDetails(
+        key: 'show-paywall',
+        defaultValue: false,
+      );
+      expect(booleanDetails.value, isTrue);
 
-    final stringDetails = client.getStringDetails(
-      key: 'theme',
-      defaultValue: 'light',
-    );
-    expect(stringDetails.value, 'dark');
+      final stringDetails = client.getStringDetails(
+        key: 'theme',
+        defaultValue: 'light',
+      );
+      expect(stringDetails.value, 'dark');
 
-    final integerDetails = client.getIntegerDetails(
-      key: 'max-items',
-      defaultValue: 1,
-    );
-    expect(integerDetails.value, 3);
+      final integerDetails = client.getIntegerDetails(
+        key: 'max-items',
+        defaultValue: 1,
+      );
+      expect(integerDetails.value, 3);
 
-    final doubleDetails = client.getDoubleDetails(
-      key: 'ratio',
-      defaultValue: 1,
-    );
-    expect(doubleDetails.value, 0.5);
+      final doubleDetails = client.getDoubleDetails(
+        key: 'ratio',
+        defaultValue: 1,
+      );
+      expect(doubleDetails.value, 0.5);
 
-    final objectDetails = client.getObjectDetails(
-      key: 'config',
-      defaultValue: null,
-    );
-    expect(objectDetails.value, {
-      'enabled': true,
-      'labels': ['a', 'b'],
-    });
+      final objectDetails = client.getObjectDetails(
+        key: 'config',
+        defaultValue: null,
+      );
+      expect(objectDetails.value, {
+        'enabled': true,
+        'labels': ['a', 'b'],
+      });
 
-    final missing = client.getStringDetails(
-      key: 'bad',
-      defaultValue: 'fallback',
-    );
-    expect(missing.value, 'fallback');
-    expect(missing.error, FlagEvaluationError.flagNotFound);
-  });
+      final missing = client.getStringDetails(
+        key: 'bad',
+        defaultValue: 'fallback',
+      );
+      expect(missing.value, 'fallback');
+      expect(missing.error, FlagEvaluationError.parseError);
+    },
+  );
 
   test(
     'reports provider readiness, not-found, and type mismatch details',

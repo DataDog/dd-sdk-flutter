@@ -14,6 +14,9 @@ enum FlagEvaluationError {
   /// The requested flag key was not present in the assignment data.
   flagNotFound('FLAG_NOT_FOUND'),
 
+  /// The assignment for the requested flag could not be decoded.
+  parseError('PARSE_ERROR'),
+
   /// The requested flag type did not match the assigned value type.
   typeMismatch('TYPE_MISMATCH');
 

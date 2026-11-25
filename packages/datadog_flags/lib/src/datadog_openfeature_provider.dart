@@ -983,6 +983,7 @@ extension _OpenFeatureError on FlagEvaluationError {
     FlagEvaluationError.providerNotReady =>
       openfeature.ErrorCode.providerNotReady,
     FlagEvaluationError.flagNotFound => openfeature.ErrorCode.flagNotFound,
+    FlagEvaluationError.parseError => openfeature.ErrorCode.parseError,
     FlagEvaluationError.typeMismatch => openfeature.ErrorCode.typeMismatch,
   };
 

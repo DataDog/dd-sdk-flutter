@@ -7,6 +7,7 @@ import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 import 'json_value.dart';
+import 'numeric_value.dart';
 import 'flag_key_obfuscation.dart';
 import 'split_features.dart';
 
@@ -37,9 +38,15 @@ enum FlagVariationType {
     return switch (this) {
       FlagVariationType.boolean when value is bool => value,
       FlagVariationType.string when value is String => value,
-      FlagVariationType.integer when value is int => value,
-      FlagVariationType.float when value is num => value.toDouble(),
-      FlagVariationType.number when value is num => value,
+      FlagVariationType.integer
+          when (value is num && value.isFinite) || value is NumericValue =>
+        value,
+      FlagVariationType.float
+          when (value is num && value.isFinite) || value is NumericValue =>
+        value,
+      FlagVariationType.number
+          when (value is num && value.isFinite) || value is NumericValue =>
+        value,
       FlagVariationType.object => sanitizeJsonValue(value)!,
       _ => throw FormatException('Invalid variation value for $wireName'),
     };
@@ -77,8 +84,15 @@ final class FlagAssignment {
     toJson: FlagVariationType.toWireName,
   )
   final FlagVariationType variationType;
+
+  /// Snapshot value using the runtime's JSON numeric representation.
+  ///
+  /// Numeric values can round. Typed getters validate [numericValue]. Overflow
+  /// and nonzero underflow use an explicit numeric-token marker.
   @JsonKey(toJson: sanitizeJsonValue)
   final Object variationValue;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final NumericValue? numericValue;
   final String reason;
   final bool doLog;
   final int? serialId;
@@ -89,16 +103,36 @@ final class FlagAssignment {
   @JsonKey(name: 'features', includeIfNull: false, includeToJson: true)
   List<SplitFeature>? get _storedFeatures => features.isEmpty ? null : features;
 
+  /// Whether the server entry could not be decoded.
+  ///
+  /// Evaluating such a flag returns the default value with `PARSE_ERROR`.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final bool parseError;
+
   const FlagAssignment._({
+    this.parseError = false,
     required this.allocationKey,
     required this.variationKey,
     required this.variationType,
     required this.variationValue,
+    this.numericValue,
     required this.reason,
     required this.doLog,
     this.serialId,
     this.features = const [],
   });
+
+  /// Marks a flag whose entry could not be decoded.
+  const FlagAssignment.parseError()
+    : this._(
+        parseError: true,
+        allocationKey: '',
+        variationKey: '',
+        variationType: FlagVariationType.object,
+        variationValue: const <String, Object?>{},
+        reason: '',
+        doLog: false,
+      );
 
   factory FlagAssignment.fromJson(Map<String, Object?> json) {
     final assignment = _$FlagAssignmentFromJson(json);
@@ -110,7 +144,10 @@ final class FlagAssignment {
       allocationKey: assignment.allocationKey,
       variationKey: assignment.variationKey,
       variationType: assignment.variationType,
-      variationValue: variationValue,
+      variationValue: variationValue is NumericValue
+          ? variationValue.snapshotValue
+          : variationValue,
+      numericValue: variationValue is NumericValue ? variationValue : null,
       reason: assignment.reason,
       doLog: assignment.doLog,
       serialId: assignment.serialId,
@@ -118,5 +155,35 @@ final class FlagAssignment {
     );
   }
 
-  Map<String, Object?> toJson() => _$FlagAssignmentToJson(this);
+  factory FlagAssignment.fromCacheJson(Map<String, Object?> json) {
+    if (json['parseError'] == true) {
+      return const FlagAssignment.parseError();
+    }
+    final value = json['variationValue'];
+    if (const ['number', 'integer', 'float'].contains(json['variationType'])) {
+      final literal = json.containsKey('_numericLiteral')
+          ? json['_numericLiteral']
+          : value is Map
+          ? value['_numericLiteral']
+          : null;
+      if (literal != null) {
+        if (literal is! String) {
+          throw const FormatException('Invalid numeric cache metadata');
+        }
+        json = {...json, 'variationValue': NumericValue(literal)};
+      }
+    }
+    return FlagAssignment.fromJson(json);
+  }
+
+  Map<String, Object?> toJson() {
+    if (parseError) {
+      return const {'parseError': true};
+    }
+    final json = _$FlagAssignmentToJson(this);
+    if (numericValue case final numeric?) {
+      json['_numericLiteral'] = numeric.literal;
+    }
+    return json;
+  }
 }

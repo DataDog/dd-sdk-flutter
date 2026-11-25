@@ -15,6 +15,30 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test(
+    'a stored parse error survives the cache without rejecting siblings',
+    () {
+      final stored = {
+        'context': {'targetingKey': 'subject'},
+        'date': '2026-01-01T00:00:00.000Z',
+        'flags': {
+          'valid': _assignment('boolean', true),
+          'unsupported': _assignment('unsupported', 'ignored'),
+          'marker': {'parseError': true},
+        },
+      };
+
+      final restored = FlagsData.fromJson(stored);
+
+      expect(restored.flags['valid']!.parseError, isFalse);
+      expect(restored.flags['unsupported']!.parseError, isTrue);
+      expect(restored.flags['marker']!.parseError, isTrue);
+      final reread = FlagsData.fromJson(restored.toJson());
+      expect(reread.flags['unsupported']!.parseError, isTrue);
+      expect(reread.flags['valid']!.variationValue, isTrue);
+    },
+  );
+
   group('FlagAssignmentsFetcher', () {
     final requestFixture = {
       'context': {
@@ -279,7 +303,7 @@ void main() {
     });
 
     test(
-      'ignores malformed flag entries without dropping valid assignments',
+      'marks malformed flag entries as parse errors without dropping valid assignments',
       () async {
         final requests = <http.Request>[];
         final fetcher = FlagAssignmentsFetcher(
@@ -304,7 +328,17 @@ void main() {
           const FlagsEvaluationContext(targetingKey: 'subject'),
         )).flags;
 
-        expect(assignments.keys, ['valid']);
+        expect(assignments.keys, [
+          'valid',
+          'not-object',
+          'missing-fields',
+          'null-value',
+          'unsupported',
+        ]);
+        expect(assignments['valid']!.parseError, isFalse);
+        for (final key in assignments.keys.skip(1)) {
+          expect(assignments[key]!.parseError, isTrue, reason: key);
+        }
       },
     );
 
