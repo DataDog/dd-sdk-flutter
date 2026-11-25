@@ -19,7 +19,7 @@ Or from this directory:
 
 ```sh
 dart run sr_models_generator                # generate the models, without their JSON code
-dart run sr_models_generator --check        # fail if they are not up to date
+dart run sr_models_generator --check        # fail if they are not up to date, without their JSON code
 dart run sr_models_generator --ref master   # pin another rum-events-format commit
 dart run sr_models_generator --help
 ```
