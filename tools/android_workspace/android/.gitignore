@@ -1,0 +1,6 @@
+/.gradle/
+/local.properties
+/captures/
+/.kotlin/
+.cxx/
+GeneratedPluginRegistrant.java

@@ -13,8 +13,13 @@ packages:
   - examples/native-hybrid-app/flutter_module
   - test_apps/*
   - tools/openfeature_conformance
+  - tools/android_workspace
 
 scripts:
+  setup:android:
+    run: cd tools/android_workspace && flutter build apk --config-only
+    description: Configure the shared Android Studio workspace after bootstrapping.
+
   build:
     run: melos build:ios && melos build:android && melos build:web
 
