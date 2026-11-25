@@ -2,8 +2,7 @@
 
 ## 3.3.0
 
-Note - this package's version was bumped a minor version despite having breaking changes. This is because all of the breaking changes are new minimum required versions.
-The dependency on Datadog's v4 previews and the Dart version solver will prevent an accidental upgrade to this version.
+**Note**: This release is a minor version bump even though it contains breaking changes, because the only breaking changes are new minimum required versions. The dependency on the Datadog Flutter Plugin v4 previews and the Dart version solver prevent an accidental upgrade to this version.
 
 ### Breaking Changes
 
