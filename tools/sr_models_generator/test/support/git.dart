@@ -19,3 +19,8 @@ String git(String dir, List<String> args) {
   }
   return result.stdout.toString().trim();
 }
+
+void gitInit(String dir) {
+  git(dir, ['init', '--quiet']);
+  git(dir, ['symbolic-ref', 'HEAD', 'refs/heads/master']);
+}

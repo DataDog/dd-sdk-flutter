@@ -60,7 +60,10 @@ Future<String> formatDart(String code, {required String destination}) async {
     'format',
     '--stdin-name=$destination',
   ]);
-  process.stdin.write(code);
+  // Not the system encoding, which is not UTF-8 on Windows.
+  process.stdin
+    ..encoding = utf8
+    ..write(code);
   await process.stdin.close();
   final (formatted, errors, exitCode) = await (
     process.stdout.transform(utf8.decoder).join(),

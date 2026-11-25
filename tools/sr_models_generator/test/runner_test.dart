@@ -90,7 +90,7 @@ $extra''');
     File(
       p.join(repository, 'schemas', 'bad-schema.json'),
     ).writeAsStringSync('{"title": "Bad", "type": "object", "anyOf": []}');
-    git(repository, ['init', '--quiet', '--initial-branch=master']);
+    gitInit(repository);
     git(repository, ['config', 'uploadpack.allowAnySHA1InWant', 'true']);
     git(repository, ['add', '.']);
     git(repository, ['commit', '--quiet', '-m', 'schemas']);

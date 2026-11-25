@@ -363,6 +363,13 @@ void main() {
       );
     });
 
+    test('keeps text that is not ASCII', () async {
+      expect(
+        await documented('Café, “quoted”, 1–2 €.'),
+        contains('/// Café, “quoted”, 1–2 €.'),
+      );
+    });
+
     test('escapes what dartdoc would read as a reference or HTML', () async {
       expect(
         await documented('Entries [0] to [3], or <none>.'),

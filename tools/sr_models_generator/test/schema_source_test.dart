@@ -49,7 +49,7 @@ void main() {
     temp = Directory.systemTemp.createTempSync('sr_schema_source_test');
     remoteDir = p.join(temp.path, 'remote');
     Directory(remoteDir).createSync();
-    git(remoteDir, ['init', '--quiet', '--initial-branch=master']);
+    gitInit(remoteDir);
     // Lets clients fetch a commit by SHA, as GitHub does.
     git(remoteDir, ['config', 'uploadpack.allowAnySHA1InWant', 'true']);
     firstCommit = commitSchema(remoteDir, 'first');
