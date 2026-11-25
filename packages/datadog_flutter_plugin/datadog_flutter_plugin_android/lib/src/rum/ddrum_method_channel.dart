@@ -335,6 +335,14 @@ class DdRumMethodChannel extends DdRumPlatform {
   }
 
   @override
+  Future<void> reportAppFullyDisplayed() {
+    return methodChannel.invokeMethod(
+      'reportAppFullyDisplayed',
+      <String, Object?>{},
+    );
+  }
+
+  @override
   Future<void> reportLongTask(DateTime at, int durationMs) {
     return methodChannel.invokeMethod('reportLongTask', {
       'at': at.millisecondsSinceEpoch,

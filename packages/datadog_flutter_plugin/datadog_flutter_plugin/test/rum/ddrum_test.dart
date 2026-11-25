@@ -611,6 +611,30 @@ void main() {
     verify(() => mockRumPlatform.removeViewAttribute('view-attribute-key'));
   });
 
+  test('reportAppFullyDisplayed calls platform', () async {
+    // Given
+    DdRumPlatform.instance = mockRumPlatform;
+    when(
+      () => mockRumPlatform.enable(any(), any()),
+    ).thenAnswer((_) => Future.value());
+    when(
+      () => mockRumPlatform.reportAppFullyDisplayed(),
+    ).thenAnswer((_) => Future.value());
+    final rum = await DatadogRum.enable(
+      mockDatadogSdk,
+      DatadogRumConfiguration(
+        applicationId: 'applicationId',
+        detectLongTasks: false,
+      ),
+    );
+
+    // When
+    rum!.reportAppFullyDisplayed();
+
+    // Then
+    verify(() => mockRumPlatform.reportAppFullyDisplayed());
+  });
+
   test(
     'addError does not forward to platform on MissingPluginException',
     () async {

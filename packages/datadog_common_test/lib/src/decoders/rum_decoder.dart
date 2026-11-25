@@ -138,10 +138,15 @@ class RumSessionDecoder {
           visit.longTaskEvents.add(RumLongTaskEventDecoder(e.rumEvent));
           break;
         case 'vital':
-          final operationStepEvent = RumVitalOperationStepEventDecoder(
-            e.rumEvent,
-          );
-          visit.vitalStepEvents.add(operationStepEvent);
+          if (RumVitalAppLaunchEventDecoder.isAppLaunchVital(e)) {
+            visit.vitalAppLaunchEvents.add(
+              RumVitalAppLaunchEventDecoder(e.rumEvent),
+            );
+          } else {
+            visit.vitalStepEvents.add(
+              RumVitalOperationStepEventDecoder(e.rumEvent),
+            );
+          }
           break;
       }
     }
@@ -206,6 +211,7 @@ class RumViewVisit {
   final List<RumErrorEventDecoder> errorEvents = [];
   final List<RumLongTaskEventDecoder> longTaskEvents = [];
   final List<RumVitalOperationStepEventDecoder> vitalStepEvents = [];
+  final List<RumVitalAppLaunchEventDecoder> vitalAppLaunchEvents = [];
 
   RumViewVisit(this.id, this.name, this.path);
 }
@@ -459,4 +465,33 @@ class RumVitalOperationStepEventDecoder extends RumEventDecoder {
   String? get vitalFailureReason =>
       rumEvent['vital']['failure_reason'] as String?;
   String get stepType => rumEvent['vital']['step_type'] as String;
+}
+
+/// Decodes `app_launch` vitals, such as Time to Initial Display (TTID) and Time
+/// to Full Display (TTFD).
+class RumVitalAppLaunchEventDecoder extends RumEventDecoder {
+  RumVitalAppLaunchEventDecoder(super.rumEvent);
+
+  /// Returns every `app_launch` vital in [events], regardless of the view it is
+  /// attached to. Native SDKs often attach TTID to the `ApplicationLaunch`
+  /// view, which [RumSessionDecoder.fromEvents] discards by default.
+  static List<RumVitalAppLaunchEventDecoder> fromEvents(
+    List<RumEventDecoder> events,
+  ) {
+    return [
+      for (final e in events)
+        if (isAppLaunchVital(e)) RumVitalAppLaunchEventDecoder(e.rumEvent),
+    ];
+  }
+
+  static bool isAppLaunchVital(RumEventDecoder e) =>
+      e.eventType == 'vital' && e.rumEvent['vital']?['type'] == 'app_launch';
+
+  RumViewInfoDecoder get view => RumViewInfoDecoder(rumEvent['view']);
+
+  String get vitalName => rumEvent['vital']['name'] as String;
+  String get appLaunchMetric =>
+      rumEvent['vital']['app_launch_metric'] as String;
+  int get duration => (rumEvent['vital']['duration'] as num).toInt();
+  String? get startupType => rumEvent['vital']['startup_type'] as String?;
 }
