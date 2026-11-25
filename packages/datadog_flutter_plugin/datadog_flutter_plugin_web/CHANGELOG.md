@@ -4,7 +4,6 @@
 
 ### Features
 
-- Initial release of `datadog_flutter_plugin_web`.
+- Initial release of `datadog_flutter_plugin_web`, split out of `datadog_flutter_plugin` as a federated plugin package.
 - Integrates with v7 of the Datadog Browser SDK to provide RUM support on web.
 - Requires Dart 3.10 and Flutter 3.38 or later.
-- Split out of `datadog_flutter_plugin` as a federated plugin package.
