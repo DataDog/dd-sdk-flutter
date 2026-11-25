@@ -10,7 +10,6 @@ import 'package:test/test.dart';
 
 import 'support/git.dart';
 import 'support/package_root.dart';
-import 'support/round_trip.dart';
 
 void main() {
   late Directory temp;
@@ -147,19 +146,6 @@ $extra''');
         file,
       ]);
       expect(format.exitCode, 0, reason: '${format.stdout}');
-    });
-
-    test('writes models that round-trip', () async {
-      await run();
-      final [result] = await roundTrip(output(), [
-        const RoundTripCase('shapes', 'SRShapes', {
-          'tags': ['a'],
-          'points': [
-            {'x': 1, 'y': 2},
-          ],
-        }),
-      ]);
-      expect(result.errors, isEmpty);
     });
 
     test('generates the local schemas too', () async {

@@ -2,6 +2,7 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2026-Present Datadog, Inc.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -30,6 +31,7 @@ Future<GeneratedLibrary> generateLibrary(
   resolver.resolveRoots(config.rootSchemas);
   final definitions = resolver.definitions;
   final code = DartPrinter(
+    part: p.setExtension(p.basename(config.output), '.g.dart'),
     header: [
       'Unless explicitly stated otherwise all files in this repository are '
           'licensed under the Apache License Version 2.0.',
@@ -54,23 +56,21 @@ Future<GeneratedLibrary> generateLibrary(
 /// Throws a [StateError] with the formatter output when [code] does not
 /// parse.
 Future<String> formatDart(String code, {required String destination}) async {
-  var directory = p.dirname(p.absolute(destination));
-  while (!Directory(directory).existsSync()) {
-    directory = p.dirname(directory);
+  final process = await Process.start('dart', [
+    'format',
+    '--stdin-name=$destination',
+  ]);
+  process.stdin.write(code);
+  await process.stdin.close();
+  final (formatted, errors, exitCode) = await (
+    process.stdout.transform(utf8.decoder).join(),
+    process.stderr.transform(utf8.decoder).join(),
+    process.exitCode,
+  ).wait;
+  if (exitCode != 0) {
+    throw StateError(
+      'dart format failed (exit code $exitCode):\n$formatted$errors',
+    );
   }
-  final scratch = Directory(directory).createTempSync('.sr_models_generator_');
-  try {
-    final file = File(p.join(scratch.path, p.basename(destination)))
-      ..writeAsStringSync(code);
-    final result = await Process.run('dart', ['format', file.path]);
-    if (result.exitCode != 0) {
-      throw StateError(
-        'dart format failed (exit code ${result.exitCode}):\n'
-        '${result.stdout}${result.stderr}',
-      );
-    }
-    return file.readAsStringSync();
-  } finally {
-    scratch.deleteSync(recursive: true);
-  }
+  return formatted;
 }

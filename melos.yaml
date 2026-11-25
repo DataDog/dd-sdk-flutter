@@ -99,9 +99,9 @@ scripts:
     exec: dart format .
 
   generate:sr_models:
-    run: cd tools/sr_models_generator && dart run sr_models_generator
+    run: cd tools/sr_models_generator && dart run sr_models_generator && cd ../../packages/datadog_session_replay && dart run build_runner build --delete-conflicting-outputs
     description: |
-      Generate the Session Replay models from the rum-events-format commit pinned in tools/sr_models_generator/sr_models_generator.yaml.
+      Generate the Session Replay models from the rum-events-format commit pinned in tools/sr_models_generator/sr_models_generator.yaml, and their JSON code with build_runner.
 
   generate:sr_models:check:
     run: cd tools/sr_models_generator && dart run sr_models_generator --check
@@ -109,7 +109,7 @@ scripts:
       Fail if the generated Session Replay models are not up to date with the pinned rum-events-format commit.
 
   generate:sr_models:update:
-    run: cd tools/sr_models_generator && dart run sr_models_generator --ref master
+    run: cd tools/sr_models_generator && dart run sr_models_generator --ref master && cd ../../packages/datadog_session_replay && dart run build_runner build --delete-conflicting-outputs
     description: |
       Pin the latest rum-events-format master commit and generate the Session Replay models from its schemas.
 
