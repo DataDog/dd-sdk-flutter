@@ -75,90 +75,91 @@ type_renames:
       });
     });
 
-    final invalidNaming = {
-      'type_prefix: ""': '"type_prefix" must be a non-empty string',
-      'type_prefix: [SR]': '"type_prefix" must be a non-empty string',
-      'strip_from_titles: Mobile':
-          '"strip_from_titles" must be a list of non-empty strings',
-      'strip_from_titles: [Mobile, ""]':
-          '"strip_from_titles" must be a list of non-empty strings',
-      'type_renames: [SRA]':
-          '"type_renames" must map non-empty strings to non-empty strings',
-      'type_renames: {SRA: ""}':
-          '"type_renames" must map non-empty strings to non-empty strings',
-      'type_renames: {SRA: [SRB]}':
-          '"type_renames" must map non-empty strings to non-empty strings',
-    };
-    for (final MapEntry(key: setting, value: message)
-        in invalidNaming.entries) {
-      test('fails on $setting', () {
-        expect(
-          () => GeneratorConfig.parse('$valid\n$setting\n', file: file),
-          throwsConfigException(message),
-        );
-      });
-    }
-
     test('resolves the output relative to the configuration file', () {
       final config = GeneratorConfig.parse(valid, file: file);
       expect(config.output, p.join('out', 'models.dart'));
     });
 
     // Description -> (configuration, the error it gives).
-    final invalidFiles = {
-      'invalid YAML': ('a: [', 'Invalid YAML'),
-      'a document that is not a map': ('- a', 'Expected a YAML map'),
+    final invalid = {
+      'invalid YAML': ('a: [', 'Expected node content'),
+      'a document that is not a map': ('- a', 'Not a map'),
+      'an unknown setting': ('${valid}type_prefx: DD\n', 'Unrecognized keys'),
+      'an unknown rum_events_format setting': (
+        valid.replaceFirst('  # The pinned commit.', '  branch: master'),
+        'Unrecognized keys: [branch]',
+      ),
+      'a missing rum_events_format': (
+        'root_schemas: [x]\noutput: y\n',
+        'Required keys are missing: rum_events_format.',
+      ),
       'a missing repository': (
         without('repository'),
-        '"rum_events_format.repository" must be a non-empty string',
+        'Required keys are missing: repository.',
       ),
       'a missing commit': (
         without('commit'),
-        '"rum_events_format.commit" must be a non-empty string',
+        'Required keys are missing: commit.',
       ),
       'missing root_schemas': (
         without(
           'root_schemas',
         ).replaceFirst('  - schemas/root-schema.json\n', ''),
-        '"root_schemas" must be a non-empty list of non-empty strings',
+        'Required keys are missing: root_schemas.',
       ),
       'empty root_schemas': (
         valid.replaceFirst(
           'root_schemas:\n  - schemas/root-schema.json',
           'root_schemas: []',
         ),
-        '"root_schemas" must be a non-empty list of non-empty strings',
+        '"root_schemas". Must not be empty.',
       ),
       'a root_schemas that is not a list': (
         valid.replaceFirst(
           'root_schemas:\n  - schemas/root-schema.json',
           'root_schemas: schemas/root-schema.json',
         ),
-        '"root_schemas" must be a list of non-empty strings',
-      ),
-      'a blank local_schemas': (
-        '$valid\nlocal_schemas: " "\n',
-        '"local_schemas" must be a non-empty string',
-      ),
-      'a local_schemas that does not exist': (
-        '$valid\nlocal_schemas: missing\n',
-        '"local_schemas" is not a directory',
+        'Unsupported value for "root_schemas"',
       ),
       'a missing output': (
         without('output'),
-        '"output" must be a non-empty string',
+        'Required keys are missing: output.',
       ),
       'a blank output': (
         valid.replaceFirst('output: ../out/models.dart', 'output: " "'),
-        '"output" must be a non-empty string',
+        '"output". Must not be blank.',
       ),
-      'a missing rum_events_format': (
-        'root_schemas: [x]\noutput: y\n',
-        '"rum_events_format" must be a map',
+      'a blank local_schemas': (
+        '${valid}local_schemas: " "\n',
+        '"local_schemas". Must not be blank.',
+      ),
+      'a local_schemas that does not exist': (
+        '${valid}local_schemas: missing\n',
+        '"local_schemas" is not a directory',
+      ),
+      'a blank type_prefix': (
+        '${valid}type_prefix: ""\n',
+        '"type_prefix". Must not be blank.',
+      ),
+      'a type_prefix that is not a string': (
+        '${valid}type_prefix: [SR]\n',
+        'Unsupported value for "type_prefix"',
+      ),
+      'a blank strip_from_titles prefix': (
+        '${valid}strip_from_titles: [Mobile, ""]\n',
+        '"strip_from_titles". Must not be blank.',
+      ),
+      'a blank type_renames name': (
+        '${valid}type_renames: {SRA: ""}\n',
+        '"type_renames". Must not be blank.',
+      ),
+      'type_renames that is not a map': (
+        '${valid}type_renames: [SRA]\n',
+        'Unsupported value for "type_renames"',
       ),
     };
     for (final MapEntry(key: description, value: (source, message))
-        in invalidFiles.entries) {
+        in invalid.entries) {
       test('fails on $description', () {
         expect(
           () => GeneratorConfig.parse(source, file: file),
@@ -174,7 +175,9 @@ type_renames:
             valid.replaceFirst(sha, commit),
             file: file,
           ),
-          throwsConfigException('full 40-character commit SHA'),
+          throwsConfigException(
+            '"commit". Must be a full 40-character commit SHA.',
+          ),
         );
       });
     }

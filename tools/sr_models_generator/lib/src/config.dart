@@ -4,178 +4,150 @@
 
 import 'dart:io';
 
+import 'package:checked_yaml/checked_yaml.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 import 'resolver.dart';
 import 'schema_source.dart';
 
+part 'config.g.dart';
+
 /// The generator configuration, read from `sr_models_generator.yaml`.
 @immutable
+@JsonSerializable(
+  anyMap: true,
+  checked: true,
+  createToJson: false,
+  disallowUnrecognizedKeys: true,
+  fieldRename: FieldRename.snake,
+)
 final class GeneratorConfig {
   GeneratorConfig({
-    required this.file,
-    required this.repository,
-    required this.commit,
+    required this.rumEventsFormat,
     required this.rootSchemas,
     required this.output,
     this.localSchemas,
-    this.naming = const NamingOptions(),
-  });
+    this.typePrefix,
+    this.stripFromTitles,
+    this.typeRenames,
+    this.file = '',
+  }) {
+    if (rootSchemas.isEmpty) {
+      throw ArgumentError.value(
+        rootSchemas,
+        'rootSchemas',
+        'Must not be empty.',
+      );
+    }
+    for (final schema in rootSchemas) {
+      schema.checkNotBlank('rootSchemas');
+    }
+    output.checkNotBlank('output');
+    localSchemas?.checkNotBlank('localSchemas');
+    typePrefix?.checkNotBlank('typePrefix');
+    for (final prefix in stripFromTitles ?? const <String>[]) {
+      prefix.checkNotBlank('stripFromTitles');
+    }
+    for (final MapEntry(:key, :value) in (typeRenames ?? const {}).entries) {
+      key.checkNotBlank('typeRenames');
+      value.checkNotBlank('typeRenames');
+    }
+  }
 
-  /// The folder under which the schemas of [localSchemas] appear to the
-  /// rum-events-format schemas, e.g. `flutter/enriched-record-schema.json`.
-  static const localSchemasFolder = 'flutter';
+  factory GeneratorConfig.fromJson(Map json) => _$GeneratorConfigFromJson(json);
 
   /// Reads and validates the configuration file at [path].
   factory GeneratorConfig.load(String path) {
     final file = File(path);
     if (!file.existsSync()) {
-      throw ConfigException('Configuration file not found', path);
+      throw ConfigException('Configuration file not found: $path');
     }
     return GeneratorConfig.parse(file.readAsStringSync(), file: path);
   }
 
   /// Parses [source], the contents of the configuration file at [file].
   ///
-  /// Relative paths in the configuration are resolved against the directory
-  /// of [file].
+  /// [output] and [localSchemas] are resolved against the directory of
+  /// [file].
   factory GeneratorConfig.parse(String source, {required String file}) {
-    final Object? yaml;
+    final GeneratorConfig config;
     try {
-      yaml = loadYaml(source);
-    } on YamlException catch (e) {
-      throw ConfigException('Invalid YAML: ${e.message}', file);
+      config = checkedYamlDecode(
+        source,
+        (map) => GeneratorConfig.fromJson(map!),
+        sourceUrl: Uri.file(file),
+      );
+    } on ParsedYamlException catch (e) {
+      throw ConfigException(e.formattedMessage ?? e.message);
     }
-    if (yaml is! YamlMap) {
-      throw ConfigException('Expected a YAML map', file);
+    String resolve(String path) => p.normalize(p.join(p.dirname(file), path));
+    final localSchemas = switch (config.localSchemas) {
+      final path? => resolve(path),
+      null => null,
+    };
+    if (localSchemas != null && !Directory(localSchemas).existsSync()) {
+      throw ConfigException(
+        '$file: "local_schemas" is not a directory: $localSchemas',
+      );
     }
-
-    String readString(YamlMap map, String key, String path) {
-      final value = map[key];
-      if (value is! String || value.trim().isEmpty) {
-        throw ConfigException('"$path" must be a non-empty string', file);
-      }
-      return value;
-    }
-
-    bool isNonEmptyString(Object? value) =>
-        value is String && value.trim().isNotEmpty;
-
-    List<String>? readStrings(YamlMap map, String key) {
-      final value = map[key];
-      if (value == null) return null;
-      if (value is! YamlList || !value.every(isNonEmptyString)) {
-        throw ConfigException(
-          '"$key" must be a list of non-empty strings',
-          file,
-        );
-      }
-      return value.whereType<String>().toList();
-    }
-
-    Map<String, String>? readRenames(YamlMap map) {
-      final value = map['type_renames'];
-      if (value == null) return null;
-      if (value is! YamlMap ||
-          !value.keys.every(isNonEmptyString) ||
-          !value.values.every(isNonEmptyString)) {
-        throw ConfigException(
-          '"type_renames" must map non-empty strings to non-empty strings',
-          file,
-        );
-      }
-      return {
-        for (final entry in value.entries)
-          if (entry case MapEntry(
-            key: final String from,
-            value: final String to,
-          ))
-            from: to,
-      };
-    }
-
-    final rumEventsFormat = yaml['rum_events_format'];
-    if (rumEventsFormat is! YamlMap) {
-      throw ConfigException('"rum_events_format" must be a map', file);
-    }
-    final commit = readString(
-      rumEventsFormat,
-      'commit',
-      'rum_events_format.commit',
-    );
-    commit.checkIsFullCommitSha(file: file);
-
     return GeneratorConfig(
       file: file,
-      repository: readString(
-        rumEventsFormat,
-        'repository',
-        'rum_events_format.repository',
-      ),
-      commit: commit,
-      rootSchemas: switch (readStrings(yaml, 'root_schemas')) {
-        final schemas? when schemas.isNotEmpty => schemas,
-        _ => throw ConfigException(
-          '"root_schemas" must be a non-empty list of non-empty strings',
-          file,
-        ),
-      },
-      localSchemas: switch (yaml['local_schemas']) {
-        null => null,
-        final String path when path.trim().isNotEmpty => _directory(
-          p.normalize(p.join(p.dirname(file), path)),
-          file,
-        ),
-        _ => throw ConfigException(
-          '"local_schemas" must be a non-empty string',
-          file,
-        ),
-      },
-      output: p.normalize(
-        p.join(p.dirname(file), readString(yaml, 'output', 'output')),
-      ),
-      naming: NamingOptions(
-        typePrefix: yaml.containsKey('type_prefix')
-            ? readString(yaml, 'type_prefix', 'type_prefix')
-            : const NamingOptions().typePrefix,
-        stripFromTitles:
-            readStrings(yaml, 'strip_from_titles') ??
-            const NamingOptions().stripFromTitles,
-        renames: readRenames(yaml) ?? const NamingOptions().renames,
-      ),
+      rumEventsFormat: config.rumEventsFormat,
+      rootSchemas: config.rootSchemas,
+      output: resolve(config.output),
+      localSchemas: localSchemas,
+      typePrefix: config.typePrefix,
+      stripFromTitles: config.stripFromTitles,
+      typeRenames: config.typeRenames,
     );
   }
 
-  /// Path of the configuration file this was read from.
+  /// The folder under which the schemas of [localSchemas] appear to the
+  /// rum-events-format schemas.
+  static const localSchemasFolder = 'flutter';
+
+  /// The configuration file's path; not a setting.
+  @JsonKey(includeFromJson: false)
   final String file;
 
-  /// Git URL of rum-events-format.
-  final String repository;
-
-  /// Full SHA of the pinned rum-events-format commit.
-  final String commit;
+  @JsonKey(required: true)
+  final RumEventsFormat rumEventsFormat;
 
   /// Entry points of the schemas, relative to the rum-events-format root;
   /// the schemas of [localSchemas] are under [localSchemasFolder].
+  @JsonKey(required: true)
   final List<String> rootSchemas;
 
-  /// The directory of the schemas kept in this repository, resolved
-  /// against the configuration's directory, if any.
+  /// Resolved against the configuration file's directory.
+  @JsonKey(required: true)
+  final String output;
+
+  /// Resolved against the configuration file's directory.
   final String? localSchemas;
+
+  final String? typePrefix;
+
+  final List<String>? stripFromTitles;
+
+  /// Generated name or schema location -> the name to use.
+  final Map<String, String>? typeRenames;
+
+  String get repository => rumEventsFormat.repository;
+
+  String get commit => rumEventsFormat.commit;
 
   /// The `mounts` of a `SchemaLoader` that makes [localSchemas] available.
   Map<String, String> get schemaMounts => {localSchemasFolder: ?localSchemas};
 
-  /// Path of the generated file, resolved against the configuration's
-  /// directory.
-  final String output;
-
-  /// How generated types are named; each setting defaults to
-  /// [NamingOptions]'s when the file does not set it.
-  final NamingOptions naming;
+  /// How generated types are named.
+  NamingOptions get naming => NamingOptions(
+    typePrefix: typePrefix ?? const NamingOptions().typePrefix,
+    stripFromTitles: stripFromTitles ?? const NamingOptions().stripFromTitles,
+    renames: typeRenames ?? const NamingOptions().renames,
+  );
 
   /// Browsable URL of the schemas at [commit], e.g.
   /// `https://github.com/DataDog/rum-events-format/tree/<commit>`.
@@ -195,30 +167,51 @@ final class GeneratorConfig {
     String sha, {
     required String file,
   }) {
-    sha.checkIsFullCommitSha(file: file);
-    return (YamlEditor(
+    final updated = (YamlEditor(
       source,
     )..update(['rum_events_format', 'commit'], sha)).toString();
+    // Parsed again, so that an invalid SHA fails like in the file.
+    GeneratorConfig.parse(updated, file: file);
+    return updated;
   }
 }
 
-/// [path], when it is an existing directory.
-String _directory(String path, String file) {
-  if (!Directory(path).existsSync()) {
-    throw ConfigException('"local_schemas" is not a directory: $path', file);
+/// The `rum_events_format` section: where the schemas come from.
+@immutable
+@JsonSerializable(
+  anyMap: true,
+  checked: true,
+  createToJson: false,
+  disallowUnrecognizedKeys: true,
+)
+final class RumEventsFormat {
+  RumEventsFormat({required this.repository, required this.commit}) {
+    repository.checkNotBlank('repository');
+    // The pin must be an exact commit, not a branch or tag that can move.
+    if (!isFullCommitSha(commit)) {
+      throw ArgumentError.value(
+        commit,
+        'commit',
+        'Must be a full 40-character commit SHA.',
+      );
+    }
   }
-  return path;
+
+  factory RumEventsFormat.fromJson(Map json) => _$RumEventsFormatFromJson(json);
+
+  /// Git URL of rum-events-format.
+  @JsonKey(required: true)
+  final String repository;
+
+  /// Full SHA of the pinned commit.
+  @JsonKey(required: true)
+  final String commit;
 }
 
 extension on String {
-  /// The pin must be an exact commit, not a branch or tag that can move.
-  void checkIsFullCommitSha({required String file}) {
-    if (!isFullCommitSha(this)) {
-      throw ConfigException(
-        '"rum_events_format.commit" must be a full 40-character commit SHA, '
-        'got "$this"',
-        file,
-      );
+  void checkNotBlank(String name) {
+    if (trim().isEmpty) {
+      throw ArgumentError.value(this, name, 'Must not be blank.');
     }
   }
 }
@@ -226,11 +219,10 @@ extension on String {
 /// The configuration file is missing or invalid.
 @immutable
 final class ConfigException implements Exception {
-  ConfigException(this.message, this.file);
+  ConfigException(this.message);
 
   final String message;
-  final String file;
 
   @override
-  String toString() => '$file: $message';
+  String toString() => message;
 }

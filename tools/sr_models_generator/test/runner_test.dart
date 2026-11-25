@@ -322,10 +322,7 @@ $extra''');
   // Problem -> (how to cause it, the error it gives).
   final failures = <String, (void Function(), String)>{
     'a missing configuration': (() {}, 'Configuration file not found'),
-    'an invalid configuration': (
-      () => writeConfig('- a'),
-      'Expected a YAML map',
-    ),
+    'an invalid configuration': (() => writeConfig('- a'), 'Not a map'),
     'a commit the repository does not have': (
       () => configure(pin: 'f' * 40),
       'Cannot get the schemas:',
