@@ -9,6 +9,7 @@ package com.datadoghq.flutter.sessionreplay
 import android.view.View
 import com.datadog.android.Datadog
 import com.datadog.android.api.feature.FeatureSdkCore
+import com.datadog.android.internal.rum.RumContext
 import com.datadoghq.flutter.sessionreplay.embedded.DefaultEmbeddedSessionReplay
 import com.datadoghq.flutter.sessionreplay.embedded.EmbeddedSessionReplay
 import com.datadoghq.flutter.sessionreplay.embedded.SegmentParser
@@ -46,6 +47,13 @@ internal class FlutterSessionReplayManager(
 ) {
     companion object {
         val shared = FlutterSessionReplayManager()
+
+        private val EMPTY_RUM_CONTEXT = FlutterSessionReplayBridge.RumContext(
+            applicationId = null,
+            sessionId = null,
+            viewId = null,
+            viewServerTimeOffset = null
+        )
     }
 
     private val lock = Any()
@@ -156,11 +164,12 @@ internal class FlutterSessionReplayManager(
      * Delivers a context update to every live engine. Snapshots the engines under [lock] first, so
      * one detaching mid-iteration cannot mutate the set underneath us, and so a Dart callback never
      * runs while the lock is held. Engines that already detached are simply absent, so this never
-     * calls into a destroyed Dart isolate.
+     * calls into a destroyed Dart isolate. A missing snapshot clears each engine's attribution.
      */
-    fun broadcastContext(context: FlutterSessionReplayBridge.RumContext?) {
+    fun broadcastContext(context: RumContext?) {
+        val replayContext = context?.let { toBridgeContext(it) } ?: EMPTY_RUM_CONTEXT
         val snapshot = synchronized(lock) { engines.toList() }
-        snapshot.forEach { it.receive(context) }
+        snapshot.forEach { it.receive(replayContext) }
     }
 
     /**
@@ -244,7 +253,7 @@ internal class FlutterSessionReplayManager(
      */
     fun primeContext(engine: FlutterSessionReplayBridge) {
         val context = feature?.readCurrentContext() ?: return
-        engine.receive(FlutterSessionReplayBridge.RumContext(context))
+        engine.receive(toBridgeContext(context))
     }
 
     // endregion
@@ -276,9 +285,7 @@ internal class FlutterSessionReplayManager(
 
         val newFeature = DefaultFlutterSessionReplayFeature(
             sdkCore = featureSdkCore,
-            onContextChanged = { context ->
-                broadcastContext(FlutterSessionReplayBridge.RumContext(context))
-            },
+            onContextChanged = { broadcastContext(it) },
             customEndpointUrl = customEndpointUrl,
             privacyLevels = privacyLevels,
             embeddedResourceSink = { identifier, data, mimeType ->
@@ -289,6 +296,14 @@ internal class FlutterSessionReplayManager(
         feature = newFeature
         newFeature
     }
+
+    private fun toBridgeContext(context: RumContext): FlutterSessionReplayBridge.RumContext =
+        FlutterSessionReplayBridge.RumContext(
+            applicationId = context.applicationId,
+            sessionId = context.sessionId,
+            viewId = context.viewId,
+            viewServerTimeOffset = context.viewTimestampOffset
+        )
 
     /**
      * The core to register against when the caller does not supply one — the current process-wide

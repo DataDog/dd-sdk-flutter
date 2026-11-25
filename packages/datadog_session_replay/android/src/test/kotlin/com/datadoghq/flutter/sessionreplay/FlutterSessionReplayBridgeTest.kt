@@ -15,6 +15,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import com.datadog.android.api.feature.FeatureSdkCore
+import com.datadog.android.internal.rum.RumContext
 import com.datadoghq.flutter.sessionreplay.feature.DefaultFlutterSessionReplayFeature
 import com.datadoghq.flutter.sessionreplay.resource.ResourceResolver
 import fr.xgouchet.elmyr.Forge
@@ -95,12 +96,12 @@ internal class FlutterSessionReplayBridgeTest {
         return checkNotNull(manager.slotId(messenger))
     }
 
-    private fun rumContext(viewId: String) = DefaultFlutterSessionReplayFeature.RumContext(
-        applicationId = "application-id",
-        sessionId = "session-id",
-        viewId = viewId,
-        viewServerTimeOffset = 0L
-    )
+    private fun rumContext(fakeViewId: String) = mockk<RumContext> {
+        every { applicationId } returns "application-id"
+        every { sessionId } returns "session-id"
+        every { viewId } returns fakeViewId
+        every { viewTimestampOffset } returns 0L
+    }
 
     // region Enabling
 
@@ -149,7 +150,7 @@ internal class FlutterSessionReplayBridgeTest {
         enable { receivedContext = it }
 
         // When - a later context change reaches the manager
-        manager.broadcastContext(FlutterSessionReplayBridge.RumContext(rumContext(viewId)))
+        manager.broadcastContext(rumContext(viewId))
 
         // Then
         assertThat(receivedContext?.viewId).isEqualTo(viewId)

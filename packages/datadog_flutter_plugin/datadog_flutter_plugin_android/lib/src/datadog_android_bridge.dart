@@ -2117,6 +2117,42 @@ extension DatadogSdkPlugin$Companion$$Methods on DatadogSdkPlugin$Companion {
       _id_get$coreContext.pointer,
     ).object<DatadogContext?>();
   }
+
+  static final _id_getRumSessionId = DatadogSdkPlugin$Companion._class
+      .instanceMethodId(
+        r'getRumSessionId',
+        r'(Lcom/datadog/android/api/context/DatadogContext;)Ljava/lang/String;',
+      );
+
+  static final _getRumSessionId =
+      jni$_.ProtectedJniExtensions.lookup<
+            jni$_.NativeFunction<
+              jni$_.JniResult Function(
+                jni$_.Pointer<jni$_.Void>,
+                jni$_.JMethodIDPtr,
+                jni$_.VarArgs<(jni$_.Pointer<jni$_.Void>,)>,
+              )
+            >
+          >('globalEnv_CallObjectMethod')
+          .asFunction<
+            jni$_.JniResult Function(
+              jni$_.Pointer<jni$_.Void>,
+              jni$_.JMethodIDPtr,
+              jni$_.Pointer<jni$_.Void>,
+            )
+          >();
+
+  /// from: `public fun getRumSessionId(context: com.datadog.android.api.context.DatadogContext): kotlin.String?`
+  /// The returned object must be released after use, by calling the [release] method.
+  jni$_.JString? getRumSessionId(DatadogContext datadogContext) {
+    final _$$selfRef = reference;
+    final _$datadogContext = datadogContext.reference;
+    return _getRumSessionId(
+      _$$selfRef.pointer,
+      _id_getRumSessionId.pointer,
+      _$datadogContext.pointer,
+    ).object<jni$_.JString?>();
+  }
 }
 
 final class $DatadogSdkPlugin$Companion$Type$
