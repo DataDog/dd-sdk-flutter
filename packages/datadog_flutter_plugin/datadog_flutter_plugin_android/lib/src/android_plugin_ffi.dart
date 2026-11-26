@@ -8,23 +8,20 @@ import 'package:datadog_flutter_plugin_platform_interface/datadog_internal.dart'
 import 'datadog_android_bridge.dart' as bridge;
 
 class AndroidDatadogFlutterPlugin {
-  static final JString _javaRumKey = 'rum'.toJString();
-  static final JString _javaSessionId = 'session_id'.toJString();
-
   static DatadogContext? getContext() {
     return using((arena) {
       final companion = bridge.DatadogSdkPlugin.Companion..releasedBy(arena);
       final javaContext = companion.coreContext?..releasedBy(arena);
       if (javaContext == null) return null;
 
-      final featuresContext = javaContext.featuresContext..releasedBy(arena);
-      final rumContext = featuresContext.get(_javaRumKey)?..releasedBy(arena);
-      final javaSessionId = rumContext?.get(_javaSessionId)?..releasedBy(arena);
+      final sessionId = companion
+          .getRumSessionId(javaContext)
+          ?.toDartString(releaseOriginal: true);
       final accountInfo = javaContext.accountInfo?..releasedBy(arena);
       final userInfo = javaContext.userInfo..releasedBy(arena);
 
       return DatadogContext(
-        sessionId: javaSessionId?.toString(),
+        sessionId: sessionId,
         accountId: accountInfo?.id.toDartString(releaseOriginal: true),
         userId: userInfo.id?.toDartString(releaseOriginal: true),
       );

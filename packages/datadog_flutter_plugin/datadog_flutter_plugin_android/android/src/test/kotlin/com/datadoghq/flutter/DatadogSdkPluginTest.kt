@@ -20,10 +20,14 @@ import com.datadog.android.Datadog
 import com.datadog.android.DatadogSite
 import com.datadog.android._InternalProxy
 import com.datadog.android.api.context.AccountInfo
+import com.datadog.android.api.context.DatadogContext
 import com.datadog.android.api.context.UserInfo
+import com.datadog.android.api.feature.Feature
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.BatchSize
 import com.datadog.android.core.configuration.UploadFrequency
+import com.datadog.android.internal.FeatureContextKeys
+import com.datadog.android.internal.rum.RumContext
 import com.datadog.android.privacy.TrackingConsent
 import fr.xgouchet.elmyr.Forge
 import fr.xgouchet.elmyr.annotation.StringForgery
@@ -83,6 +87,41 @@ class DatadogSdkPluginTest {
     @AfterEach
     fun afterEach() {
         Datadog.stopInstance()
+    }
+
+    @Test
+    fun `M return the typed RUM session ID W getRumSessionId`(
+        @StringForgery fakeSessionId: String
+    ) {
+        // Given
+        val rumContext = mockk<RumContext> {
+            every { sessionId } returns fakeSessionId
+        }
+        val context = mockk<DatadogContext> {
+            every { featuresContext } returns mapOf(
+                Feature.RUM_FEATURE_NAME to mapOf(FeatureContextKeys.RUM_CONTEXT to rumContext)
+            )
+        }
+
+        // When
+        val sessionId = DatadogSdkPlugin.getRumSessionId(context)
+
+        // Then
+        assertThat(sessionId).isEqualTo(fakeSessionId)
+    }
+
+    @Test
+    fun `M return null W getRumSessionId {no typed RUM context}`() {
+        // Given
+        val context = mockk<DatadogContext> {
+            every { featuresContext } returns emptyMap()
+        }
+
+        // When
+        val sessionId = DatadogSdkPlugin.getRumSessionId(context)
+
+        // Then
+        assertThat(sessionId).isNull()
     }
 
     @Test

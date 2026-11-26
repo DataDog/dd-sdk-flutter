@@ -49,14 +49,7 @@ internal class FlutterSessionReplayBridge private constructor(
         val sessionId: String?,
         val viewId: String?,
         val viewServerTimeOffset: Long?
-    ) {
-        constructor(context: DefaultFlutterSessionReplayFeature.RumContext) : this(
-            applicationId = context.applicationId,
-            sessionId = context.sessionId,
-            viewId = context.viewId,
-            viewServerTimeOffset = context.viewServerTimeOffset
-        )
-    }
+    )
 
     interface ContextListener {
         fun onContextChanged(context: RumContext)

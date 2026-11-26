@@ -84,6 +84,7 @@ kotlin {
 
 dependencies {
     implementation "com.datadoghq:dd-sdk-android-rum:$datadog_version"
+    implementation "com.datadoghq:dd-sdk-android-internal:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-logs:$datadog_version"
     implementation "com.datadoghq:dd-sdk-android-ndk:$datadog_version"
 

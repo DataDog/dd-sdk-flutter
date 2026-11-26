@@ -14,6 +14,7 @@ import com.datadog.android.api.feature.Feature
 import com.datadog.android.core.InternalSdkCore
 import com.datadog.android.core.configuration.BatchProcessingLevel
 import com.datadog.android.core.configuration.Configuration
+import com.datadog.android.internal.rum.rumContext
 import com.datadog.android.log.Logs
 import com.datadog.android.ndk.NdkCrashReports
 import com.datadog.android.privacy.TrackingConsent
@@ -46,6 +47,9 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
             val sdkCore = Datadog.getInstance() as? InternalSdkCore
             return sdkCore?.getDatadogContext(setOf(Feature.RUM_FEATURE_NAME))
         }
+
+        fun getRumSessionId(context: DatadogContext): String? =
+            context.featuresContext[Feature.RUM_FEATURE_NAME]?.rumContext()?.sessionId
     }
 
     data class ConfigurationTelemetryOverrides(
