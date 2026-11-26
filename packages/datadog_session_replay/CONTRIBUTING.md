@@ -75,8 +75,10 @@ flutter test golden_test --update-goldens
 [`tools/sr_models_generator`](../../tools/sr_models_generator) from the
 [rum-events-format](https://github.com/DataDog/rum-events-format) schemas, at
 the commit pinned in `tools/sr_models_generator/sr_models_generator.yaml`, and
-its JSON code, `sr_data_models.g.dart`, by `json_serializable`. Do not edit
-them by hand: change the schemas or the generator's configuration, and
+its JSON code, `sr_data_models.g.dart`, by `json_serializable`. The
+generator also writes the official samples of rum-events-format, which the
+tests of the models decode, to `test/generated/sr_samples.dart`. Do not edit
+these files by hand: change the schemas or the generator's configuration, and
 regenerate them.
 
 ```bash
@@ -93,11 +95,9 @@ melos run generate:sr_models:check   # fail if they are not up to date, as CI do
    build --delete-conflicting-outputs` in this package. The commit is pinned
    only once the models of its schemas are generated. A rename in
    `type_renames` that matches no type fails here: update it.
-2. Review the diff of the generated models: new types and fields, and changed
-   names.
-3. Run `flutter test test/generated` in this package. It decodes the official
-   samples, copied in `test/generated/sr_samples.dart`, and the smallest JSON
-   of each union variant. When the schemas change, copy the new samples of
-   rum-events-format's `samples/session-replay/mobile`, and update the
-   variants and the keys the samples drop.
-4. Commit the configuration and the generated models together.
+2. Review the diff of the generated models and samples: new types and fields,
+   and changed names.
+3. Run `flutter test test/generated` in this package. It decodes the samples
+   and the smallest JSON of each union variant. When the schemas change,
+   update the variants and the keys the samples drop.
+4. Commit the configuration, the generated models and the samples together.

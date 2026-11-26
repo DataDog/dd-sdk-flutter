@@ -17,6 +17,7 @@ GeneratorConfig _$GeneratorConfigFromJson(Map json) => $checkedCreate(
         'root_schemas',
         'output',
         'local_schemas',
+        'samples',
         'type_prefix',
         'strip_from_titles',
         'type_renames',
@@ -34,6 +35,10 @@ GeneratorConfig _$GeneratorConfigFromJson(Map json) => $checkedCreate(
       ),
       output: $checkedConvert('output', (v) => v as String),
       localSchemas: $checkedConvert('local_schemas', (v) => v as String?),
+      samples: $checkedConvert(
+        'samples',
+        (v) => v == null ? null : Samples.fromJson(v as Map),
+      ),
       typePrefix: $checkedConvert('type_prefix', (v) => v as String?),
       stripFromTitles: $checkedConvert(
         'strip_from_titles',
@@ -66,6 +71,20 @@ RumEventsFormat _$RumEventsFormatFromJson(Map json) =>
       final val = RumEventsFormat(
         repository: $checkedConvert('repository', (v) => v as String),
         commit: $checkedConvert('commit', (v) => v as String),
+      );
+      return val;
+    });
+
+Samples _$SamplesFromJson(Map json) =>
+    $checkedCreate('Samples', json, ($checkedConvert) {
+      $checkKeys(
+        json,
+        allowedKeys: const ['directory', 'output'],
+        requiredKeys: const ['directory', 'output'],
+      );
+      final val = Samples(
+        directory: $checkedConvert('directory', (v) => v as String),
+        output: $checkedConvert('output', (v) => v as String),
       );
       return val;
     });

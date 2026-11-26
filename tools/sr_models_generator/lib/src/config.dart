@@ -30,6 +30,7 @@ final class GeneratorConfig {
     required this.rootSchemas,
     required this.output,
     this.localSchemas,
+    this.samples,
     this.typePrefix,
     this.stripFromTitles,
     this.typeRenames,
@@ -70,8 +71,8 @@ final class GeneratorConfig {
 
   /// Parses [source], the contents of the configuration file at [file].
   ///
-  /// [output] and [localSchemas] are resolved against the directory of
-  /// [file].
+  /// [output], [localSchemas] and the samples' output are resolved against
+  /// the directory of [file].
   factory GeneratorConfig.parse(String source, {required String file}) {
     final GeneratorConfig config;
     try {
@@ -99,6 +100,13 @@ final class GeneratorConfig {
       rootSchemas: config.rootSchemas,
       output: resolve(config.output),
       localSchemas: localSchemas,
+      samples: switch (config.samples) {
+        final samples? => Samples(
+          directory: samples.directory,
+          output: resolve(samples.output),
+        ),
+        null => null,
+      },
       typePrefix: config.typePrefix,
       stripFromTitles: config.stripFromTitles,
       typeRenames: config.typeRenames,
@@ -127,6 +135,8 @@ final class GeneratorConfig {
 
   /// Resolved against the configuration file's directory.
   final String? localSchemas;
+
+  final Samples? samples;
 
   final String? typePrefix;
 
@@ -206,6 +216,32 @@ final class RumEventsFormat {
   /// Full SHA of the pinned commit.
   @JsonKey(required: true)
   final String commit;
+}
+
+/// The `samples` section: the rum-events-format samples written as Dart
+/// constants, for the tests of the generated models.
+@immutable
+@JsonSerializable(
+  anyMap: true,
+  checked: true,
+  createToJson: false,
+  disallowUnrecognizedKeys: true,
+)
+final class Samples {
+  Samples({required this.directory, required this.output}) {
+    directory.checkNotBlank('directory');
+    output.checkNotBlank('output');
+  }
+
+  factory Samples.fromJson(Map json) => _$SamplesFromJson(json);
+
+  /// The folder of the samples, relative to the rum-events-format root.
+  @JsonKey(required: true)
+  final String directory;
+
+  /// Resolved against the configuration file's directory.
+  @JsonKey(required: true)
+  final String output;
 }
 
 extension on String {

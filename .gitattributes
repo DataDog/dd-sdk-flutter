@@ -2,3 +2,4 @@
 # json_serializable; review the generator and its configuration instead.
 # GitHub collapses them in diffs.
 packages/datadog_session_replay/lib/src/generated/*.dart linguist-generated=true
+packages/datadog_session_replay/test/generated/sr_samples.dart linguist-generated=true

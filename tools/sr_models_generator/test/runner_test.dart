@@ -90,6 +90,15 @@ $extra''');
     File(
       p.join(repository, 'schemas', 'bad-schema.json'),
     ).writeAsStringSync('{"title": "Bad", "type": "object", "anyOf": []}');
+    for (final (path, json) in [
+      ('a.json', '{"id": 1}\n'),
+      ('sub/b.json', '{"id": 2}\n'),
+      ('quote.json', '{"text": "\'\'\'"}\n'),
+    ]) {
+      File(p.join(repository, 'samples', path))
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(json);
+    }
     gitInit(repository);
     git(repository, ['config', 'uploadpack.allowAnySHA1InWant', 'true']);
     git(repository, ['add', '.']);
@@ -302,6 +311,67 @@ $extra''');
       expect(await run(ref: 'no-such-branch'), 1);
       expect(err.toString(), contains('Cannot get the schemas:'));
       expect(pinned(), commit);
+    });
+  });
+
+  group('samples', () {
+    const section =
+        'samples:\n  directory: samples\n  output: out/samples.dart\n';
+    late String path;
+
+    String samples() => File(path).readAsStringSync();
+
+    setUp(() {
+      configure(extra: section);
+      path = p.join(package, 'out', 'samples.dart');
+    });
+
+    test('are written as Dart constants, by path', () async {
+      expect(await run(), 0, reason: '$err');
+      expect(samples(), contains("  'a.json': r'''\n{\"id\": 1}\n''',"));
+      expect(samples(), contains("  'sub/b.json': r'''\n{\"id\": 2}\n''',"));
+      expect(
+        out.toString(),
+        contains('Wrote 3 samples to ${p.relative(path)}, from '),
+      );
+    });
+
+    test('with three quotes are written as plain strings', () async {
+      await run();
+      expect(
+        samples(),
+        contains("  'quote.json': ${dartString('{"text": "\'\'\'"}')},"),
+      );
+    });
+
+    test('name the commit and folder they come from', () async {
+      await run();
+      expect(samples(), contains('/tree/$commit/samples\n'));
+      expect(samples(), contains('// GENERATED CODE - DO NOT MODIFY BY HAND.'));
+    });
+
+    test('fail the check when they are not up to date', () async {
+      await run();
+      File(
+        path,
+      ).writeAsStringSync(samples().replaceFirst('"id": 1', '"id": 9'));
+      out.clear();
+
+      expect(await run(check: true), 1);
+      expect(
+        err.toString(),
+        startsWith('${p.relative(path)} is not up to date with'),
+      );
+    });
+
+    test('fail when the commit does not have their folder', () async {
+      configure(
+        extra: section.replaceFirst('directory: samples', 'directory: missing'),
+      );
+
+      expect(await run(), 1);
+      expect(err.toString(), contains('The samples directory does not exist'));
+      expect(File(p.join(package, 'out', 'models.dart')).existsSync(), isFalse);
     });
   });
 

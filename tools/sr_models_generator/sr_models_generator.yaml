@@ -20,6 +20,14 @@ local_schemas: schemas
 # Generated file, relative to this directory.
 output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart
 
+# The official samples, written as Dart constants for the tests of the
+# generated models.
+samples:
+  # Relative to the rum-events-format repository root.
+  directory: samples/session-replay/mobile
+  # Generated file, relative to this directory.
+  output: ../../packages/datadog_session_replay/test/generated/sr_samples.dart
+
 # Generated type names: `type_prefix` + the schema title without the first
 # prefix of `strip_from_titles` it starts with (`MobileSegment` -> `SRSegment`).
 type_prefix: SR

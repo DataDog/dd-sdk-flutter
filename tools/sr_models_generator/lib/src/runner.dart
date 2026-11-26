@@ -24,7 +24,8 @@ typedef GeneratorOptions = ({bool check, String? ref});
 /// as [options] say, and returns the exit code.
 ///
 /// The pinned rum-events-format commit is checked out in [directory]'s
-/// `.tmp/`, and the generated models are written to the configured output.
+/// `.tmp/`, and the generated models, and the samples if configured, are
+/// written to the configured outputs.
 /// With `ref`, its commit is pinned once the models of its schemas are
 /// generated.
 Future<int> runGenerator(
@@ -58,10 +59,26 @@ Future<int> runGenerator(
       schemasRoot: checkout.directory,
       source: config.sourceUrl(checkout.commit),
     );
+    final samples = switch (config.samples) {
+      final samples? => (
+        await generateSamples(
+          p.join(checkout.directory, samples.directory),
+          destination: samples.output,
+          source: '${config.sourceUrl(checkout.commit)}/${samples.directory}',
+        ),
+        File(samples.output),
+      ),
+      null => null,
+    };
     final output = File(config.output);
     final schemas = 'rum-events-format ${checkout.commit.substring(0, 7)}';
     if (check) {
-      return _check(output, library.code, schemas, out: out, err: err);
+      final results = [
+        _check(output, library.code, schemas, out: out, err: err),
+        if (samples case (final generated, final file))
+          _check(file, generated.code, schemas, out: out, err: err),
+      ];
+      return results.every((result) => result == 0) ? 0 : 1;
     }
     if (ref != null) {
       // Only now that the models of the new schemas are generated.
@@ -81,6 +98,15 @@ Future<int> runGenerator(
       'Wrote ${library.definitions.length} types to '
       '${p.relative(config.output)}, from $schemas.',
     );
+    if (samples case (final generated, final file)) {
+      file
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(generated.code);
+      out.writeln(
+        'Wrote ${generated.count} samples to ${p.relative(file.path)}, '
+        'from $schemas.',
+      );
+    }
     return 0;
   } on ConfigException catch (e) {
     err.writeln(e);

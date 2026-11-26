@@ -80,6 +80,19 @@ type_renames:
       expect(config.output, p.join('out', 'models.dart'));
     });
 
+    test('reads the samples, resolving their output against the file', () {
+      final config = GeneratorConfig.parse(
+        '${valid}samples:\n  directory: samples/mobile\n  output: gen.dart\n',
+        file: file,
+      );
+      expect(config.samples?.directory, 'samples/mobile');
+      expect(config.samples?.output, p.join('config', 'gen.dart'));
+    });
+
+    test('has no samples when the file does not set them', () {
+      expect(GeneratorConfig.parse(valid, file: file).samples, isNull);
+    });
+
     // Description -> (configuration, the error it gives).
     final invalid = {
       'invalid YAML': ('a: [', 'Expected node content'),
@@ -152,6 +165,18 @@ type_renames:
       'a blank type_renames name': (
         '${valid}type_renames: {SRA: ""}\n',
         '"type_renames". Must not be blank.',
+      ),
+      'samples without an output': (
+        '${valid}samples:\n  directory: samples\n',
+        'Required keys are missing: output.',
+      ),
+      'an unknown samples setting': (
+        '${valid}samples:\n  directory: a\n  output: b\n  files: c\n',
+        'Unrecognized keys: [files]',
+      ),
+      'a blank samples directory': (
+        '${valid}samples:\n  directory: " "\n  output: b\n',
+        '"directory". Must not be blank.',
       ),
       'type_renames that is not a map': (
         '${valid}type_renames: [SRA]\n',
@@ -285,6 +310,16 @@ type_renames:
         p.join(
           root,
           '../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart',
+        ),
+      ),
+    );
+    expect(config.samples?.directory, 'samples/session-replay/mobile');
+    expect(
+      config.samples?.output,
+      p.normalize(
+        p.join(
+          root,
+          '../../packages/datadog_session_replay/test/generated/sr_samples.dart',
         ),
       ),
     );
