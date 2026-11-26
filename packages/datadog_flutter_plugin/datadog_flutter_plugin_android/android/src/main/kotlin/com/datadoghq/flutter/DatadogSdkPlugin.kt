@@ -43,10 +43,17 @@ class DatadogSdkPlugin : FlutterPlugin, MethodCallHandler {
         // from the plugin to warn about reinitialization.
         var previousConfiguration: Map<String, Any?>? = null
 
-        fun getCoreContext(): DatadogContext? {
+        private val coreContextReader = CoreContextReader {
             val sdkCore = Datadog.getInstance() as? InternalSdkCore
-            return sdkCore?.getDatadogContext(setOf(Feature.RUM_FEATURE_NAME))
+            sdkCore?.getDatadogContext(setOf(Feature.RUM_FEATURE_NAME))
         }
+
+        /**
+         * Returns the current Datadog context, waiting at most
+         * [CoreContextReader.DEFAULT_TIMEOUT_MS] for it. Called on the Flutter UI thread, so the
+         * wait is bounded. See [CoreContextReader].
+         */
+        fun getCoreContext(): DatadogContext? = coreContextReader.read()
 
         fun getRumSessionId(context: DatadogContext): String? =
             context.featuresContext[Feature.RUM_FEATURE_NAME]?.rumContext()?.sessionId
