@@ -10,9 +10,15 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThan
 import assertk.assertions.isNull
 import assertk.assertions.isSameAs
+import com.datadog.android.DatadogSite
+import com.datadog.android.api.context.AccountInfo
 import com.datadog.android.api.context.DatadogContext
+import com.datadog.android.api.context.UserInfo
+import com.datadog.android.api.feature.Feature
+import com.datadog.android.privacy.TrackingConsent
 import io.mockk.mockk
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
@@ -26,17 +32,27 @@ class CoreContextReaderTest {
     // Holds a read open until the test releases it, standing in for a backed-up context thread.
     private val releaseRead = CountDownLatch(1)
 
+    // Stands in for the context with user and account removed.
+    private val contextWithoutIdentity = mockk<DatadogContext>()
+    private val withoutIdentity: (DatadogContext) -> DatadogContext = { contextWithoutIdentity }
+
     @AfterEach
     fun afterEach() {
         releaseRead.countDown()
         executor.shutdownNow()
     }
 
+    private fun reader(
+        timeoutMs: Long,
+        executor: Executor = this.executor,
+        readContext: () -> DatadogContext?
+    ) = CoreContextReader(timeoutMs, executor, withoutIdentity, readContext)
+
     @Test
-    fun `M return the context W read() {read finishes in time}`() {
+    fun `M return the full context W read() {read finishes in time}`() {
         // Given
         val context = mockk<DatadogContext>()
-        val reader = CoreContextReader(timeoutMs = 1_000, executor = executor) { context }
+        val reader = reader(timeoutMs = 1_000) { context }
 
         // When
         val result = reader.read()
@@ -48,7 +64,7 @@ class CoreContextReaderTest {
     @Test
     fun `M return null within the timeout W read() {read blocked, no earlier context}`() {
         // Given
-        val reader = CoreContextReader(timeoutMs = 50, executor = executor) {
+        val reader = reader(timeoutMs = 50) {
             releaseRead.await()
             mockk<DatadogContext>()
         }
@@ -64,13 +80,12 @@ class CoreContextReaderTest {
     }
 
     @Test
-    fun `M return the last known context W read() {later read blocked}`() {
+    fun `M return the earlier context without identity W read() {later read blocked}`() {
         // Given
-        val firstContext = mockk<DatadogContext>()
         val calls = AtomicInteger(0)
-        val reader = CoreContextReader(timeoutMs = 50, executor = executor) {
+        val reader = reader(timeoutMs = 50) {
             if (calls.getAndIncrement() == 0) {
-                firstContext
+                mockk<DatadogContext>()
             } else {
                 releaseRead.await()
                 mockk<DatadogContext>()
@@ -82,34 +97,16 @@ class CoreContextReaderTest {
         val result = reader.read()
 
         // Then
-        assertThat(result).isSameAs(firstContext)
+        assertThat(result).isSameAs(contextWithoutIdentity)
     }
 
     @Test
-    fun `M start one read W read() called repeatedly {read blocked}`() {
+    fun `M return without waiting W read() {earlier read still in progress}`() {
         // Given
         val calls = AtomicInteger(0)
-        val reader = CoreContextReader(timeoutMs = 10, executor = executor) {
-            calls.incrementAndGet()
-            releaseRead.await()
-            mockk<DatadogContext>()
-        }
-
-        // When
-        repeat(5) { reader.read() }
-
-        // Then
-        assertThat(calls.get()).isEqualTo(1)
-    }
-
-    @Test
-    fun `M return without waiting W read() {earlier read timed out, still blocked}`() {
-        // Given
-        val earlierContext = mockk<DatadogContext>()
-        val calls = AtomicInteger(0)
-        val reader = CoreContextReader(timeoutMs = 300, executor = executor) {
+        val reader = reader(timeoutMs = 300) {
             if (calls.getAndIncrement() == 0) {
-                earlierContext
+                mockk<DatadogContext>()
             } else {
                 releaseRead.await()
                 mockk<DatadogContext>()
@@ -124,15 +121,32 @@ class CoreContextReaderTest {
         val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs)
 
         // Then
-        assertThat(result).isSameAs(earlierContext)
+        assertThat(result).isSameAs(contextWithoutIdentity)
         assertThat(elapsedMs).isLessThan(150)
     }
 
     @Test
-    fun `M return the fresh context W read() {blocked read finished}`() {
+    fun `M start one read W read() called repeatedly {read blocked}`() {
+        // Given
+        val calls = AtomicInteger(0)
+        val reader = reader(timeoutMs = 10) {
+            calls.incrementAndGet()
+            releaseRead.await()
+            mockk<DatadogContext>()
+        }
+
+        // When
+        repeat(5) { reader.read() }
+
+        // Then
+        assertThat(calls.get()).isEqualTo(1)
+    }
+
+    @Test
+    fun `M return the full context W read() {blocked read finished}`() {
         // Given
         val context = mockk<DatadogContext>()
-        val reader = CoreContextReader(timeoutMs = 10, executor = executor) {
+        val reader = reader(timeoutMs = 50) {
             releaseRead.await()
             context
         }
@@ -152,12 +166,11 @@ class CoreContextReaderTest {
     }
 
     @Test
-    fun `M return the last known context W read() {read throws}`() {
+    fun `M return the earlier context without identity W read() {read throws}`() {
         // Given
-        val firstContext = mockk<DatadogContext>()
         val calls = AtomicInteger(0)
-        val reader = CoreContextReader(timeoutMs = 1_000, executor = executor) {
-            if (calls.getAndIncrement() == 0) firstContext else error("read failed")
+        val reader = reader(timeoutMs = 1_000) {
+            if (calls.getAndIncrement() == 0) mockk<DatadogContext>() else error("read failed")
         }
         reader.read()
 
@@ -165,14 +178,14 @@ class CoreContextReaderTest {
         val result = reader.read()
 
         // Then
-        assertThat(result).isSameAs(firstContext)
+        assertThat(result).isSameAs(contextWithoutIdentity)
     }
 
     @Test
-    fun `M forget the last known context W read() {SDK returns no context}`() {
+    fun `M forget the earlier context W read() {SDK returns no context}`() {
         // Given
         val calls = AtomicInteger(0)
-        val reader = CoreContextReader(timeoutMs = 1_000, executor = executor) {
+        val reader = reader(timeoutMs = 1_000) {
             if (calls.getAndIncrement() == 0) mockk<DatadogContext>() else null
         }
         reader.read()
@@ -185,17 +198,16 @@ class CoreContextReaderTest {
     }
 
     @Test
-    fun `M return the last known context W read() {executor rejects the read}`() {
+    fun `M return the earlier context without identity W read() {executor rejects the read}`() {
         // Given
-        val context = mockk<DatadogContext>()
         var reject = false
-        val reader = CoreContextReader(
+        val reader = reader(
             timeoutMs = 1_000,
             executor = { runnable ->
                 if (reject) throw RejectedExecutionException()
                 runnable.run()
             }
-        ) { context }
+        ) { mockk<DatadogContext>() }
         reader.read()
         reject = true
 
@@ -203,6 +215,41 @@ class CoreContextReaderTest {
         val result = reader.read()
 
         // Then
-        assertThat(result).isSameAs(context)
+        assertThat(result).isSameAs(contextWithoutIdentity)
+    }
+
+    @Test
+    fun `M keep the RUM context and remove user and account W removeUserAndAccount()`() {
+        // Given
+        val rumContext = mapOf<String, Any?>("session_id" to "fake-session-id")
+        val context = DatadogContext(
+            site = DatadogSite.US1,
+            clientToken = "fake-token",
+            service = "fake-service",
+            env = "fake-env",
+            version = "1.0.0",
+            versionCode = 1,
+            variant = "",
+            source = "flutter",
+            sdkVersion = "1.0.0",
+            time = mockk(),
+            processInfo = mockk(),
+            networkInfo = mockk(),
+            deviceInfo = mockk(),
+            userInfo = UserInfo(id = "fake-user-id"),
+            accountInfo = AccountInfo(id = "fake-account-id"),
+            trackingConsent = TrackingConsent.GRANTED,
+            appBuildId = null,
+            remoteConfigurationId = null,
+            featuresContext = mapOf(Feature.RUM_FEATURE_NAME to rumContext)
+        )
+
+        // When
+        val result = CoreContextReader.removeUserAndAccount(context)
+
+        // Then
+        assertThat(result.userInfo.id).isNull()
+        assertThat(result.accountInfo).isNull()
+        assertThat(result.featuresContext).isEqualTo(context.featuresContext)
     }
 }

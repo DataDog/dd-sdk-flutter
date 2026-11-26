@@ -6,6 +6,7 @@
 package com.datadoghq.flutter
 
 import com.datadog.android.api.context.DatadogContext
+import com.datadog.android.api.context.UserInfo
 import java.util.concurrent.Callable
 import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutionException
@@ -24,16 +25,21 @@ import java.util.concurrent.atomic.AtomicReference
  * The SDK's context read waits for the SDK's single context thread, which also processes
  * RUM events in order. When that thread is backed up, an unbounded wait from the UI thread
  * can exceed the ANR threshold. This reader runs the read on a background thread and waits
- * at most [timeoutMs] for it. If the read has not finished by then, it returns the last
- * context it read, or `null` if no read has finished yet.
+ * at most [timeoutMs] for it.
  *
- * Only one read runs at a time. Callers that arrive while a read is in progress wait on
- * that same read. Once a read has timed out, later callers return the last known context
- * without waiting until that read finishes, so a stalled read costs at most one wait.
+ * A caller gets the full context only from a read it started and that finished in time.
+ * Otherwise it gets the last context read, without user and account information, or `null`
+ * if no read has finished yet. User and account changes are applied on the same context
+ * thread, so an earlier context may still hold a user or account that has since been
+ * cleared.
+ *
+ * Only one read runs at a time. A caller that arrives while a read is in progress gets the
+ * fallback without waiting.
  */
 internal class CoreContextReader(
     private val timeoutMs: Long = DEFAULT_TIMEOUT_MS,
     private val executor: Executor = createReaderExecutor(),
+    private val withoutIdentity: (DatadogContext) -> DatadogContext = ::removeUserAndAccount,
     private val readContext: () -> DatadogContext?
 ) {
     private val inFlightRead = AtomicReference<FutureTask<DatadogContext?>?>(null)
@@ -41,50 +47,44 @@ internal class CoreContextReader(
     @Volatile
     private var lastKnownContext: DatadogContext? = null
 
-    @Volatile
-    private var timedOutRead: FutureTask<DatadogContext?>? = null
-
     // Any failure to get a fresh context falls back to the last known one.
     @Suppress("SwallowedException")
     fun read(): DatadogContext? {
-        val pendingRead = currentOrNewRead() ?: return lastKnownContext
-        if (pendingRead === timedOutRead) return lastKnownContext
+        val newRead = startReadIfIdle() ?: return fallbackContext()
         return try {
-            pendingRead.get(timeoutMs, TimeUnit.MILLISECONDS)
+            newRead.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (e: TimeoutException) {
-            timedOutRead = pendingRead
-            lastKnownContext
+            fallbackContext()
         } catch (e: ExecutionException) {
-            lastKnownContext
+            fallbackContext()
         } catch (e: CancellationException) {
-            lastKnownContext
+            fallbackContext()
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
-            lastKnownContext
+            fallbackContext()
         }
     }
 
-    // A rejected read is reported as `null`, so the caller falls back to the last known context.
-    @Suppress("SwallowedException")
-    private fun currentOrNewRead(): FutureTask<DatadogContext?>? {
-        while (true) {
-            val existing = inFlightRead.get()
-            if (existing != null && !existing.isDone) return existing
+    private fun fallbackContext(): DatadogContext? = lastKnownContext?.let(withoutIdentity)
 
-            val newRead = FutureTask(
-                Callable {
-                    readContext().also { lastKnownContext = it }
-                }
-            )
-            if (inFlightRead.compareAndSet(existing, newRead)) {
-                return try {
-                    executor.execute(newRead)
-                    newRead
-                } catch (e: RejectedExecutionException) {
-                    inFlightRead.compareAndSet(newRead, null)
-                    null
-                }
+    // Returns the started read, or `null` if a read is already in progress or was rejected.
+    @Suppress("SwallowedException")
+    private fun startReadIfIdle(): FutureTask<DatadogContext?>? {
+        val existing = inFlightRead.get()
+        if (existing != null && !existing.isDone) return null
+
+        val newRead = FutureTask(
+            Callable {
+                readContext().also { lastKnownContext = it }
             }
+        )
+        if (!inFlightRead.compareAndSet(existing, newRead)) return null
+        return try {
+            executor.execute(newRead)
+            newRead
+        } catch (e: RejectedExecutionException) {
+            inFlightRead.compareAndSet(newRead, null)
+            null
         }
     }
 
@@ -92,6 +92,9 @@ internal class CoreContextReader(
         internal const val DEFAULT_TIMEOUT_MS = 100L
         private const val THREAD_NAME = "datadog-flutter-context-reader"
         private const val KEEP_ALIVE_SECONDS = 30L
+
+        internal fun removeUserAndAccount(context: DatadogContext): DatadogContext =
+            context.copy(userInfo = UserInfo(), accountInfo = null)
 
         private fun createReaderExecutor(): Executor = ThreadPoolExecutor(
             1,
