@@ -1,0 +1,17 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "$ref": "#/definitions/a"
+    }
+  },
+  "definitions": {
+    "a": {
+      "$ref": "#/definitions/b"
+    },
+    "b": {
+      "$ref": "#/definitions/a"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+# Configuration of the Session Replay models generator.
+#
+# This file is the only reference this repository keeps to rum-events-format:
+# the schemas are fetched at `commit` when generating, and are never committed.
+
+rum_events_format:
+  repository: https://github.com/DataDog/rum-events-format.git
+  # Full SHA of the rum-events-format commit the models are generated from.
+  commit: 748d7fe6d0e36624b7ea64e26731e43e347637b5
+
+# Entry points of the schemas, relative to the rum-events-format repository
+# root. The schemas of `local_schemas` (a folder of this repository, relative
+# to this directory) appear under `flutter/`.
+root_schemas:
+  - schemas/session-replay-mobile-schema.json
+  # The records as the plugin hands them to its iOS and Android code.
+  - flutter/enriched-record-schema.json
+local_schemas: schemas
+
+# Generated file, relative to this directory.
+output: ../../packages/datadog_session_replay/lib/src/generated/sr_data_models.dart
+
+# The official samples, written as Dart constants for the tests of the
+# generated models.
+samples:
+  # Relative to the rum-events-format repository root.
+  directory: samples/session-replay/mobile
+  # Generated file, relative to this directory.
+  output: ../../packages/datadog_session_replay/test/generated/sr_samples.dart
+
+# Generated type names: `type_prefix` + the schema title without the first
+# prefix of `strip_from_titles` it starts with (`MobileSegment` -> `SRSegment`).
+type_prefix: SR
+strip_from_titles:
+  - Mobile
+
+# Generated name, or schema location (`file#pointer`) -> the name to use.
+# These keep the names of the hand-written Flutter models. An inline type is
+# named after its owner's final name, so `SRAlignment`'s enums start as
+# `SRAlignmentHorizontal`, not `SRTextPositionAlignmentHorizontal`.
+type_renames:
+  SRWireframeClip: SRContentClip
+  SRTextPositionAlignment: SRAlignment
+  SRAlignmentHorizontal: SRHorizontalAlignment
+  SRAlignmentVertical: SRVerticalAlignment
+  SRTextPositionPadding: SRPadding
+  SRPointerInteractionDataPointerEventType: SRPointerEventType
+  SRPointerInteractionDataPointerType: SRPointerType
+  SRIncrementalData: SRIncrementalSnapshotData
+  SRMutationData: SRIncrementalMutationData
+  SRIncrementalMutationDataAdds: SRIncrementalAdd
+  SRIncrementalMutationDataRemoves: SRIncrementalRemove
+  SRWireframeUpdateMutation: SRIncrementalUpdate

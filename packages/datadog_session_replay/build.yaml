@@ -7,3 +7,4 @@ targets:
       json_serializable:
         generate_for:
           - lib/src/sr_data_models.dart
+          - lib/src/generated/sr_data_models.dart

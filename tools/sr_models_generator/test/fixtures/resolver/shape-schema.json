@@ -1,0 +1,5 @@
+{
+  "title": "MobileShape",
+  "description": "A shape.",
+  "oneOf": [{ "$ref": "circle-schema.json" }, { "$ref": "square-schema.json" }]
+}

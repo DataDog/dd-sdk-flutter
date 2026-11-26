@@ -1,0 +1,13 @@
+{
+  "title": "CommonShape",
+  "type": "object",
+  "allOf": [
+    { "$ref": "_common-schema.json" },
+    {
+      "properties": {
+        "border": { "type": "integer" },
+        "style": { "type": "object", "properties": { "color": { "type": "string" } } }
+      }
+    }
+  ]
+}

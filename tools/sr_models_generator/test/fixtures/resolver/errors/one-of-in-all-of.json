@@ -1,0 +1,43 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/union"
+        },
+        {
+          "properties": {
+            "x": {
+              "type": "integer"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "union": {
+      "title": "Union",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/a"
+        }
+      ]
+    },
+    "a": {
+      "title": "A",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "a"
+        }
+      }
+    }
+  }
+}

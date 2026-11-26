@@ -1,0 +1,23 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "object",
+      "allOf": [
+        {
+          "properties": {
+            "a": {
+              "type": "string"
+            }
+          },
+          "dependencies": {
+            "a": [
+              "b"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

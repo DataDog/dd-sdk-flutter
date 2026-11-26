@@ -1,0 +1,400 @@
+// Unless explicitly stated otherwise all files in this repository are licensed under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2026-Present Datadog, Inc.
+
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:sr_models_generator/sr_models_generator.dart';
+import 'package:test/test.dart';
+
+import 'support/git.dart';
+import 'support/package_root.dart';
+
+void main() {
+  late Directory temp;
+
+  /// A package using the generator, with its `sr_models_generator.yaml`.
+  late String package;
+
+  /// A fake rum-events-format, holding some resolver fixtures in
+  /// `schemas/`, and its only commit.
+  late String remote;
+  late String commit;
+
+  late StringBuffer out;
+  late StringBuffer err;
+
+  void writeConfig(String yaml) =>
+      File(p.join(package, 'sr_models_generator.yaml')).writeAsStringSync(yaml);
+
+  /// Writes the package configuration, pinning [commit] unless [pin] says
+  /// otherwise; [extra] is appended.
+  void configure({
+    String? pin,
+    List<String> roots = const ['schemas/shapes-schema.json'],
+    String extra = '',
+  }) => writeConfig('''
+rum_events_format:
+  repository: $remote
+  commit: ${pin ?? commit}
+root_schemas:
+${[for (final root in roots) '  - $root'].join('\n')}
+output: out/models.dart
+$extra''');
+
+  Future<int> run({bool check = false, String? ref}) => runGenerator(
+    (check: check, ref: ref),
+    directory: package,
+    out: out,
+    err: err,
+  );
+
+  String output() =>
+      File(p.join(package, 'out', 'models.dart')).readAsStringSync();
+
+  /// Commits a change of [file] in the fake rum-events-format, replacing
+  /// [from] by [to], and returns the new commit.
+  String change(String file, String from, String to) {
+    final repository = p.join(temp.path, 'remote');
+    final schema = File(p.join(repository, 'schemas', file));
+    final changed = schema.readAsStringSync().replaceFirst(from, to);
+    expect(changed, isNot(schema.readAsStringSync()), reason: 'no change');
+    schema.writeAsStringSync(changed);
+    git(repository, ['commit', '--quiet', '-am', 'change']);
+    return git(repository, ['rev-parse', 'HEAD']);
+  }
+
+  /// A new rum-events-format commit adding `z` to SRPoint.
+  String addZ() => change(
+    'point-schema.json',
+    '"properties": {',
+    '"properties": {\n    "z": { "type": "integer" },',
+  );
+
+  setUp(() async {
+    temp = Directory.systemTemp.createTempSync('sr_runner_test');
+    final fixtures = p.join(
+      await packageRoot(),
+      'test',
+      'fixtures',
+      'resolver',
+    );
+    final repository = p.join(temp.path, 'remote');
+    Directory(p.join(repository, 'schemas')).createSync(recursive: true);
+    for (final file in ['shapes-schema.json', 'point-schema.json']) {
+      File(
+        p.join(fixtures, file),
+      ).copySync(p.join(repository, 'schemas', file));
+    }
+    File(
+      p.join(repository, 'schemas', 'bad-schema.json'),
+    ).writeAsStringSync('{"title": "Bad", "type": "object", "anyOf": []}');
+    for (final (path, json) in [
+      ('a.json', '{"id": 1}\n'),
+      ('sub/b.json', '{"id": 2}\n'),
+      ('quote.json', '{"text": "\'\'\'"}\n'),
+    ]) {
+      File(p.join(repository, 'samples', path))
+        ..parent.createSync(recursive: true)
+        ..writeAsStringSync(json);
+    }
+    gitInit(repository);
+    git(repository, ['config', 'uploadpack.allowAnySHA1InWant', 'true']);
+    git(repository, ['add', '.']);
+    git(repository, ['commit', '--quiet', '-m', 'schemas']);
+    commit = git(repository, ['rev-parse', 'HEAD']);
+    remote = Uri.directory(repository).toString();
+
+    package = p.join(temp.path, 'package');
+    Directory(package).createSync();
+    out = StringBuffer();
+    err = StringBuffer();
+  });
+
+  tearDown(() => temp.deleteSync(recursive: true));
+
+  group('generating', () {
+    setUp(configure);
+
+    test('writes the models and says what it wrote', () async {
+      expect(await run(), 0);
+      expect(
+        out.toString(),
+        'Fetching $remote at $commit...\n'
+        'Wrote 5 types to ${p.relative(p.join(package, 'out', 'models.dart'))}, '
+        'from rum-events-format ${commit.substring(0, 7)}.\n',
+      );
+      // Progress is not an error: tools showing stderr as errors (melos)
+      // must not see it.
+      expect(err.toString(), isEmpty);
+    });
+
+    test('starts the models with the header, naming the commit', () async {
+      await run();
+      expect(output().split('\n').take(7), [
+        '// Unless explicitly stated otherwise all files in this repository '
+            'are licensed under the Apache License Version 2.0.',
+        '// This product includes software developed at Datadog '
+            '(https://www.datadoghq.com/).',
+        '// Copyright 2026-Present Datadog, Inc.',
+        '//',
+        '// GENERATED CODE - DO NOT MODIFY BY HAND.',
+        '// Generated by tools/sr_models_generator from the schemas at',
+        '// ${remote.replaceFirst(RegExp(r'\.git$'), '')}/tree/$commit',
+      ]);
+    });
+
+    test('writes formatted code', () async {
+      await run();
+      final file = p.join(package, 'out', 'models.dart');
+      final format = await Process.run('dart', [
+        'format',
+        '--output=none',
+        '--set-exit-if-changed',
+        file,
+      ]);
+      expect(format.exitCode, 0, reason: '${format.stdout}');
+    });
+
+    test('generates the local schemas too', () async {
+      final local = p.join(package, 'schemas');
+      Directory(local).createSync();
+      File(p.join(local, 'note-schema.json')).writeAsStringSync('''
+{
+  "title": "Note",
+  "type": "object",
+  "properties": { "at": { "\$ref": "../schemas/point-schema.json" } }
+}
+''');
+      configure(
+        roots: ['schemas/shapes-schema.json', 'flutter/note-schema.json'],
+        extra: 'local_schemas: schemas\n',
+      );
+
+      expect(await run(), 0, reason: '$err');
+      expect(output(), contains('final class SRNote {'));
+      expect(output(), contains('  final SRPoint? at;'));
+    });
+  });
+
+  group('check', () {
+    late String path;
+    late String short;
+
+    setUp(() async {
+      configure();
+      path = p.relative(p.join(package, 'out', 'models.dart'));
+      short = commit.substring(0, 7);
+    });
+
+    test('passes when the models are up to date', () async {
+      await run();
+      out.clear();
+
+      expect(await run(check: true), 0, reason: '$err');
+      expect(
+        out.toString(),
+        '$path is up to date with rum-events-format $short.\n',
+      );
+    });
+
+    test(
+      'fails on models edited by hand, naming the first changed line',
+      () async {
+        await run();
+        final edited = output().replaceFirst('DO NOT MODIFY', 'MODIFIED');
+        File(p.join(package, 'out', 'models.dart')).writeAsStringSync(edited);
+
+        expect(await run(check: true), 1);
+        expect(
+          err.toString(),
+          '$path is not up to date with rum-events-format $short: it differs '
+          'from line 5. Run `dart run sr_models_generator` in '
+          'tools/sr_models_generator to generate it.\n',
+        );
+        expect(output(), edited);
+      },
+    );
+
+    test(
+      'fails when the pin moved but the models were not generated',
+      () async {
+        await run();
+        final before = output();
+        configure(pin: addZ());
+
+        expect(await run(check: true), 1);
+        expect(err.toString(), contains('is not up to date'));
+        expect(output(), before);
+      },
+    );
+
+    test('fails on missing models, without creating anything', () async {
+      expect(await run(check: true), 1);
+      expect(
+        err.toString(),
+        '$path does not exist. Run `dart run sr_models_generator` in '
+        'tools/sr_models_generator to generate it.\n',
+      );
+      expect(Directory(p.join(package, 'out')).existsSync(), isFalse);
+    });
+  });
+
+  group('ref', () {
+    late String config;
+
+    String pinned() => GeneratorConfig.load(config).commit;
+
+    setUp(() {
+      config = p.join(package, 'sr_models_generator.yaml');
+      configure();
+    });
+
+    // How the new commit is named -> the ref to pass.
+    final refs = <String, String Function(String)>{
+      'a branch': (_) => 'master',
+      'a tag': (sha) {
+        git(p.join(temp.path, 'remote'), ['tag', 'v2', sha]);
+        return 'v2';
+      },
+      'a SHA': (sha) => sha,
+    };
+    for (final MapEntry(key: kind, value: refOf) in refs.entries) {
+      test('pins the commit of $kind and generates its models', () async {
+        final before = File(config).readAsStringSync();
+        final sha = addZ();
+
+        expect(await run(ref: refOf(sha)), 0, reason: '$err');
+
+        expect(pinned(), sha);
+        expect(
+          File(config).readAsStringSync(),
+          before.replaceFirst(commit, sha),
+        );
+        expect(output(), contains('  final int? z;'));
+        expect(
+          out.toString(),
+          contains(
+            'Pinned rum-events-format ${sha.substring(0, 7)}, '
+            'was ${commit.substring(0, 7)}.\n',
+          ),
+        );
+      });
+    }
+
+    test('says when the pin stays the same', () async {
+      expect(await run(ref: commit), 0);
+      expect(pinned(), commit);
+      expect(
+        out.toString(),
+        contains(
+          'rum-events-format stays pinned at ${commit.substring(0, 7)}.\n',
+        ),
+      );
+    });
+
+    test('keeps the pin when the new schemas cannot be generated', () async {
+      change('shapes-schema.json', '"type": "object",', '"anyOf": [],');
+
+      expect(await run(ref: 'master'), 1);
+
+      expect(
+        err.toString(),
+        contains('Invalid schema: Unsupported keyword "anyOf"'),
+      );
+      expect(pinned(), commit);
+      expect(File(p.join(package, 'out', 'models.dart')).existsSync(), isFalse);
+    });
+
+    test('keeps the pin when the ref does not exist', () async {
+      expect(await run(ref: 'no-such-branch'), 1);
+      expect(err.toString(), contains('Cannot get the schemas:'));
+      expect(pinned(), commit);
+    });
+  });
+
+  group('samples', () {
+    const section =
+        'samples:\n  directory: samples\n  output: out/samples.dart\n';
+    late String path;
+
+    String samples() => File(path).readAsStringSync();
+
+    setUp(() {
+      configure(extra: section);
+      path = p.join(package, 'out', 'samples.dart');
+    });
+
+    test('are written as Dart constants, by path', () async {
+      expect(await run(), 0, reason: '$err');
+      expect(samples(), contains("  'a.json': r'''\n{\"id\": 1}\n''',"));
+      expect(samples(), contains("  'sub/b.json': r'''\n{\"id\": 2}\n''',"));
+      expect(
+        out.toString(),
+        contains('Wrote 3 samples to ${p.relative(path)}, from '),
+      );
+    });
+
+    test('with three quotes are written as plain strings', () async {
+      await run();
+      expect(
+        samples(),
+        contains("  'quote.json': ${dartString('{"text": "\'\'\'"}')},"),
+      );
+    });
+
+    test('name the commit and folder they come from', () async {
+      await run();
+      expect(samples(), contains('/tree/$commit/samples\n'));
+      expect(samples(), contains('// GENERATED CODE - DO NOT MODIFY BY HAND.'));
+    });
+
+    test('fail the check when they are not up to date', () async {
+      await run();
+      File(
+        path,
+      ).writeAsStringSync(samples().replaceFirst('"id": 1', '"id": 9'));
+      out.clear();
+
+      expect(await run(check: true), 1);
+      expect(
+        err.toString(),
+        startsWith('${p.relative(path)} is not up to date with'),
+      );
+    });
+
+    test('fail when the commit does not have their folder', () async {
+      configure(
+        extra: section.replaceFirst('directory: samples', 'directory: missing'),
+      );
+
+      expect(await run(), 1);
+      expect(err.toString(), contains('The samples directory does not exist'));
+      expect(File(p.join(package, 'out', 'models.dart')).existsSync(), isFalse);
+    });
+  });
+
+  // Problem -> (how to cause it, the error it gives).
+  final failures = <String, (void Function(), String)>{
+    'a missing configuration': (() {}, 'Configuration file not found'),
+    'an invalid configuration': (() => writeConfig('- a'), 'Not a map'),
+    'a commit the repository does not have': (
+      () => configure(pin: 'f' * 40),
+      'Cannot get the schemas:',
+    ),
+    'an unsupported schema': (
+      () => configure(roots: ['schemas/bad-schema.json']),
+      'Invalid schema: Unsupported keyword "anyOf"',
+    ),
+  };
+  for (final MapEntry(key: problem, value: (cause, message))
+      in failures.entries) {
+    test('fails on $problem, writing nothing', () async {
+      cause();
+      expect(await run(), 1);
+      expect(err.toString(), contains(message));
+      expect(File(p.join(package, 'out', 'models.dart')).existsSync(), isFalse);
+    });
+  }
+}

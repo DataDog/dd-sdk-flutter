@@ -1,0 +1,9 @@
+{
+  "title": "Common",
+  "type": "object",
+  "required": ["id"],
+  "properties": {
+    "id": { "type": "integer", "description": "The identifier." },
+    "clip": { "$ref": "point-schema.json" }
+  }
+}

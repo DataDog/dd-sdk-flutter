@@ -1,0 +1,26 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "$ref": "#/definitions/middle"
+    }
+  },
+  "definitions": {
+    "middle": {
+      "$ref": "#/definitions/point",
+      "anyOf": [
+        {}
+      ]
+    },
+    "point": {
+      "title": "Point",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

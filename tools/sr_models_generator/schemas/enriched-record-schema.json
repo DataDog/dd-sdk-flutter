@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "flutter/enriched-record-schema.json",
+  "title": "EnrichedRecord",
+  "type": "object",
+  "description": "Session Replay records with the RUM context they belong to, as the Flutter plugin hands them to its iOS and Android code (EnrichedRecordJSON.swift and EnrichedRecord.kt), which build the segments from them.",
+  "required": ["records", "applicationID", "sessionID", "viewID"],
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "$ref": "../schemas/session-replay/mobile/record-schema.json"
+      },
+      "description": "Records enriched with further information."
+    },
+    "applicationID": {
+      "type": "string",
+      "description": "The RUM application ID common to all records."
+    },
+    "sessionID": {
+      "type": "string",
+      "description": "The RUM session ID common to all records."
+    },
+    "viewID": {
+      "type": "string",
+      "description": "The RUM view ID common to all records."
+    }
+  }
+}

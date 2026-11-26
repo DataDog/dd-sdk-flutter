@@ -1,0 +1,15 @@
+{
+  "title": "Drawing",
+  "type": "object",
+  "required": ["shapes"],
+  "properties": {
+    "shapes": { "type": "array", "items": { "$ref": "shape-schema.json" } },
+    "main": { "$ref": "shape-schema.json" },
+    "background": {
+      "allOf": [{ "$ref": "shape-schema.json" }],
+      "description": "A wrapped union reference."
+    },
+    "events": { "type": "array", "items": { "$ref": "event-schema.json" } },
+    "gradient": { "$ref": "gradient-schema.json" }
+  }
+}

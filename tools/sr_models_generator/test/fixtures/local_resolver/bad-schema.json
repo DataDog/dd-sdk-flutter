@@ -1,0 +1,10 @@
+{
+  "title": "Bad",
+  "type": "object",
+  "properties": {
+    "value": {
+      "$ref": "../point-schema.json",
+      "patternProperties": {}
+    }
+  }
+}
