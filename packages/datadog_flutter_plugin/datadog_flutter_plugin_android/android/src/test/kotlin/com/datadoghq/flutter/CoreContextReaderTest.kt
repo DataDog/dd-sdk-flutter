@@ -10,7 +10,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isLessThan
 import assertk.assertions.isNull
 import assertk.assertions.isSameAs
-import assertk.assertions.isTrue
 import com.datadog.android.api.context.DatadogContext
 import io.mockk.mockk
 import java.util.concurrent.CountDownLatch
@@ -104,20 +103,49 @@ class CoreContextReaderTest {
     }
 
     @Test
+    fun `M return without waiting W read() {earlier read timed out, still blocked}`() {
+        // Given
+        val earlierContext = mockk<DatadogContext>()
+        val calls = AtomicInteger(0)
+        val reader = CoreContextReader(timeoutMs = 300, executor = executor) {
+            if (calls.getAndIncrement() == 0) {
+                earlierContext
+            } else {
+                releaseRead.await()
+                mockk<DatadogContext>()
+            }
+        }
+        reader.read()
+        reader.read()
+
+        // When
+        val startNs = System.nanoTime()
+        val result = reader.read()
+        val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startNs)
+
+        // Then
+        assertThat(result).isSameAs(earlierContext)
+        assertThat(elapsedMs).isLessThan(150)
+    }
+
+    @Test
     fun `M return the fresh context W read() {blocked read finished}`() {
         // Given
-        val readFinished = CountDownLatch(1)
         val context = mockk<DatadogContext>()
         val reader = CoreContextReader(timeoutMs = 10, executor = executor) {
             releaseRead.await()
-            context.also { readFinished.countDown() }
+            context
         }
         reader.read()
 
         // When
         releaseRead.countDown()
-        assertThat(readFinished.await(1, TimeUnit.SECONDS)).isTrue()
-        val result = reader.read()
+        val deadlineNs = System.nanoTime() + TimeUnit.SECONDS.toNanos(1)
+        var result = reader.read()
+        while (result !== context && System.nanoTime() < deadlineNs) {
+            Thread.sleep(10)
+            result = reader.read()
+        }
 
         // Then
         assertThat(result).isSameAs(context)

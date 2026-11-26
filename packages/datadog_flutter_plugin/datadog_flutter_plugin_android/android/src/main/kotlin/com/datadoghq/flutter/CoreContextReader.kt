@@ -28,7 +28,8 @@ import java.util.concurrent.atomic.AtomicReference
  * context it read, or `null` if no read has finished yet.
  *
  * Only one read runs at a time. Callers that arrive while a read is in progress wait on
- * that same read.
+ * that same read. Once a read has timed out, later callers return the last known context
+ * without waiting until that read finishes, so a stalled read costs at most one wait.
  */
 internal class CoreContextReader(
     private val timeoutMs: Long = DEFAULT_TIMEOUT_MS,
@@ -40,13 +41,18 @@ internal class CoreContextReader(
     @Volatile
     private var lastKnownContext: DatadogContext? = null
 
+    @Volatile
+    private var timedOutRead: FutureTask<DatadogContext?>? = null
+
     // Any failure to get a fresh context falls back to the last known one.
     @Suppress("SwallowedException")
     fun read(): DatadogContext? {
         val pendingRead = currentOrNewRead() ?: return lastKnownContext
+        if (pendingRead === timedOutRead) return lastKnownContext
         return try {
             pendingRead.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (e: TimeoutException) {
+            timedOutRead = pendingRead
             lastKnownContext
         } catch (e: ExecutionException) {
             lastKnownContext
